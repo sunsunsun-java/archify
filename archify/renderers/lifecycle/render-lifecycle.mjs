@@ -2,7 +2,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { esc, renderDefinitions, renderSemanticSigil, textUnits } from '../shared/utils.mjs';
 import { animateAttr, focusEdgeAttrs, focusNodeAttrs, focusNodeTitle, loadDiagramWithBrandMarks, writeDiagram, svgAccessibleText, svgRootAttrs } from '../shared/cli.mjs';
+import {
+  componentBox,
+  connectionPath,
+  emitResolvedLayoutReport,
+  relationshipLabelBox,
+  resolvedLayoutReport,
+} from '../shared/layout-report.mjs';
 import { throwDiagnosticProblems } from '../shared/diagnostics.mjs';
+import { relationshipLabelContainmentIssues } from '../shared/viewbox-containment.mjs';
 import { resolveLegend, renderLegend as renderResolvedLegend } from '../shared/legend.mjs';
 import { availableNodeTextWidth, fittedNodeFontSize, minimumNodeTextWidth } from '../shared/text-fit.mjs';
 import { brandLabelFitWidth, brandMarkFor, brandMetadataFor, brandTopRailProblem, renderBrandMark } from '../shared/brand-marks.mjs';
@@ -40,10 +48,13 @@ const stateTextFit = {
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const layoutJsonMode = process.argv.includes('--layout-json');
+const cliArgs = process.argv.filter((arg) => arg !== '--layout-json');
 const { diagram: lifecycle, template, outPath } = await loadDiagramWithBrandMarks({
   rendererDir: __dirname,
   diagramType: 'lifecycle',
-  defaultExample: 'agent-run.lifecycle.json'
+  defaultExample: 'agent-run.lifecycle.json',
+  argv: cliArgs,
 });
 
 const viewBox = lifecycle.meta?.viewBox || [980, 660];
@@ -128,6 +139,7 @@ function measureState(state) {
 }
 
 const states = new Map(asArray(lifecycle.states).map((state) => [state.id, measureState(state)]));
+const stateInputIndexes = new Map(asArray(lifecycle.states).map((state, index) => [state.id, index]));
 const laneLabels = new Map(asArray(lifecycle.lanes).map((lane) => [lane.id, lane.label]));
 const stateSteps = new Map();
 for (const [index, transition] of asArray(lifecycle.transitions).entries()) {
@@ -152,7 +164,18 @@ function validateLifecycle() {
   // The three bands are fixed at y=112/264/436. Preserve the original
   // outcome/legend reserve even though measured legend rows now sit lower.
   if (lifecycleAreaBottom() + 4 < 448) {
-    problems.push(`viewBox height ${viewBox[1]} is too short for the fixed band layout — set meta.viewBox[1] to at least 566.`);
+    problems.push({
+      code: 'layout/lifecycle-viewbox-height',
+      message: `viewBox height ${viewBox[1]} is too short for the fixed band layout — set meta.viewBox[1] to at least 566.`,
+      subject: { path: '/meta/viewBox/1' },
+      evidence: {
+        currentViewBoxHeight: viewBox[1],
+        requiredViewBoxHeight: 566,
+        currentLifecycleAreaBottom: lifecycleAreaBottom(),
+        requiredLifecycleAreaBottom: 444,
+      },
+      supportedFixes: ['set meta.viewBox[1] to 566 or greater'],
+    });
   }
 
   const laneIds = new Set(asArray(lifecycle.lanes).map((lane) => lane.id));
@@ -184,7 +207,44 @@ function validateLifecycle() {
       problems.push(`State "${state.id}" exceeds the horizontal bounds of the diagram — reduce state.width or increase meta.viewBox[0].`);
     }
     if (state.y < 64 || state.y + state.height > lifecycleAreaBottom()) {
-      problems.push(`State "${state.id}" exceeds the vertical lifecycle area — keep y between 64 and ${lifecycleAreaBottom()} (adjust yOffset or increase meta.viewBox[1]).`);
+      const baseY = state.y - (state.yOffset || 0);
+      const allowedY = {
+        min: 64,
+        max: lifecycleAreaBottom() - state.height,
+      };
+      const allowedYOffset = {
+        min: allowedY.min - baseY,
+        max: allowedY.max - baseY,
+      };
+      const requiredViewBoxHeight = Math.ceil(state.y + state.height + 122);
+      const stateIndex = stateInputIndexes.get(state.id);
+      const fixes = [];
+      if (state.y + state.height > lifecycleAreaBottom()) {
+        fixes.push(`set meta.viewBox[1] to at least ${requiredViewBoxHeight}`);
+      }
+      fixes.push(`set /states/${stateIndex}/yOffset between ${allowedYOffset.min} and ${allowedYOffset.max}`);
+      const remedy = state.y + state.height > lifecycleAreaBottom()
+        ? `set meta.viewBox[1] to at least ${requiredViewBoxHeight}, or keep yOffset between ${allowedYOffset.min} and ${allowedYOffset.max}`
+        : `keep yOffset between ${allowedYOffset.min} and ${allowedYOffset.max}`;
+      problems.push({
+        code: 'layout/lifecycle-state-vertical-bounds',
+        message: `State "${state.id}" occupies y ${state.y}..${state.y + state.height}, outside the allowed top-left y range ${allowedY.min}..${allowedY.max} — ${remedy}.`,
+        subject: {
+          path: `/states/${stateIndex}/yOffset`,
+          id: state.id,
+        },
+        evidence: {
+          currentViewBoxHeight: viewBox[1],
+          requiredViewBoxHeight,
+          currentY: state.y,
+          stateHeight: state.height,
+          lifecycleAreaBottom: lifecycleAreaBottom(),
+          allowedY,
+          currentYOffset: state.yOffset || 0,
+          allowedYOffset,
+        },
+        supportedFixes: fixes,
+      });
     }
     const estLabelW = textUnits(state.label) * 6.2;
     if (estLabelW > state.width + 6) {
@@ -318,6 +378,12 @@ function validateLifecycle() {
       }
     }
   }
+  problems.push(...relationshipLabelContainmentIssues({
+    labels: labelRects,
+    viewBox,
+    diagramType: 'lifecycle',
+    relationCollection: 'transitions',
+  }));
   problems.push(...cleanLabelRouteClearanceProblems({
     relations: lifecycle.transitions,
     labels: labelRects,
@@ -559,12 +625,65 @@ ${renderLegend()}
       </svg>`;
 }
 
-validateLifecycle();
-writeDiagram({
-  outPath,
-  template,
-  diagramType: 'lifecycle',
-  meta: lifecycle.meta,
-  svg: renderSvg(),
-  cards: lifecycle.cards,
-});
+function buildLayoutReport(validation) {
+  const relationships = asArray(lifecycle.transitions)
+    .map((transition, transitionIndex) => ({ transition, transitionIndex }))
+    .filter(({ transition }) => states.has(transition.from) && states.has(transition.to))
+    .map(({ transition, transitionIndex }) => {
+      const routed = pathFor(transition);
+      const labelAt = transition.label ? labelPoint(transition, routed.points) : null;
+      return connectionPath(transition, routed, labelAt, transitionIndex);
+    });
+  const labels = asArray(lifecycle.transitions)
+    .map((transition, transitionIndex) => ({ transition, transitionIndex }))
+    .filter(({ transition }) => transition.label && states.has(transition.from) && states.has(transition.to))
+    .map(({ transition, transitionIndex }) => {
+      const [lx, ly] = labelPoint(transition, pathFor(transition).points);
+      const longestLine = Math.max(textUnits(transition.label), textUnits(transition.note || ''));
+      const width = Math.max(32, longestLine * 4.9 + 12);
+      const height = transition.note ? 27 : 16;
+      return relationshipLabelBox({
+        relation: transition,
+        relationIndex: transitionIndex,
+        x: lx - width / 2,
+        y: ly - 11,
+        width,
+        height,
+        lx,
+        ly,
+      });
+    });
+  const titles = bandTitles();
+  return resolvedLayoutReport({
+    type: 'lifecycle',
+    viewBox,
+    validation,
+    entityKey: 'states',
+    entities: [...states.values()].map(componentBox),
+    relationships,
+    labels,
+    extras: {
+      bands: [112, 264, 436].map((y, index) => ({
+        index,
+        label: titles[index],
+        y,
+        x1: 72,
+        x2: viewBox[0] - 72,
+      })),
+    },
+  });
+}
+
+if (layoutJsonMode) {
+  emitResolvedLayoutReport({ validate: validateLifecycle, build: buildLayoutReport });
+} else {
+  validateLifecycle();
+  writeDiagram({
+    outPath,
+    template,
+    diagramType: 'lifecycle',
+    meta: lifecycle.meta,
+    svg: renderSvg(),
+    cards: lifecycle.cards,
+  });
+}

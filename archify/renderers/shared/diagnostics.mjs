@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const DIAGNOSTIC_MODE = process.env.ARCHIFY_DIAGNOSTIC_FORMAT === 'json';
 const recorded = [];
-const recordedMessages = new Set();
+const recordedDiagnosticKeys = new Set();
 const boundaryKey = Symbol.for('archify.renderer-diagnostic-boundary');
 
 function plainObject(value) {
@@ -25,11 +25,35 @@ function normalizedDiagnostic(diagnostic) {
   };
 }
 
+/**
+ * Build one normalized, machine-actionable layout issue.
+ *
+ * Layout validators historically accumulated strings. New validators can use
+ * this shape without forcing every existing rule to migrate at once.
+ */
+export function layoutIssue(issue, defaults = {}) {
+  const source = typeof issue === 'string' ? { message: issue } : plainObject(issue);
+  return normalizedDiagnostic({
+    ...defaults,
+    ...source,
+    subject: {
+      ...plainObject(defaults.subject),
+      ...plainObject(source.subject),
+    },
+    evidence: {
+      ...plainObject(defaults.evidence),
+      ...plainObject(source.evidence),
+    },
+    supportedFixes: source.supportedFixes ?? defaults.supportedFixes,
+  });
+}
+
 export function recordDiagnostic(diagnostic) {
   if (!DIAGNOSTIC_MODE) return;
   const normalized = normalizedDiagnostic(diagnostic);
-  if (recordedMessages.has(normalized.message)) return;
-  recordedMessages.add(normalized.message);
+  const key = JSON.stringify(normalized);
+  if (recordedDiagnosticKeys.has(key)) return;
+  recordedDiagnosticKeys.add(key);
   recorded.push(normalized);
 }
 
@@ -40,19 +64,22 @@ export function throwDiagnosticError(message, diagnostics) {
   throw error;
 }
 
-export function throwDiagnosticProblems(prefix, problems, { code = 'layout/constraint', subject = {} } = {}) {
-  const messages = (problems || []).map((problem) => String(problem));
-  for (const message of messages) {
-    recordDiagnostic({
-      code,
-      severity: 'error',
-      message,
-      subject,
-      evidence: {},
-      supportedFixes: [],
-    });
-  }
-  throw new Error(`${prefix}:\n- ${messages.join('\n- ')}`);
+export function throwDiagnosticProblems(prefix, problems, {
+  code = 'layout/constraint',
+  severity = 'error',
+  subject = {},
+  evidence = {},
+  supportedFixes = [],
+} = {}) {
+  const diagnostics = (problems || []).map((problem) => layoutIssue(problem, {
+    code,
+    severity,
+    subject,
+    evidence,
+    supportedFixes,
+  }));
+  const messages = diagnostics.map((diagnostic) => diagnostic.message);
+  throwDiagnosticError(`${prefix}:\n- ${messages.join('\n- ')}`, diagnostics);
 }
 
 function fallbackDiagnostic(error) {

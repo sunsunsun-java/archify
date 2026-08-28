@@ -2,7 +2,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { esc, renderDefinitions, renderSemanticSigil, textUnits } from '../shared/utils.mjs';
 import { animateAttr, focusEdgeAttrs, focusNodeAttrs, focusNodeTitle, loadDiagramWithBrandMarks, writeDiagram, svgAccessibleText, svgRootAttrs } from '../shared/cli.mjs';
+import {
+  componentBox,
+  connectionPath,
+  emitResolvedLayoutReport,
+  relationshipLabelBox,
+  resolvedLayoutReport,
+} from '../shared/layout-report.mjs';
 import { throwDiagnosticProblems } from '../shared/diagnostics.mjs';
+import { relationshipLabelContainmentIssues } from '../shared/viewbox-containment.mjs';
 import { resolveLegend, renderLegend as renderResolvedLegend } from '../shared/legend.mjs';
 import { availableNodeTextWidth, fittedNodeFontSize, minimumNodeTextWidth } from '../shared/text-fit.mjs';
 import { brandLabelFitWidth, brandMetadataFor, brandTopRailProblem, renderBrandMark } from '../shared/brand-marks.mjs';
@@ -38,10 +46,13 @@ import {
 } from '../shared/geometry.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const layoutJsonMode = process.argv.includes('--layout-json');
+const cliArgs = process.argv.filter((arg) => arg !== '--layout-json');
 const { diagram: workflow, template, outPath } = await loadDiagramWithBrandMarks({
   rendererDir: __dirname,
   diagramType: 'workflow',
-  defaultExample: 'agent-tool-call.workflow.json'
+  defaultExample: 'agent-tool-call.workflow.json',
+  argv: cliArgs,
 });
 
 const layout = {
@@ -427,6 +438,12 @@ function validateWorkflow() {
       }
     }
   }
+  problems.push(...relationshipLabelContainmentIssues({
+    labels: labelRects,
+    viewBox,
+    diagramType: 'workflow',
+    relationCollection: 'edges',
+  }));
   problems.push(...cleanLabelRouteClearanceProblems({
     relations: workflow.edges,
     labels: labelRects,
@@ -738,12 +755,63 @@ ${renderLegend()}
       </svg>`;
 }
 
-validateWorkflow();
-writeDiagram({
-  outPath,
-  template,
-  diagramType: 'workflow',
-  meta: workflow.meta,
-  svg: renderSvg(),
-  cards: workflow.cards,
-});
+function buildLayoutReport(validation) {
+  const relationships = asArray(workflow.edges)
+    .map((edge, edgeIndex) => ({ edge, edgeIndex }))
+    .filter(({ edge }) => nodes.has(edge.from) && nodes.has(edge.to))
+    .map(({ edge, edgeIndex }) => {
+      const routed = pathFor(edge);
+      const labelAt = edge.label ? workflowEdgeLabelPoint(edge, routed.points) : null;
+      return connectionPath(edge, routed, labelAt, edgeIndex);
+    });
+  const labels = asArray(workflow.edges)
+    .map((edge, edgeIndex) => ({ edge, edgeIndex }))
+    .filter(({ edge }) => edge.label && nodes.has(edge.from) && nodes.has(edge.to))
+    .map(({ edge, edgeIndex }) => {
+      const [lx, ly] = workflowEdgeLabelPoint(edge, pathFor(edge).points);
+      const width = Math.max(30, textUnits(edge.label) * 4.8 + 10);
+      return relationshipLabelBox({
+        relation: edge,
+        relationIndex: edgeIndex,
+        x: lx - width / 2,
+        y: ly - 10,
+        width,
+        height: 14,
+        lx,
+        ly,
+      });
+    });
+  const lanes = asArray(workflow.lanes).map((lane, index) => ({
+    id: lane.id,
+    label: lane.label,
+    variant: lane.variant ?? 'default',
+    x: layout.laneX,
+    y: layout.laneY + index * (layout.laneH + layout.laneGap),
+    width: layout.laneW,
+    height: layout.laneH,
+  }));
+  return resolvedLayoutReport({
+    type: 'workflow',
+    viewBox,
+    validation,
+    entityKey: 'nodes',
+    entities: [...nodes.values()].map(componentBox),
+    relationships,
+    labels,
+    extras: { lanes },
+  });
+}
+
+if (layoutJsonMode) {
+  emitResolvedLayoutReport({ validate: validateWorkflow, build: buildLayoutReport });
+} else {
+  validateWorkflow();
+  writeDiagram({
+    outPath,
+    template,
+    diagramType: 'workflow',
+    meta: workflow.meta,
+    svg: renderSvg(),
+    cards: workflow.cards,
+  });
+}

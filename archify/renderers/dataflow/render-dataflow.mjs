@@ -2,7 +2,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { esc, renderDefinitions, renderSemanticSigil, textUnits } from '../shared/utils.mjs';
 import { animateAttr, focusEdgeAttrs, focusNodeAttrs, focusNodeTitle, loadDiagramWithBrandMarks, writeDiagram, svgAccessibleText, svgRootAttrs } from '../shared/cli.mjs';
+import {
+  componentBox,
+  connectionPath,
+  emitResolvedLayoutReport,
+  relationshipLabelBox,
+  resolvedLayoutReport,
+} from '../shared/layout-report.mjs';
 import { throwDiagnosticProblems } from '../shared/diagnostics.mjs';
+import { relationshipLabelContainmentIssues } from '../shared/viewbox-containment.mjs';
 import { resolveLegend, renderLegend as renderResolvedLegend } from '../shared/legend.mjs';
 import { availableNodeTextWidth, fittedNodeFontSize, minimumNodeTextWidth } from '../shared/text-fit.mjs';
 import { brandLabelFitWidth, brandMetadataFor, brandTopRailProblem, renderBrandMark } from '../shared/brand-marks.mjs';
@@ -42,10 +50,13 @@ const nodeTextFit = {
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const layoutJsonMode = process.argv.includes('--layout-json');
+const cliArgs = process.argv.filter((arg) => arg !== '--layout-json');
 const { diagram: dataflow, template, outPath } = await loadDiagramWithBrandMarks({
   rendererDir: __dirname,
   diagramType: 'dataflow',
-  defaultExample: 'product-analytics.dataflow.json'
+  defaultExample: 'product-analytics.dataflow.json',
+  argv: cliArgs,
 });
 
 const viewBox = dataflow.meta?.viewBox || [940, 720];
@@ -283,6 +294,12 @@ function validateDataflow() {
       }
     }
   }
+  problems.push(...relationshipLabelContainmentIssues({
+    labels: labelRects,
+    viewBox,
+    diagramType: 'dataflow',
+    relationCollection: 'flows',
+  }));
   problems.push(...cleanLabelRouteClearanceProblems({
     relations: dataflow.flows,
     labels: labelRects,
@@ -471,12 +488,53 @@ ${renderLegend()}
       </svg>`;
 }
 
-validateDataflow();
-writeDiagram({
-  outPath,
-  template,
-  diagramType: 'dataflow',
-  meta: dataflow.meta,
-  svg: renderSvg(),
-  cards: dataflow.cards,
-});
+function buildLayoutReport(validation) {
+  const relationships = asArray(dataflow.flows)
+    .map((flow, flowIndex) => ({ flow, flowIndex }))
+    .filter(({ flow }) => nodes.has(flow.from) && nodes.has(flow.to))
+    .map(({ flow, flowIndex }) => {
+      const routed = pathFor(flow);
+      return connectionPath(flow, routed, labelPoint(flow, routed.points), flowIndex);
+    });
+  const labels = asArray(dataflow.flows)
+    .map((flow, flowIndex) => ({ flow, flowIndex }))
+    .filter(({ flow }) => nodes.has(flow.from) && nodes.has(flow.to))
+    .map(({ flow, flowIndex }) => {
+      const [lx, ly] = labelPoint(flow, pathFor(flow).points);
+      const { width, height } = flowLabelSize(flow);
+      return relationshipLabelBox({
+        relation: flow,
+        relationIndex: flowIndex,
+        x: lx - width / 2,
+        y: ly - 11,
+        width,
+        height,
+        lx,
+        ly,
+      });
+    });
+  return resolvedLayoutReport({
+    type: 'dataflow',
+    viewBox,
+    validation,
+    entityKey: 'nodes',
+    entities: [...nodes.values()].map(componentBox),
+    relationships,
+    labels,
+    extras: { stages: compositionFrames },
+  });
+}
+
+if (layoutJsonMode) {
+  emitResolvedLayoutReport({ validate: validateDataflow, build: buildLayoutReport });
+} else {
+  validateDataflow();
+  writeDiagram({
+    outPath,
+    template,
+    diagramType: 'dataflow',
+    meta: dataflow.meta,
+    svg: renderSvg(),
+    cards: dataflow.cards,
+  });
+}

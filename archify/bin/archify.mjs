@@ -18,10 +18,16 @@ function usage() {
   archify compare architecture <base.json> <head.json> [output.html] [--receipt path] [--json] [--quality standard|showcase] [--repo-root path]
   archify deliver <type> <input.json> [output.html] [--json] [--open] [--quality standard|showcase] [--repo-root path]
   archify preview <type> <input.json> [output.html] [--no-open] [--quality standard|showcase] [--repo-root path]
-  archify validate <type> <input.json> [--json] [--layout-json] [--quality standard|showcase] [--repo-root path]
+  archify validate <type> <input.json> [--json] [--layout-json] [--preflight] [--quality standard|showcase] [--repo-root path]
   archify inspect <type> <input.json>
   archify check <output.html>
-  archify visual-check <output.html> [--json]
+  archify visual-check <output.html>... [--preflight] [--json]
+  archify visual-check --probe [--json]
+  archify authoring-kit <type> [--json]
+  archify project-index <repo-root> [--revision ref] [--output path] [--json]
+  archify evidence-ledger create <index.json> <selections.json> [--output path] [--json]
+  archify evidence-ledger verify <ledger.json> --project-index <index.json> --repo-root path [--json]
+  archify run-suite --manifest <suite.json> --repo-root <checkout> --revision <full-commit-id> --output <directory> [--concurrency n] [--json]
   archify guide [scenario or question] [--json] [--lang en|zh]
   archify brands [name, alias, domain, or category] [--json]
   archify brands capture <url> [--json]
@@ -193,20 +199,46 @@ const COMPOSITION_FIXES = {
   'composition/desktop-readability': ['reduce the viewBox width, shorten node copy, widen affected nodes, or split the diagram so node context remains at least 6px at a 1440px desktop viewport'],
   'composition/micro-segment': ['move the route/channel/via point so every visible segment is at least 8px'],
   'composition/short-interior-segment': ['move the route/channel/via point so every interior turn has at least 16px'],
+  'composition/relationship-label-containment': ['move the single renderer-supported relationship label control inside the exact allowedLabelAt or allowedTranslation range'],
 };
+
+function compositionSupportedFixes(issue) {
+  if (Array.isArray(issue?.supportedFixes) && issue.supportedFixes.length) return issue.supportedFixes;
+  if (issue?.code === 'composition/desktop-readability' && Number.isFinite(issue.maxViewBoxWidth)) {
+    return [`reduce the viewBox width to at most ${issue.maxViewBoxWidth}px so the affected text projects to at least 6px at 1440px`];
+  }
+  return COMPOSITION_FIXES[issue?.code] || [];
+}
+
+function compositionMessage(issue) {
+  if (issue?.message) return issue.message;
+  if (issue?.code === 'composition/desktop-readability') {
+    return `Text ${JSON.stringify(issue.text || '')} projects to ${issue.projectedFontPx}px at the 1440px desktop viewport; use a viewBox width of at most ${issue.maxViewBoxWidth}px.`;
+  }
+  return `Final artifact failed ${issue?.code || 'a composition check'}.`;
+}
 
 function checkerDiagnostics(checker) {
   const diagnostics = [];
   for (const issue of checker?.composition?.issues || []) {
     if (issue.severity !== 'error') continue;
-    const { severity, code, relationship, ...evidence } = issue;
+    const {
+      severity,
+      code,
+      relationship,
+      message,
+      subject: structuredSubject,
+      evidence: structuredEvidence,
+      supportedFixes,
+      ...legacyEvidence
+    } = issue;
     diagnostics.push(diagnostic({
       code,
       severity,
-      message: `Final artifact failed ${code}.`,
-      subject: relationship ? { relationship } : { check: 'composition' },
-      evidence,
-      supportedFixes: COMPOSITION_FIXES[code] || [],
+      message: compositionMessage({ ...issue, message }),
+      subject: structuredSubject || (relationship ? { relationship } : { check: 'composition' }),
+      evidence: structuredEvidence || legacyEvidence,
+      supportedFixes: compositionSupportedFixes({ ...issue, supportedFixes }),
     }));
   }
   for (const check of checker?.checks || []) {
@@ -722,7 +754,7 @@ function reportDeliveryFailure({ json, stage, type, input, output, error, diagno
   process.exitCode = status;
 }
 
-function reportValidateFailure({ json, stage, type, input, error, diagnostics = [], status = 1, checker }) {
+function reportValidateFailure({ json, stage, type, input, error, diagnostics = [], status = 1, checker, preflight }) {
   const receipt = {
     schemaVersion: 1,
     ok: false,
@@ -733,6 +765,7 @@ function reportValidateFailure({ json, stage, type, input, error, diagnostics = 
     error,
     diagnostics,
     ...(checker ? { checker } : {}),
+    ...(preflight ? { preflight } : {}),
   };
   if (json) console.log(JSON.stringify(receipt, null, 2));
   else console.error(formatDiagnostics(error, diagnostics));
@@ -1163,52 +1196,325 @@ function commandCheck(args) {
 
 async function commandVisualCheck(args) {
   const json = args.includes('--json');
-  const knownOptions = new Set(['--json']);
+  const preflight = args.includes('--preflight');
+  const probe = args.includes('--probe');
+  const knownOptions = new Set(['--json', '--preflight', '--probe']);
   const unknown = args.filter((arg) => arg.startsWith('--') && !knownOptions.has(arg));
   if (unknown.length) fail(`Unknown visual-check option "${unknown[0]}".`, 1);
   const positional = args.filter((arg) => !knownOptions.has(arg));
-  if (positional.length !== 1) fail(usage(), 1);
+  if (probe ? (preflight || positional.length !== 0) : positional.length === 0) fail(usage(), 1);
 
-  let runVisualCheck;
+  let visual;
   try {
-    ({ runVisualCheck } = await import('./visual-check.mjs'));
+    visual = await import('./visual-check.mjs');
   } catch (error) {
     fail(`Could not load visual-check: ${error.message}`, 1);
   }
 
-  let result;
-  try {
-    result = await runVisualCheck({ artifactPath: positional[0] });
-  } catch (error) {
-    if (json) {
-      console.log(JSON.stringify({
-        schemaVersion: 1,
-        ok: false,
-        command: 'visual-check',
-        status: 'fail',
-        visualReview: 'pending',
-        artifact: { path: path.resolve(positional[0]) },
-        error: error.message,
-      }, null, 2));
-    } else {
-      console.error(`visual-check failed: ${error.message}`);
+  if (probe) {
+    const result = await visual.probeVisualCheckCapability();
+    if (json) console.log(JSON.stringify(result.receipt, null, 2));
+    else {
+      console.log(`visual capability ${result.receipt.status}: ${result.receipt.chrome.executable || 'Chrome unavailable'}`);
+      if (result.receipt.error) console.error(result.receipt.error);
     }
-    process.exitCode = 1;
+    process.exitCode = result.exitCode;
     return;
   }
 
-  if (json) {
-    console.log(JSON.stringify(result.receipt, null, 2));
-  } else {
-    console.log(`visual-check ${result.receipt.status}: ${result.receipt.artifact.path}`);
-    console.log(`containment ${result.receipt.containment.status}; captures ${result.receipt.captures.status}; visual review pending`);
-    console.log(`receipt ${path.join(path.dirname(result.receipt.artifact.path), result.receipt.sidecars.receipt)}`);
-    if (result.receipt.captures.contactSheet) {
-      console.log(`contact sheet ${path.join(path.dirname(result.receipt.artifact.path), result.receipt.captures.contactSheet)}`);
+  if (positional.length > 1) {
+    const audit = visual.auditVisualCheckBatch(positional, {
+      mode: preflight ? 'preflight' : 'full',
+    });
+    if (!audit.ok) {
+      const command = preflight ? 'visual-preflight-batch' : 'visual-check-batch';
+      const failure = diagnostic({
+        code: audit.code,
+        message: audit.message,
+        subject: { artifacts: audit.artifacts.map((entry) => entry.path) },
+        evidence: { conflicts: audit.conflicts },
+        supportedFixes: [
+          'pass each delivered artifact exactly once',
+          'rename artifacts so every visual evidence sidecar has an independent path',
+        ],
+      });
+      const receipt = {
+        schemaVersion: 1,
+        ok: false,
+        command,
+        status: 'fail',
+        audit: { status: 'fail', code: audit.code },
+        error: audit.message,
+        diagnostics: [failure],
+        artifacts: audit.artifacts.map((entry) => ({
+          schemaVersion: 1,
+          ok: false,
+          command: preflight ? 'visual-preflight' : 'visual-check',
+          status: 'fail',
+          ...(preflight ? {} : { visualReview: 'pending' }),
+          artifact: { path: entry.path },
+          error: audit.message,
+          diagnostics: [failure],
+        })),
+      };
+      if (json) console.log(JSON.stringify(receipt, null, 2));
+      else {
+        console.log(`${receipt.command} fail: ${receipt.artifacts.length} artifacts`);
+        console.error(receipt.error);
+      }
+      process.exitCode = 1;
+      return;
     }
-    if (result.receipt.error) console.error(result.receipt.error);
   }
-  process.exitCode = result.exitCode;
+
+  const session = new visual.VisualCheckSession();
+  const results = [];
+  let capability;
+  try {
+    capability = await session.probe();
+    for (const [index, artifactPath] of positional.entries()) {
+      try {
+        const finalArtifact = index === positional.length - 1;
+        results.push(preflight
+          ? await session.preflight({ artifactPath, finalArtifact })
+          : await session.run({ artifactPath, finalArtifact }));
+      } catch (error) {
+        results.push({
+          exitCode: 1,
+          receipt: {
+            schemaVersion: 1,
+            ok: false,
+            command: preflight ? 'visual-preflight' : 'visual-check',
+            status: 'fail',
+            ...(preflight ? {} : { visualReview: 'pending' }),
+            artifact: { path: path.resolve(artifactPath) },
+            error: error.message,
+            diagnostics: [diagnostic({
+              code: 'viewer/visual-check-runtime',
+              message: error.message,
+              subject: { artifact: path.resolve(artifactPath) },
+            })],
+          },
+        });
+      }
+    }
+  } finally {
+    await session.close();
+  }
+
+  if (results.length === 1) {
+    const [result] = results;
+    if (json) {
+      console.log(JSON.stringify(result.receipt, null, 2));
+    } else {
+      const artifactPath = result.receipt.artifact?.path || '(unknown artifact)';
+      console.log(`${result.receipt.command} ${result.receipt.status}: ${artifactPath}`);
+      const summary = [];
+      if (result.receipt.containment?.status) {
+        summary.push(`containment ${result.receipt.containment.status}`);
+      }
+      if (result.receipt.captures?.status) {
+        summary.push(`captures ${result.receipt.captures.status}`);
+      }
+      if (!preflight) summary.push(`visual review ${result.receipt.visualReview || 'pending'}`);
+      if (summary.length) console.log(summary.join('; '));
+      if (result.receipt.sidecars?.receipt && result.receipt.artifact?.path) {
+        console.log(`receipt ${path.join(path.dirname(artifactPath), result.receipt.sidecars.receipt)}`);
+      }
+      if (result.receipt.captures?.contactSheet && result.receipt.artifact?.path) {
+        console.log(`contact sheet ${path.join(path.dirname(artifactPath), result.receipt.captures.contactSheet)}`);
+      }
+      if (result.receipt.error) console.error(result.receipt.error);
+    }
+    process.exitCode = result.exitCode;
+    return;
+  }
+
+  const exitCode = results.every((result) => result.exitCode === 0)
+    ? 0
+    : results.every((result) => result.exitCode === 2) ? 2 : 1;
+  const receipt = {
+    schemaVersion: 1,
+    ok: exitCode === 0,
+    command: preflight ? 'visual-preflight-batch' : 'visual-check-batch',
+    status: exitCode === 0 ? 'pass' : exitCode === 2 ? 'skipped' : 'fail',
+    capability,
+    artifacts: results.map((result) => result.receipt),
+  };
+  if (json) console.log(JSON.stringify(receipt, null, 2));
+  else {
+    console.log(`${receipt.command} ${receipt.status}: ${receipt.artifacts.length} artifacts`);
+    for (const artifact of receipt.artifacts) {
+      const artifactPath = artifact.artifact?.path || '(unknown artifact)';
+      console.log(`[${artifact.status}] ${artifactPath}`);
+      if (artifact.error) console.error(`${artifactPath}: ${artifact.error}`);
+    }
+    if (receipt.error) console.error(receipt.error);
+  }
+  process.exitCode = exitCode;
+}
+
+function writeJsonAtomic(targetInput, value) {
+  const target = path.resolve(targetInput);
+  const directory = path.dirname(target);
+  fs.mkdirSync(directory, { recursive: true });
+  const temporary = path.join(directory, `.${path.basename(target)}.${process.pid}.${Date.now()}.tmp`);
+  try {
+    fs.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' });
+    fs.renameSync(temporary, target);
+  } catch (error) {
+    fs.rmSync(temporary, { force: true });
+    throw error;
+  }
+  return target;
+}
+
+function utilityFailure(command, error, json) {
+  const receipt = {
+    schemaVersion: 1,
+    ok: false,
+    command,
+    error: error.message,
+    diagnostics: [diagnostic({
+      code: error.code || `${command}/failed`,
+      message: error.message,
+      evidence: error.details || {},
+    })],
+  };
+  if (json) console.log(JSON.stringify(receipt, null, 2));
+  else console.error(`${command} failed: ${error.message}`);
+  process.exitCode = 1;
+}
+
+async function commandAuthoringKit(args) {
+  const json = args.includes('--json');
+  const unknown = args.filter((arg) => arg.startsWith('--') && arg !== '--json');
+  if (unknown.length) fail(`Unknown authoring-kit option "${unknown[0]}".`);
+  const positional = args.filter((arg) => arg !== '--json');
+  if (positional.length !== 1) fail(usage());
+  try {
+    const { loadAuthoringKit } = await import('../authoring/authoring-kit.mjs');
+    const packet = loadAuthoringKit(positional[0], { skillRoot });
+    if (json) {
+      console.log(JSON.stringify(packet, null, 2));
+      return;
+    }
+    console.log(`Archify authoring kit: ${packet.type}`);
+    for (const [role, file] of Object.entries(packet.files)) {
+      console.log(`${role}: ${file.path} (${file.bytes} bytes; sha256 ${file.sha256})`);
+    }
+  } catch (error) {
+    utilityFailure('authoring-kit', error, json);
+  }
+}
+
+function utilityOptions(args, { allowRevision = false, allowRepoRoot = false, allowProjectIndex = false } = {}) {
+  const positional = [];
+  let json = false;
+  let output;
+  let revision;
+  let repoRoot;
+  let projectIndex;
+  const valueOptions = new Set([
+    '--output',
+    ...(allowRevision ? ['--revision'] : []),
+    ...(allowRepoRoot ? ['--repo-root'] : []),
+    ...(allowProjectIndex ? ['--project-index'] : []),
+  ]);
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === '--json') {
+      json = true;
+      continue;
+    }
+    if (valueOptions.has(arg)) {
+      const value = args[index + 1];
+      if (!value || value.startsWith('--')) fail(`${arg} requires a value.`);
+      if (arg === '--output') output = value;
+      if (arg === '--revision') revision = value;
+      if (arg === '--repo-root') repoRoot = path.resolve(value);
+      if (arg === '--project-index') projectIndex = path.resolve(value);
+      index += 1;
+      continue;
+    }
+    const matched = [...valueOptions].find((option) => arg.startsWith(`${option}=`));
+    if (matched) {
+      const value = arg.slice(matched.length + 1);
+      if (!value) fail(`${matched} requires a value.`);
+      if (matched === '--output') output = value;
+      if (matched === '--revision') revision = value;
+      if (matched === '--repo-root') repoRoot = path.resolve(value);
+      if (matched === '--project-index') projectIndex = path.resolve(value);
+      continue;
+    }
+    if (arg.startsWith('--')) fail(`Unknown option "${arg}".`);
+    positional.push(arg);
+  }
+  return { positional, json, output, revision, repoRoot, projectIndex };
+}
+
+async function commandProjectIndex(args) {
+  const options = utilityOptions(args, { allowRevision: true });
+  if (options.positional.length !== 1) fail(usage());
+  try {
+    const { buildProjectIndex } = await import('../evidence/project-index.mjs');
+    const index = buildProjectIndex({
+      repoRoot: options.positional[0],
+      revision: options.revision || 'HEAD',
+    });
+    const output = options.output ? writeJsonAtomic(options.output, index) : null;
+    if (options.json || !output) {
+      console.log(JSON.stringify(index, null, 2));
+      return;
+    }
+    console.log(`Project index ready: ${output}`);
+    console.log(`${index.files.length} files; ${index.analysis.filesAnalyzed} analyzed; revision ${index.repository.revision}`);
+  } catch (error) {
+    utilityFailure('project-index', error, options.json);
+  }
+}
+
+async function commandEvidenceLedger(args) {
+  const [action, ...rest] = args;
+  const options = utilityOptions(rest, {
+    allowRepoRoot: action === 'verify',
+    allowProjectIndex: action === 'verify',
+  });
+  let module;
+  try {
+    module = await import('../evidence/project-index.mjs');
+  } catch (error) {
+    utilityFailure('evidence-ledger', error, options.json);
+    return;
+  }
+
+  try {
+    let result;
+    if (action === 'create') {
+      if (options.positional.length !== 2 || options.repoRoot) fail(usage());
+      const index = JSON.parse(fs.readFileSync(path.resolve(options.positional[0]), 'utf8'));
+      const selections = JSON.parse(fs.readFileSync(path.resolve(options.positional[1]), 'utf8'));
+      result = module.createEvidenceLedger(index, selections);
+    } else if (action === 'verify') {
+      if (options.positional.length !== 1 || !options.repoRoot || !options.projectIndex) fail(usage());
+      const ledger = JSON.parse(fs.readFileSync(path.resolve(options.positional[0]), 'utf8'));
+      const projectIndex = JSON.parse(fs.readFileSync(options.projectIndex, 'utf8'));
+      result = module.verifyEvidenceLedger(ledger, { repoRoot: options.repoRoot, projectIndex });
+    } else {
+      fail(usage());
+    }
+    const output = options.output ? writeJsonAtomic(options.output, result) : null;
+    if (options.json || !output) console.log(JSON.stringify(result, null, 2));
+    else console.log(`Evidence ledger ${action} complete: ${output}`);
+  } catch (error) {
+    utilityFailure('evidence-ledger', error, options.json);
+  }
+}
+
+async function commandRunSuite(args) {
+  const { main } = await import('./run-suite.mjs');
+  const exitCode = await main(args);
+  if (exitCode !== 0) process.exitCode = exitCode;
 }
 
 function commandExamples() {
@@ -1252,6 +1558,20 @@ async function commandDoctor() {
     label: 'Visual-check runtime',
     ok: fs.existsSync(visualCheckRuntime),
     missing: fs.existsSync(visualCheckRuntime) ? 0 : 1,
+  });
+
+  const optimizationRuntimes = [
+    path.join(skillRoot, 'authoring', 'authoring-kit.mjs'),
+    path.join(skillRoot, 'evidence', 'project-index.mjs'),
+    path.join(skillRoot, 'orchestration', 'suite-runner.mjs'),
+    path.join(skillRoot, 'orchestration', 'run-recorder.mjs'),
+    path.join(skillRoot, 'bin', 'run-suite.mjs'),
+  ];
+  const optimizationRuntimesMissing = optimizationRuntimes.filter((file) => !fs.existsSync(file)).length;
+  checks.push({
+    label: 'Authoring, evidence, and suite orchestration runtimes',
+    ok: optimizationRuntimesMissing === 0,
+    missing: optimizationRuntimesMissing,
   });
 
   const outputPathRuntime = path.join(skillRoot, 'renderers/shared/output-path.mjs');
@@ -1484,7 +1804,25 @@ function commandDemo(args) {
   console.log('  archify render architecture <input.json> <output.html>');
 }
 
-function commandValidate(args) {
+function ephemeralPreflightReceipt(receipt) {
+  return {
+    ...receipt,
+    artifact: {
+      ...receipt.artifact,
+      ephemeral: true,
+    },
+    captures: {
+      ...receipt.captures,
+      retained: false,
+    },
+    sidecars: {
+      ...receipt.sidecars,
+      retained: false,
+    },
+  };
+}
+
+async function commandValidate(args) {
   const qualityArgs = extractQualityArgs(args);
   const repoArgs = extractRepoRootArgs(qualityArgs.rest);
   args = repoArgs.rest;
@@ -1492,21 +1830,37 @@ function commandValidate(args) {
   const repoRoot = repoArgs.repoRoot;
   const json = args.includes('--json');
   const layoutJson = args.includes('--layout-json');
-  const rest = args.filter((arg) => arg !== '--json' && arg !== '--layout-json');
+  const preflight = args.includes('--preflight');
+  const knownOptions = new Set(['--json', '--layout-json', '--preflight']);
+  const unknown = args.filter((arg) => arg.startsWith('--') && !knownOptions.has(arg));
+  if (unknown.length) fail(`Unknown validate option "${unknown[0]}".`);
+  if (layoutJson && preflight) fail('--layout-json and --preflight cannot be combined.');
+  const rest = args.filter((arg) => !knownOptions.has(arg));
   const [type, input] = rest;
-  if (!type || !input) fail(usage());
+  if (!type || !input || rest.length !== 2) fail(usage());
   assertEvidenceType(type, repoRoot);
   const renderer = rendererPath(type);
 
   if (layoutJson) {
-    if (type !== 'architecture') {
-      fail('--layout-json is currently supported for architecture diagrams only.');
-    }
-    const result = runNode([renderer, input, '/dev/null', '--layout-json'], {
+    const inspectOutput = path.join(os.tmpdir(), `archify-inspect-${process.pid}-${type}.html`);
+    const result = runNode([renderer, input, inspectOutput, '--layout-json'], {
       stdio: 'pipe',
       env: rendererEnv(quality, repoRoot, true),
     });
     if (result.status !== 0) {
+      try {
+        const report = JSON.parse((result.stdout || '').trim());
+        if (report?.schemaVersion === 1
+          && report?.type === type
+          && report?.validation?.status === 'fail'
+          && report?.resolved) {
+          process.stdout.write(result.stdout);
+          process.exitCode = result.status ?? 1;
+          return;
+        }
+      } catch {
+        // Failures before the resolved-layout seam use renderer diagnostics.
+      }
       const failure = rendererFailure(result);
       reportValidateFailure({
         json,
@@ -1568,7 +1922,27 @@ function commandValidate(args) {
       } else {
         const result = JSON.parse(check.stdout);
         const engineeringProfile = engineeringProfileFromArtifact(fs.readFileSync(out));
-        if (json) {
+        let preflightReceipt = null;
+        if (preflight) {
+          const { runVisualPreflight } = await import('./visual-check.mjs');
+          const browserResult = await runVisualPreflight({ artifactPath: out });
+          preflightReceipt = ephemeralPreflightReceipt(browserResult.receipt);
+          if (browserResult.exitCode !== 0) {
+            reportValidateFailure({
+              json,
+              stage: 'preflight',
+              type,
+              input: path.resolve(input),
+              error: browserResult.receipt.error || `Viewport preflight ${browserResult.receipt.status}.`,
+              diagnostics: browserResult.receipt.diagnostics || [],
+              checker: result,
+              preflight: preflightReceipt,
+              status: browserResult.exitCode,
+            });
+            exitCode = browserResult.exitCode;
+          }
+        }
+        if (exitCode === 0 && json) {
           console.log(JSON.stringify({
             schemaVersion: 1,
             ok: true,
@@ -1578,12 +1952,16 @@ function commandValidate(args) {
             checks: result.checks,
             composition: result.composition,
             ...(engineeringProfile ? { engineeringProfile } : {}),
+            ...(preflightReceipt ? { preflight: preflightReceipt } : {}),
           }, null, 2));
-        } else {
+        } else if (exitCode === 0) {
           const engineering = engineeringProfile
             ? `; engineering ${engineeringProfile}: pass`
             : '';
-          console.log(`ok ${type} ${path.resolve(input)} (${result.checks.length} artifact checks; composition ${result.composition.profile}: ${result.composition.summary.errors} errors, ${result.composition.summary.warnings} warnings${engineering})`);
+          const viewport = preflightReceipt
+            ? `; viewport preflight ${preflightReceipt.containment.viewports.filter((entry) => entry.ok).length}/${preflightReceipt.containment.viewports.length}`
+            : '';
+          console.log(`ok ${type} ${path.resolve(input)} (${result.checks.length} artifact checks; composition ${result.composition.profile}: ${result.composition.summary.errors} errors, ${result.composition.summary.warnings} warnings${engineering}${viewport})`);
         }
       }
     }
@@ -1616,16 +1994,28 @@ switch (command) {
     await commandPreview(args);
     break;
   case 'validate':
-    commandValidate(args);
+    await commandValidate(args);
     break;
   case 'inspect':
-    commandValidate([...args, '--layout-json']);
+    await commandValidate([...args, '--layout-json']);
     break;
   case 'check':
     commandCheck(args);
     break;
   case 'visual-check':
     await commandVisualCheck(args);
+    break;
+  case 'authoring-kit':
+    await commandAuthoringKit(args);
+    break;
+  case 'project-index':
+    await commandProjectIndex(args);
+    break;
+  case 'evidence-ledger':
+    await commandEvidenceLedger(args);
+    break;
+  case 'run-suite':
+    await commandRunSuite(args);
     break;
   case 'guide':
     await commandGuide(args);

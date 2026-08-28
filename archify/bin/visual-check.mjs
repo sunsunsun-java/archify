@@ -12,6 +12,7 @@ export const VISUAL_CHECK_VIEWPORTS = Object.freeze([
   Object.freeze({ width: 1920, height: 1080 }),
   Object.freeze({ width: 2048, height: 1320 }),
 ]);
+export const VISUAL_PREFLIGHT_VIEWPORTS = VISUAL_CHECK_VIEWPORTS;
 
 const CAPTURE_VIEWPORTS = Object.freeze([
   Object.freeze({ width: 1440, height: 900 }),
@@ -71,9 +72,153 @@ export function sidecarPaths(artifactPath) {
   };
 }
 
+export function preflightSidecarPaths(artifactPath) {
+  const artifact = path.resolve(artifactPath);
+  const stem = artifact.replace(/\.html?$/i, '');
+  const base = `${stem}.visual-preflight`;
+  return {
+    base,
+    receipt: `${base}.json`,
+    diagnosticScreenshot: `${base}.diagnostic.png`,
+  };
+}
+
+function pathIdentity(file, platform = process.platform) {
+  const resolved = path.resolve(file);
+  let identity = resolved;
+  try {
+    identity = fs.realpathSync.native(resolved);
+  } catch {
+    try {
+      identity = path.join(fs.realpathSync.native(path.dirname(resolved)), path.basename(resolved));
+    } catch {
+      // Artifact validation owns missing parents. The audit still catches
+      // lexical aliases when no filesystem identity can be established.
+    }
+  }
+  if (platform === 'darwin') return identity.normalize('NFD').toLowerCase();
+  if (platform === 'win32') return identity.toLowerCase();
+  return identity;
+}
+
+function evidencePaths(artifactPath, mode) {
+  if (mode === 'preflight') {
+    const outputs = preflightSidecarPaths(artifactPath);
+    return [
+      { role: 'receipt', path: outputs.receipt },
+      { role: 'diagnostic-screenshot', path: outputs.diagnosticScreenshot },
+    ];
+  }
+  const outputs = sidecarPaths(artifactPath);
+  return [
+    { role: 'receipt', path: outputs.receipt },
+    { role: 'contact-sheet', path: outputs.contactSheet },
+    ...outputs.screenshots.map((entry) => ({
+      role: `screenshot:${entry.width}x${entry.height}:${entry.theme}`,
+      path: entry.path,
+    })),
+  ];
+}
+
+/**
+ * Resolve the evidence namespace for a multi-artifact invocation before any
+ * browser work or sidecar cleanup begins. Single-artifact sidecar naming stays
+ * backward compatible; a batch must prove that every artifact and evidence
+ * file has an independent path.
+ */
+export function auditVisualCheckBatch(artifactPaths, {
+  mode = 'full',
+  platform = process.platform,
+} = {}) {
+  if (!Array.isArray(artifactPaths)) throw new TypeError('artifactPaths must be an array.');
+  if (!['full', 'preflight'].includes(mode)) {
+    throw new Error(`Unknown visual-check batch mode ${JSON.stringify(mode)}.`);
+  }
+
+  const artifacts = artifactPaths.map((input, index) => ({
+    index,
+    input,
+    path: path.resolve(input),
+  }));
+  if (artifacts.length < 2) return { ok: true, artifacts, conflicts: [] };
+
+  const artifactsByIdentity = new Map();
+  for (const artifact of artifacts) {
+    const identity = pathIdentity(artifact.path, platform);
+    const group = artifactsByIdentity.get(identity) || [];
+    group.push(artifact);
+    artifactsByIdentity.set(identity, group);
+  }
+  const duplicateArtifacts = [...artifactsByIdentity.values()].filter((group) => group.length > 1);
+  if (duplicateArtifacts.length) {
+    const conflicts = duplicateArtifacts.map((group) => ({
+      kind: 'artifact-path',
+      path: group[0].path,
+      indexes: group.map((entry) => entry.index),
+      inputs: group.map((entry) => entry.input),
+    }));
+    return {
+      ok: false,
+      code: 'viewer/artifact-path-collision',
+      message: `The visual-check batch resolves multiple inputs to the same artifact path: ${conflicts[0].path}`,
+      artifacts,
+      conflicts,
+    };
+  }
+
+  const evidenceByIdentity = new Map();
+  for (const artifact of artifacts) {
+    for (const evidence of evidencePaths(artifact.path, mode)) {
+      const entry = { ...evidence, artifactIndex: artifact.index, artifact: artifact.path };
+      const identity = pathIdentity(entry.path, platform);
+      const group = evidenceByIdentity.get(identity) || [];
+      group.push(entry);
+      evidenceByIdentity.set(identity, group);
+    }
+  }
+
+  const conflicts = [];
+  for (const group of evidenceByIdentity.values()) {
+    const owners = new Set(group.map((entry) => entry.artifactIndex));
+    if (owners.size > 1) {
+      conflicts.push({
+        kind: 'evidence-path',
+        path: group[0].path,
+        evidence: group,
+      });
+    }
+  }
+  for (const group of evidenceByIdentity.values()) {
+    const artifactGroup = artifactsByIdentity.get(pathIdentity(group[0].path, platform));
+    if (artifactGroup) {
+      conflicts.push({
+        kind: 'artifact-evidence-path',
+        path: group[0].path,
+        artifacts: artifactGroup.map((entry) => ({ index: entry.index, path: entry.path })),
+        evidence: group,
+      });
+    }
+  }
+
+  if (conflicts.length) {
+    return {
+      ok: false,
+      code: 'viewer/evidence-path-collision',
+      message: `The visual-check batch would overwrite shared artifact or evidence paths: ${conflicts[0].path}`,
+      artifacts,
+      conflicts,
+    };
+  }
+  return { ok: true, artifacts, conflicts: [] };
+}
+
 function cleanupCaptureSidecars(paths) {
   safeUnlink(paths.contactSheet);
   for (const screenshot of paths.screenshots) safeUnlink(screenshot.path);
+}
+
+function cleanupPreflightSidecars(paths) {
+  safeUnlink(paths.diagnosticScreenshot);
 }
 
 function executable(file, platform = process.platform) {
@@ -245,7 +390,6 @@ class PipeCdp {
 
 export function chromeVisualBrowserArgs(profileRoot, {
   env = process.env,
-  getuid = typeof process.getuid === 'function' ? () => process.getuid() : null,
 } = {}) {
   const args = [
     '--headless=new',
@@ -266,10 +410,21 @@ export function chromeVisualBrowserArgs(profileRoot, {
     `--user-data-dir=${profileRoot}`,
     'about:blank',
   ];
-  const rootUser = typeof getuid === 'function' && getuid() === 0;
   const sandboxOptOut = env?.[CHROME_NO_SANDBOX_ENV] === '1';
-  if (rootUser || sandboxOptOut) args.unshift('--no-sandbox');
+  // Disabling Chrome's sandbox is always an explicit operator decision. In
+  // particular, root execution is reported by the capability probe instead
+  // of silently weakening the browser launch contract.
+  if (sandboxOptOut) args.unshift('--no-sandbox');
   return args;
+}
+
+function chromeSandboxReceipt(env = process.env) {
+  const explicitlyDisabled = env?.[CHROME_NO_SANDBOX_ENV] === '1';
+  return {
+    status: explicitlyDisabled ? 'disabled-explicitly' : 'enabled',
+    automaticOptOut: false,
+    optOutEnvironment: CHROME_NO_SANDBOX_ENV,
+  };
 }
 
 async function evaluate(cdp, sessionId, expression, awaitPromise = false) {
@@ -289,12 +444,11 @@ async function evaluate(cdp, sessionId, expression, awaitPromise = false) {
 export class ChromeVisualBrowser {
   constructor(chromePath, {
     env = process.env,
-    getuid = typeof process.getuid === 'function' ? () => process.getuid() : null,
     spawnImpl = spawn,
   } = {}) {
     this.profileRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-visual-check-profile-'));
     this.stderr = '';
-    const args = chromeVisualBrowserArgs(this.profileRoot, { env, getuid });
+    const args = chromeVisualBrowserArgs(this.profileRoot, { env });
     this.child = spawnImpl(chromePath, args, { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
     this.child.stderr.setEncoding('utf8');
     this.child.stderr.on('data', (chunk) => {
@@ -316,6 +470,23 @@ export class ChromeVisualBrowser {
       },
     });
     this.sessionPromise = this.attach();
+  }
+
+  async probe() {
+    const sessionId = await this.sessionPromise;
+    const [version, runtime] = await Promise.all([
+      this.cdp.send('Browser.getVersion'),
+      evaluate(this.cdp, sessionId, '({ ready: true, href: location.href })'),
+    ]);
+    if (!runtime?.ready) throw new Error('Chrome Runtime.evaluate probe returned an incomplete result.');
+    return {
+      protocolVersion: version.protocolVersion || null,
+      product: version.product || null,
+      revision: version.revision || null,
+      userAgent: version.userAgent || null,
+      jsVersion: version.jsVersion || null,
+      runtime,
+    };
   }
 
   async attach() {
@@ -381,6 +552,9 @@ export class ChromeVisualBrowser {
     const metrics = await evaluate(this.cdp, sessionId, `(function () {
       var reader = document.querySelector('.container');
       var diagram = document.querySelector('.diagram-container');
+      var header = reader && reader.querySelector('.header');
+      var guided = reader && reader.querySelector('.guided-views');
+      var cards = reader && reader.querySelector('.cards');
       var svg = diagram && (
         diagram.querySelector(':scope > svg') ||
         diagram.querySelector(':scope > .diagram-stage > svg')
@@ -429,6 +603,42 @@ export class ChromeVisualBrowser {
         && typeof Archify.viewerChromeLayout.receipt === 'function'
         ? Archify.viewerChromeLayout.receipt()
         : null;
+      var readerLayoutReceipt = window.Archify && Archify.readerLayout
+        && typeof Archify.readerLayout.receipt === 'function'
+        ? Archify.readerLayout.receipt()
+        : null;
+      function number(value) {
+        var parsed = parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+      function visible(element) {
+        if (!element || element.hidden) return false;
+        var style = window.getComputedStyle(element);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+      }
+      function outerHeight(element) {
+        if (!visible(element)) return 0;
+        var style = window.getComputedStyle(element);
+        return element.getBoundingClientRect().height + number(style.marginTop) + number(style.marginBottom);
+      }
+      var bodyStyle = window.getComputedStyle(document.body);
+      var diagramStyle = diagram ? window.getComputedStyle(diagram) : null;
+      var bodyChromeHeight = number(bodyStyle.paddingTop) + number(bodyStyle.paddingBottom);
+      var diagramChromeHeight = diagramStyle
+        ? number(diagramStyle.paddingTop) + number(diagramStyle.paddingBottom)
+          + number(diagramStyle.borderTopWidth) + number(diagramStyle.borderBottomWidth)
+        : 0;
+      var fixedHeightBreakdown = {
+        bodyChrome: bodyChromeHeight,
+        diagramChrome: diagramChromeHeight,
+        header: outerHeight(header),
+        guidedViews: outerHeight(guided),
+        cards: outerHeight(cards),
+        safeBottomGap: 12
+      };
+      var fixedHeight = Object.keys(fixedHeightBreakdown).reduce(function (sum, key) {
+        return sum + fixedHeightBreakdown[key];
+      }, 0);
       return {
         innerWidth: window.innerWidth,
         innerHeight: window.innerHeight,
@@ -450,23 +660,61 @@ export class ChromeVisualBrowser {
         dockStageGap: stageRect && navigationDockRect ? navigationDockRect.top - stageRect.bottom : null,
         viewerChromeRequiredGap: viewerChromeReceipt ? viewerChromeReceipt.gap : null,
         viewerChromeReserve: viewerChromeReceipt ? viewerChromeReceipt.reserve : 0,
-        viewerChromeActive: viewerChromeReceipt ? viewerChromeReceipt.active : false
+        viewerChromeActive: viewerChromeReceipt ? viewerChromeReceipt.active : false,
+        readerLayoutActive: document.documentElement.getAttribute('data-reader-layout') === 'adaptive',
+        readerOverflowState: document.documentElement.getAttribute('data-reader-overflow') || null,
+        readerLayoutWidth: readerLayoutReceipt ? readerLayoutReceipt.width : 0,
+        readerLayoutRatio: readerLayoutReceipt ? readerLayoutReceipt.ratio : 0,
+        fixedHeight: fixedHeight,
+        fixedHeightBreakdown: fixedHeightBreakdown,
+        availableSvgHeight: Math.max(0, window.innerHeight - fixedHeight)
       };
     })()`);
     if (!metrics || !Number.isFinite(metrics.scrollWidth) || !Number.isFinite(metrics.scrollHeight)) {
       throw new Error('Chrome returned incomplete containment metrics.');
     }
 
-    if (screenshotPath) {
-      const capture = await this.cdp.send('Page.captureScreenshot', {
-        format: 'png',
-        fromSurface: true,
-        captureBeyondViewport: false,
-      }, sessionId, 20000);
-      if (!capture.data) throw new Error('Chrome returned an empty screenshot.');
-      fs.writeFileSync(screenshotPath, Buffer.from(capture.data, 'base64'));
-    }
+    if (screenshotPath) await this.captureScreenshot(screenshotPath);
     return metrics;
+  }
+
+  async captureScreenshot(screenshotPath) {
+    const sessionId = await this.sessionPromise;
+    const capture = await this.cdp.send('Page.captureScreenshot', {
+      format: 'png',
+      fromSurface: true,
+      captureBeyondViewport: false,
+    }, sessionId, 20000);
+    if (!capture.data) throw new Error('Chrome returned an empty screenshot.');
+    fs.writeFileSync(screenshotPath, Buffer.from(capture.data, 'base64'));
+  }
+
+  async reset() {
+    const sessionId = await this.sessionPromise;
+    await this.cdp.send('Page.stopLoading', {}, sessionId).catch(() => {});
+    await evaluate(this.cdp, sessionId, `(function () {
+      function clear(storage) {
+        try {
+          storage.clear();
+          return 'cleared';
+        } catch (error) {
+          if (error && error.name === 'SecurityError') return 'unavailable';
+          throw error;
+        }
+      }
+      window.name = '';
+      return {
+        localStorage: clear(window.localStorage),
+        sessionStorage: clear(window.sessionStorage)
+      };
+    })()`);
+    await this.cdp.send('Emulation.clearDeviceMetricsOverride', {}, sessionId);
+    const loaded = this.cdp.waitFor('Page.loadEventFired', sessionId);
+    const navigation = await this.cdp.send('Page.navigate', { url: 'about:blank' }, sessionId);
+    if (navigation.errorText) throw new Error(`Chrome reset navigation failed: ${navigation.errorText}`);
+    await loaded;
+    const href = await evaluate(this.cdp, sessionId, 'location.href');
+    if (href !== 'about:blank') throw new Error(`Chrome reset failed closed: expected about:blank, received ${href}.`);
   }
 
   async close() {
@@ -492,6 +740,177 @@ export class ChromeVisualBrowser {
   }
 }
 
+function capabilityReceipt({ resolvedChrome, env = process.env }) {
+  return {
+    schemaVersion: 1,
+    ok: false,
+    command: 'visual-capability-probe',
+    status: resolvedChrome ? 'fail' : 'unavailable',
+    chrome: {
+      status: resolvedChrome ? 'available' : 'unavailable',
+      executable: resolvedChrome || null,
+      sandbox: chromeSandboxReceipt(env),
+    },
+    cdp: { status: resolvedChrome ? 'pending' : 'skipped' },
+    diagnostics: [],
+  };
+}
+
+export class VisualCheckSession {
+  constructor({
+    chromePath,
+    resolveChrome = findChrome,
+    browserFactory,
+    env = process.env,
+  } = {}) {
+    this.chromePath = chromePath;
+    this.resolveChrome = resolveChrome;
+    this.browserFactory = browserFactory
+      || (async (resolvedChrome) => new ChromeVisualBrowser(resolvedChrome, { env }));
+    this.env = env;
+    this.browser = null;
+    this.capabilityReceipt = null;
+    this.probePromise = null;
+    this.closed = false;
+    this.busy = false;
+    this.artifactsInspected = 0;
+    this.reusable = true;
+    this.finalized = false;
+    this.poisoned = null;
+  }
+
+  async probe() {
+    if (this.closed) throw new Error('VisualCheckSession is closed.');
+    if (this.capabilityReceipt) return this.capabilityReceipt;
+    if (this.probePromise) return this.probePromise;
+    this.probePromise = this.initializeCapability();
+    try {
+      return await this.probePromise;
+    } finally {
+      this.probePromise = null;
+    }
+  }
+
+  async initializeCapability() {
+    const resolvedChrome = this.chromePath || this.resolveChrome();
+    const receipt = capabilityReceipt({ resolvedChrome, env: this.env });
+    if (!resolvedChrome) {
+      receipt.diagnostics = [failureDiagnostic({
+        code: 'viewer/chrome-unavailable',
+        severity: 'warning',
+        message: 'Chrome or Chromium is unavailable. Set ARCHIFY_CHROME to its executable path.',
+        subject: { executable: null },
+        evidence: { executable: null, sandbox: receipt.chrome.sandbox },
+        supportedFixes: ['set ARCHIFY_CHROME to a Chrome or Chromium executable and rerun the capability probe'],
+      })];
+      this.capabilityReceipt = receipt;
+      return receipt;
+    }
+
+    try {
+      this.browser = await this.browserFactory(resolvedChrome);
+      const cdp = typeof this.browser?.probe === 'function'
+        ? await this.browser.probe()
+        : { adapterProbe: 'browserFactory did not expose probe(); creation succeeded' };
+      receipt.ok = true;
+      receipt.status = 'pass';
+      receipt.cdp = { status: 'available', ...cdp };
+    } catch (error) {
+      receipt.status = 'fail';
+      receipt.error = error.message;
+      receipt.cdp = { status: 'failed', error: error.message };
+      receipt.diagnostics = [failureDiagnostic({
+        code: 'viewer/chrome-capability',
+        message: 'Chrome was found, but its DevTools capability probe failed.',
+        subject: { executable: resolvedChrome },
+        evidence: { reason: error.message, sandbox: receipt.chrome.sandbox },
+        supportedFixes: [
+          'resolve the reported Chrome launch or DevTools error, then rerun the capability probe',
+          `only after an explicit security decision, set ${CHROME_NO_SANDBOX_ENV}=1 to opt out of the Chrome sandbox`,
+        ],
+      })];
+      this.poisoned = error;
+      if (this.browser?.close) await this.browser.close().catch(() => {});
+      this.browser = null;
+    }
+    this.capabilityReceipt = receipt;
+    return receipt;
+  }
+
+  async useBrowser(callback, { finalArtifact = false } = {}) {
+    if (this.closed) throw new Error('VisualCheckSession is closed.');
+    if (this.busy) throw new Error('VisualCheckSession does not allow concurrent artifact inspection.');
+    if (this.finalized) throw new Error('VisualCheckSession is finalized after its last artifact.');
+    const capability = await this.probe();
+    if (this.busy) throw new Error('VisualCheckSession does not allow concurrent artifact inspection.');
+    if (!capability.ok || !this.browser) {
+      throw new Error(capability.error || 'VisualCheckSession has no usable Chrome capability.');
+    }
+    if (this.poisoned) {
+      throw new Error(`VisualCheckSession is fail-closed after a browser error: ${this.poisoned.message}`);
+    }
+    if (!this.reusable && this.artifactsInspected > 0) {
+      throw new Error('VisualCheckSession browser adapter cannot reset state between artifacts.');
+    }
+
+    this.busy = true;
+    let value;
+    let operationError = null;
+    try {
+      value = await callback(this.browser);
+    } catch (error) {
+      operationError = error;
+    }
+
+    let resetError = null;
+    try {
+      if (finalArtifact) this.finalized = true;
+      else if (typeof this.browser.reset === 'function') await this.browser.reset();
+      else this.reusable = false;
+    } catch (error) {
+      resetError = error;
+      this.poisoned = error;
+    } finally {
+      this.artifactsInspected += 1;
+      this.busy = false;
+    }
+
+    if (resetError) {
+      const operation = operationError ? ` Inspection also failed: ${operationError.message}` : '';
+      throw new Error(`VisualCheckSession could not reset browser state and is fail-closed: ${resetError.message}.${operation}`);
+    }
+    if (operationError) throw operationError;
+    return value;
+  }
+
+  run(options = {}) {
+    return runVisualCheck({ ...options, session: this });
+  }
+
+  preflight(options = {}) {
+    return runVisualPreflight({ ...options, session: this });
+  }
+
+  async close() {
+    if (this.closed) return;
+    this.closed = true;
+    if (this.browser?.close) await this.browser.close();
+    this.browser = null;
+  }
+}
+
+export async function probeVisualCheckCapability({ session, ...options } = {}) {
+  const activeSession = session || new VisualCheckSession(options);
+  try {
+    const receipt = await activeSession.probe();
+    const exitCode = receipt.status === 'pass' ? EXIT.pass
+      : receipt.status === 'unavailable' ? EXIT.skipped : EXIT.fail;
+    return { exitCode, receipt };
+  } finally {
+    if (!session) await activeSession.close();
+  }
+}
+
 function observation({ width, height, theme, metrics }) {
   const innerWidth = Number(metrics.innerWidth);
   const innerHeight = Number(metrics.innerHeight);
@@ -499,6 +918,8 @@ function observation({ width, height, theme, metrics }) {
   const scrollHeight = Number(metrics.scrollHeight);
   const overflowX = scrollWidth > innerWidth;
   const overflowY = scrollHeight > innerHeight;
+  const overflowXBy = Math.max(0, scrollWidth - innerWidth);
+  const overflowYBy = Math.max(0, scrollHeight - innerHeight);
   const minimumProjectedNodeTextPx = metrics.minimumProjectedNodeTextPx == null
     ? null
     : Number(metrics.minimumProjectedNodeTextPx);
@@ -527,6 +948,8 @@ function observation({ width, height, theme, metrics }) {
     scrollHeight,
     overflowX,
     overflowY,
+    overflowXBy,
+    overflowYBy,
     ok: !overflowX && !overflowY,
     readerWidth: Number(metrics.readerWidth) || null,
     diagramWidth: Number(metrics.diagramWidth) || null,
@@ -547,6 +970,40 @@ function observation({ width, height, theme, metrics }) {
     viewerChromeActive: Boolean(metrics.viewerChromeActive),
     viewerChromeOk,
     resolvedTheme: metrics.resolvedTheme || theme,
+    readerLayout: {
+      active: Boolean(metrics.readerLayoutActive),
+      overflowState: metrics.readerOverflowState || null,
+      width: Number(metrics.readerLayoutWidth) || 0,
+      ratio: Number(metrics.readerLayoutRatio) || 0,
+      fixedHeight: Number(metrics.fixedHeight) || 0,
+      availableSvgHeight: Number(metrics.availableSvgHeight) || 0,
+      fixedHeightBreakdown: Object.fromEntries(Object.entries(metrics.fixedHeightBreakdown || {}).map(
+        ([key, value]) => [key, Number(value) || 0],
+      )),
+    },
+  };
+}
+
+function containmentObservation({ width, height, theme, metrics }) {
+  const entry = observation({ width, height, theme, metrics });
+  return {
+    width: entry.width,
+    height: entry.height,
+    theme: entry.theme,
+    resolvedTheme: entry.resolvedTheme,
+    innerWidth: entry.innerWidth,
+    innerHeight: entry.innerHeight,
+    scrollWidth: entry.scrollWidth,
+    scrollHeight: entry.scrollHeight,
+    overflowX: entry.overflowX,
+    overflowY: entry.overflowY,
+    overflowXBy: entry.overflowXBy,
+    overflowYBy: entry.overflowYBy,
+    ok: entry.ok,
+    readerWidth: entry.readerWidth,
+    diagramWidth: entry.diagramWidth,
+    viewBoxWidth: entry.viewBoxWidth,
+    readerLayout: entry.readerLayout,
   };
 }
 
@@ -586,9 +1043,9 @@ function failureDiagnostic({ code, message, subject, evidence, supportedFixes, s
   return { code, severity, message, subject, evidence, supportedFixes };
 }
 
-function observationDiagnostics({ artifact, allObservations, readabilityObservations }) {
+function containmentDiagnostics({ artifact, observations, command = 'visual-check' }) {
   const diagnostics = [];
-  for (const entry of allObservations) {
+  for (const entry of observations) {
     if (!entry.ok) {
       diagnostics.push(failureDiagnostic({
         code: 'viewer/viewport-overflow',
@@ -601,12 +1058,24 @@ function observationDiagnostics({ artifact, allObservations, readabilityObservat
           scrollHeight: entry.scrollHeight,
           overflowX: entry.overflowX,
           overflowY: entry.overflowY,
+          overflowXBy: entry.overflowXBy,
+          overflowYBy: entry.overflowYBy,
+          readerLayout: entry.readerLayout,
         },
         supportedFixes: [
-          `contain the rendered layout within ${entry.width}x${entry.height}, then rerun visual-check`,
+          entry.overflowYBy > 0
+            ? `reclaim at least ${entry.overflowYBy}px of rendered vertical extent without clipping, hiding overflow, or reducing readable typography, then rerun ${command}`
+            : `contain the rendered layout within ${entry.width}x${entry.height}, then rerun ${command}`,
         ],
       }));
     }
+  }
+  return diagnostics;
+}
+
+function observationDiagnostics({ artifact, allObservations, readabilityObservations }) {
+  const diagnostics = containmentDiagnostics({ artifact, observations: allObservations });
+  for (const entry of allObservations) {
     if (entry.legendDockIntersectionArea > 0.5) {
       diagnostics.push(failureDiagnostic({
         code: 'viewer/chrome-legend-clearance',
@@ -658,6 +1127,7 @@ function observationDiagnostics({ artifact, allObservations, readabilityObservat
 }
 
 function baseReceipt({ artifactPath, artifact, outputs, chrome }) {
+  const initialSha256 = sha256(artifact);
   return {
     schemaVersion: 1,
     ok: false,
@@ -666,8 +1136,13 @@ function baseReceipt({ artifactPath, artifact, outputs, chrome }) {
     visualReview: 'pending',
     artifact: {
       path: artifactPath,
-      sha256: sha256(artifact),
+      sha256: initialSha256,
       bytes: artifact.byteLength,
+      verification: {
+        before: { sha256: initialSha256, bytes: artifact.byteLength },
+        after: null,
+        unchanged: null,
+      },
     },
     state: { detail: 'read', motion: 'still' },
     chrome,
@@ -683,16 +1158,147 @@ function baseReceipt({ artifactPath, artifact, outputs, chrome }) {
   };
 }
 
+function recordArtifactAfter(artifactPath, receipt) {
+  try {
+    const after = fs.readFileSync(artifactPath);
+    const value = { sha256: sha256(after), bytes: after.byteLength };
+    receipt.artifact.verification.after = value;
+    receipt.artifact.verification.unchanged = (
+      value.sha256 === receipt.artifact.verification.before.sha256
+      && value.bytes === receipt.artifact.verification.before.bytes
+    );
+    return receipt.artifact.verification.unchanged;
+  } catch (error) {
+    receipt.artifact.verification.after = { error: error.message };
+    receipt.artifact.verification.unchanged = false;
+    return false;
+  }
+}
+
+function assertArtifactUnchanged(artifactPath, receipt) {
+  if (!recordArtifactAfter(artifactPath, receipt)) {
+    throw new Error('The delivered artifact changed while visual inspection was running.');
+  }
+}
+
+function artifactChangedDiagnostic({ receipt, artifact, command, capabilityError }) {
+  const verification = receipt.artifact.verification;
+  const reason = verification.after?.error
+    ? `The artifact could not be reread: ${verification.after.error}`
+    : 'The artifact hash or byte count changed.';
+  const message = `The delivered artifact changed or became unreadable during ${command}.`;
+  return failureDiagnostic({
+    code: 'viewer/artifact-changed',
+    message,
+    subject: { artifact },
+    evidence: {
+      reason,
+      before: verification.before,
+      after: verification.after,
+      ...(capabilityError ? { capabilityError } : {}),
+    },
+    supportedFixes: [
+      `restore or regenerate the delivered artifact, then rerun ${command}`,
+      'prevent concurrent writers from changing the artifact during visual inspection',
+    ],
+  });
+}
+
+function basePreflightReceipt({ artifactPath, artifact, outputs, chrome }) {
+  const initialSha256 = sha256(artifact);
+  return {
+    schemaVersion: 1,
+    ok: false,
+    command: 'visual-preflight',
+    status: 'fail',
+    automatedChecks: ['containment'],
+    artifact: {
+      path: artifactPath,
+      sha256: initialSha256,
+      bytes: artifact.byteLength,
+      verification: {
+        before: { sha256: initialSha256, bytes: artifact.byteLength },
+        after: null,
+        unchanged: null,
+      },
+    },
+    state: { detail: 'read', motion: 'still', theme: 'light' },
+    chrome,
+    diagnostics: [],
+    containment: { status: 'fail', viewports: [] },
+    captures: { status: 'not-requested', screenshots: [], contactSheet: null },
+    sidecars: {
+      receipt: path.basename(outputs.receipt),
+      diagnosticScreenshot: path.basename(outputs.diagnosticScreenshot),
+    },
+  };
+}
+
+function unavailableReceipt({ receipt, capability, artifact, command }) {
+  receipt.status = capability.status === 'unavailable' ? 'skipped' : 'fail';
+  receipt.error = capability.error
+    || 'Chrome or Chromium is unavailable. Set ARCHIFY_CHROME to its executable path.';
+  receipt.chrome = capability.chrome;
+  receipt.containment.status = receipt.status === 'skipped' ? 'skipped' : 'fail';
+  if (receipt.readability) receipt.readability.status = receipt.status === 'skipped' ? 'skipped' : 'fail';
+  if (receipt.viewerChrome) receipt.viewerChrome.status = receipt.status === 'skipped' ? 'skipped' : 'fail';
+  receipt.captures.status = receipt.status === 'skipped' ? 'skipped' : 'fail';
+  receipt.diagnostics = capability.status === 'unavailable'
+    ? [failureDiagnostic({
+      code: 'viewer/chrome-unavailable',
+      severity: 'warning',
+      message: receipt.error,
+      subject: { artifact },
+      evidence: { executable: null, capability },
+      supportedFixes: [`set ARCHIFY_CHROME to a Chrome or Chromium executable and rerun ${command}`],
+    })]
+    : [failureDiagnostic({
+      code: 'viewer/visual-check-runtime',
+      message: `${command} could not start its Chrome inspection.`,
+      subject: { artifact },
+      evidence: { reason: receipt.error, capability },
+      supportedFixes: [`resolve the reported Chrome capability error, then rerun ${command}`],
+    })];
+  if (!recordArtifactAfter(artifact, receipt)) {
+    const capabilityError = receipt.error;
+    const integrityDiagnostic = artifactChangedDiagnostic({
+      receipt,
+      artifact,
+      command,
+      capabilityError,
+    });
+    receipt.status = 'fail';
+    receipt.ok = false;
+    receipt.error = integrityDiagnostic.message;
+    receipt.containment.status = 'fail';
+    if (receipt.readability) receipt.readability.status = 'fail';
+    if (receipt.viewerChrome) receipt.viewerChrome.status = 'fail';
+    receipt.captures.status = 'fail';
+    receipt.diagnostics.push(integrityDiagnostic);
+  }
+}
+
 function persistReceipt(outputs, receipt) {
   writeAtomic(outputs.receipt, `${JSON.stringify(receipt, null, 2)}\n`);
 }
 
-export async function runVisualCheck({
-  artifactPath,
-  chromePath,
-  resolveChrome = findChrome,
-  browserFactory = async (resolvedChrome) => new ChromeVisualBrowser(resolvedChrome),
-} = {}) {
+export async function runVisualCheck(options = {}) {
+  if (options.mode === 'preflight') {
+    const { mode: _mode, ...preflightOptions } = options;
+    return runVisualPreflight(preflightOptions);
+  }
+  if (options.mode && options.mode !== 'full') {
+    throw new Error(`Unknown visual-check mode ${JSON.stringify(options.mode)}.`);
+  }
+  const {
+    artifactPath,
+    session,
+    finalArtifact,
+    chromePath,
+    resolveChrome = findChrome,
+    browserFactory,
+    env = process.env,
+  } = options;
   if (!artifactPath) throw new Error('visual-check requires one delivered HTML artifact.');
   const artifact = path.resolve(artifactPath);
   if (!/\.html?$/i.test(artifact)) throw new Error('visual-check requires an .html artifact.');
@@ -701,71 +1307,65 @@ export async function runVisualCheck({
   cleanupCaptureSidecars(outputs);
   safeUnlink(outputs.receipt);
 
-  const resolvedChrome = chromePath || resolveChrome();
+  const activeSession = session || new VisualCheckSession({
+    chromePath,
+    resolveChrome,
+    browserFactory,
+    env,
+  });
+  const ownsSession = !session;
+  const isFinalArtifact = finalArtifact ?? ownsSession;
+  const capability = await activeSession.probe();
   const receipt = baseReceipt({
     artifactPath: artifact,
     artifact: artifactBytes,
     outputs,
-    chrome: resolvedChrome
-      ? { status: 'available', executable: resolvedChrome }
-      : { status: 'unavailable', executable: null },
+    chrome: capability.chrome,
   });
 
-  if (!resolvedChrome) {
-    receipt.status = 'skipped';
-    receipt.containment.status = 'skipped';
-    receipt.readability.status = 'skipped';
-    receipt.viewerChrome.status = 'skipped';
-    receipt.captures.status = 'skipped';
-    receipt.error = 'Chrome or Chromium is unavailable. Set ARCHIFY_CHROME to its executable path.';
-    receipt.diagnostics = [failureDiagnostic({
-      code: 'viewer/chrome-unavailable',
-      severity: 'warning',
-      message: receipt.error,
-      subject: { artifact },
-      evidence: { executable: null },
-      supportedFixes: ['set ARCHIFY_CHROME to a Chrome or Chromium executable and rerun visual-check'],
-    })];
+  if (!capability.ok) {
+    unavailableReceipt({ receipt, capability, artifact, command: 'visual-check' });
     persistReceipt(outputs, receipt);
-    return { exitCode: EXIT.skipped, receipt };
+    if (ownsSession) await activeSession.close();
+    return {
+      exitCode: receipt.status === 'skipped' ? EXIT.skipped : EXIT.fail,
+      receipt,
+    };
   }
 
-  let browser;
   try {
-    browser = await browserFactory(resolvedChrome);
-    const observations = new Map();
-    const screenshotsByKey = new Map(outputs.screenshots.map((entry) => [
-      screenshotKey(entry.width, entry.height, entry.theme),
-      entry,
-    ]));
+    const observations = await activeSession.useBrowser(async (browser) => {
+      const values = new Map();
+      const screenshotsByKey = new Map(outputs.screenshots.map((entry) => [
+        screenshotKey(entry.width, entry.height, entry.theme),
+        entry,
+      ]));
 
-    for (const viewport of VISUAL_CHECK_VIEWPORTS) {
-      const key = screenshotKey(viewport.width, viewport.height, 'light');
-      const screenshot = screenshotsByKey.get(key);
-      const metrics = await browser.inspect({
-        artifactPath: artifact,
-        ...viewport,
-        theme: 'light',
-        ...(screenshot ? { screenshotPath: screenshot.path } : {}),
-      });
-      observations.set(key, observation({ ...viewport, theme: 'light', metrics }));
-    }
-    for (const viewport of CAPTURE_VIEWPORTS) {
-      const key = screenshotKey(viewport.width, viewport.height, 'dark');
-      const screenshot = screenshotsByKey.get(key);
-      const metrics = await browser.inspect({
-        artifactPath: artifact,
-        ...viewport,
-        theme: 'dark',
-        screenshotPath: screenshot.path,
-      });
-      observations.set(key, observation({ ...viewport, theme: 'dark', metrics }));
-    }
-
-    const afterBytes = fs.readFileSync(artifact);
-    if (sha256(afterBytes) !== receipt.artifact.sha256 || afterBytes.byteLength !== receipt.artifact.bytes) {
-      throw new Error('The delivered artifact changed while visual-check was running.');
-    }
+      for (const viewport of VISUAL_CHECK_VIEWPORTS) {
+        const key = screenshotKey(viewport.width, viewport.height, 'light');
+        const screenshot = screenshotsByKey.get(key);
+        const metrics = await browser.inspect({
+          artifactPath: artifact,
+          ...viewport,
+          theme: 'light',
+          ...(screenshot ? { screenshotPath: screenshot.path } : {}),
+        });
+        values.set(key, observation({ ...viewport, theme: 'light', metrics }));
+      }
+      for (const viewport of CAPTURE_VIEWPORTS) {
+        const key = screenshotKey(viewport.width, viewport.height, 'dark');
+        const screenshot = screenshotsByKey.get(key);
+        const metrics = await browser.inspect({
+          artifactPath: artifact,
+          ...viewport,
+          theme: 'dark',
+          screenshotPath: screenshot.path,
+        });
+        values.set(key, observation({ ...viewport, theme: 'dark', metrics }));
+      }
+      return values;
+    }, { finalArtifact: isFinalArtifact });
+    assertArtifactUnchanged(artifact, receipt);
 
     receipt.containment.viewports = VISUAL_CHECK_VIEWPORTS.map(({ width, height }) => (
       observations.get(screenshotKey(width, height, 'light'))
@@ -800,17 +1400,21 @@ export async function runVisualCheck({
     persistReceipt(outputs, receipt);
     return { exitCode: receipt.ok ? EXIT.pass : EXIT.fail, receipt };
   } catch (error) {
+    if (receipt.artifact.verification.after === null) recordArtifactAfter(artifact, receipt);
+    const integrityDiagnostic = receipt.artifact.verification.unchanged === false
+      ? artifactChangedDiagnostic({ receipt, artifact, command: 'visual-check' })
+      : null;
     cleanupCaptureSidecars(outputs);
     receipt.status = 'fail';
     receipt.ok = false;
-    receipt.error = error.message;
+    receipt.error = integrityDiagnostic?.message || error.message;
     receipt.containment.status = 'fail';
     receipt.readability.status = 'fail';
     receipt.viewerChrome.status = 'fail';
     receipt.captures.status = 'fail';
     receipt.captures.screenshots = [];
     receipt.captures.contactSheet = null;
-    receipt.diagnostics = [failureDiagnostic({
+    receipt.diagnostics = integrityDiagnostic ? [integrityDiagnostic] : [failureDiagnostic({
       code: 'viewer/visual-check-runtime',
       message: 'visual-check could not complete its Chrome inspection.',
       subject: { artifact },
@@ -820,6 +1424,137 @@ export async function runVisualCheck({
     persistReceipt(outputs, receipt);
     return { exitCode: EXIT.fail, receipt };
   } finally {
-    if (browser?.close) await browser.close();
+    if (ownsSession) await activeSession.close();
+  }
+}
+
+export async function runVisualPreflight({
+  artifactPath,
+  session,
+  finalArtifact,
+  chromePath,
+  resolveChrome = findChrome,
+  browserFactory,
+  env = process.env,
+} = {}) {
+  if (!artifactPath) throw new Error('visual-preflight requires one delivered HTML artifact.');
+  const artifact = path.resolve(artifactPath);
+  if (!/\.html?$/i.test(artifact)) throw new Error('visual-preflight requires an .html artifact.');
+  const artifactBytes = fs.readFileSync(artifact);
+  const outputs = preflightSidecarPaths(artifact);
+  cleanupPreflightSidecars(outputs);
+  safeUnlink(outputs.receipt);
+
+  const activeSession = session || new VisualCheckSession({
+    chromePath,
+    resolveChrome,
+    browserFactory,
+    env,
+  });
+  const ownsSession = !session;
+  const isFinalArtifact = finalArtifact ?? ownsSession;
+  const capability = await activeSession.probe();
+  const receipt = basePreflightReceipt({
+    artifactPath: artifact,
+    artifact: artifactBytes,
+    outputs,
+    chrome: capability.chrome,
+  });
+
+  if (!capability.ok) {
+    unavailableReceipt({ receipt, capability, artifact, command: 'visual-preflight' });
+    persistReceipt(outputs, receipt);
+    if (ownsSession) await activeSession.close();
+    return {
+      exitCode: receipt.status === 'skipped' ? EXIT.skipped : EXIT.fail,
+      receipt,
+    };
+  }
+
+  try {
+    const result = await activeSession.useBrowser(async (browser) => {
+      const viewports = [];
+      let diagnostic = null;
+      let captureError = null;
+      for (const viewport of VISUAL_PREFLIGHT_VIEWPORTS) {
+        const metrics = await browser.inspect({
+          artifactPath: artifact,
+          ...viewport,
+          theme: 'light',
+        });
+        const entry = containmentObservation({ ...viewport, theme: 'light', metrics });
+        viewports.push(entry);
+        if (!entry.ok && !diagnostic && !captureError) {
+          try {
+            if (typeof browser.captureScreenshot === 'function') {
+              await browser.captureScreenshot(outputs.diagnosticScreenshot);
+            } else {
+              await browser.inspect({
+                artifactPath: artifact,
+                ...viewport,
+                theme: 'light',
+                screenshotPath: outputs.diagnosticScreenshot,
+              });
+            }
+            diagnostic = {
+              ...entry,
+              file: path.basename(outputs.diagnosticScreenshot),
+            };
+          } catch (error) {
+            captureError = error.message;
+          }
+        }
+      }
+      return { viewports, diagnostic, captureError };
+    }, { finalArtifact: isFinalArtifact });
+    assertArtifactUnchanged(artifact, receipt);
+
+    const containmentPass = result.viewports.every((entry) => entry.ok);
+    receipt.containment.viewports = result.viewports;
+    receipt.containment.status = containmentPass ? 'pass' : 'fail';
+    receipt.captures.status = result.diagnostic ? 'diagnostic' : 'not-requested';
+    receipt.captures.screenshots = result.diagnostic ? [result.diagnostic] : [];
+    receipt.diagnostics = containmentDiagnostics({
+      artifact,
+      observations: result.viewports,
+      command: 'visual-preflight',
+    });
+    if (result.captureError) {
+      receipt.diagnostics.push(failureDiagnostic({
+        code: 'viewer/preflight-diagnostic-capture',
+        severity: 'warning',
+        message: 'Containment failed and the optional diagnostic screenshot could not be captured.',
+        subject: { artifact },
+        evidence: { reason: result.captureError },
+        supportedFixes: ['use the structured containment metrics to repair overflow, then rerun visual-preflight'],
+      }));
+    }
+    receipt.ok = containmentPass;
+    receipt.status = containmentPass ? 'pass' : 'fail';
+    persistReceipt(outputs, receipt);
+    return { exitCode: receipt.ok ? EXIT.pass : EXIT.fail, receipt };
+  } catch (error) {
+    if (receipt.artifact.verification.after === null) recordArtifactAfter(artifact, receipt);
+    const integrityDiagnostic = receipt.artifact.verification.unchanged === false
+      ? artifactChangedDiagnostic({ receipt, artifact, command: 'visual-preflight' })
+      : null;
+    cleanupPreflightSidecars(outputs);
+    receipt.status = 'fail';
+    receipt.ok = false;
+    receipt.error = integrityDiagnostic?.message || error.message;
+    receipt.containment.status = 'fail';
+    receipt.captures.status = 'fail';
+    receipt.captures.screenshots = [];
+    receipt.diagnostics = integrityDiagnostic ? [integrityDiagnostic] : [failureDiagnostic({
+      code: 'viewer/visual-preflight-runtime',
+      message: 'visual-preflight could not complete its Chrome inspection.',
+      subject: { artifact },
+      evidence: { reason: error.message },
+      supportedFixes: ['resolve the reported Chrome inspection error, then rerun visual-preflight'],
+    })];
+    persistReceipt(outputs, receipt);
+    return { exitCode: EXIT.fail, receipt };
+  } finally {
+    if (ownsSession) await activeSession.close();
   }
 }

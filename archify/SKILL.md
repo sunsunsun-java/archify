@@ -17,12 +17,13 @@ Create a self-contained, interactive HTML diagram from a small typed JSON specif
 Use this bounded path for ordinary generation. Do not read the optional Viewer Runtime reference unless the user asks about those features.
 
 1. Choose `architecture`, `workflow`, `sequence`, `dataflow`, or `lifecycle` from the question.
-2. Read one matching schema in `schemas/`, `schemas/common.schema.json`, and one matching JSON example in `examples/`. Read only those files. Fresh authorship means new stable IDs, domain wording, and layout; use the example for field shape, not facts. When real product identity matters, query `node bin/archify.mjs brands "<name>" --json`; read `references/brand-marks.md` only for an unknown brand with a user-provided URL.
+2. Load the complete authoring contract in one call: `node bin/archify.mjs authoring-kit <type> --json`. Use the packet's exact type schema, common schema, and single matching example; do not rediscover those files separately. Fresh authorship means new stable IDs, domain wording, and layout; use the example for field shape, not facts. When real product identity matters, query `node bin/archify.mjs brands "<name>" --json`; read `references/brand-marks.md` only for an unknown brand with a user-provided URL. When several diagrams must reflect one repository revision, build one shared mechanical index with `project-index`, use it for every diagram, and keep interpretations in revision-pinned evidence ledgers.
 3. Artifact first: the next tool action must write the candidate. Write the candidate before inspecting renderer internals. Do not plan exact coordinates in prose. Start with one clear main path, short side branches, sparse labels, and at most 12 primary nodes. Set `meta.quality_profile` to `"showcase"` unless the user explicitly requests a dense `standard` map. Start with automatic routes and labels. Do not add `via`, `channelX`, `channelY`, or `labelAt` before a diagnostic calls for one; apply at most one diagnosed geometry control per repair.
-4. Validate after every candidate edit and immediately before handoff:
+4. Validate after every candidate edit. On the first deterministic pass and immediately before handoff, add `--preflight` so all four desktop containment viewports pass before delivery:
 
    ```bash
    node bin/archify.mjs validate <type> <candidate.json> --quality showcase --json
+   node bin/archify.mjs validate <type> <candidate.json> --quality showcase --preflight --json
    ```
 
    A receipt with only 4 artifact checks is basic validation, never showcase acceptance. A showcase pass must report all 9 artifact checks with 0 composition errors and 0 warnings. If the candidate omits or misspells the exact `meta.quality_profile` field, fix it before geometry. A passing final validation freezes the candidate: never edit it afterward.
@@ -83,11 +84,14 @@ Read `references/authoring-contract.md` only when you need field enums, spacing 
 
 Use `validate` during repair and `deliver` once for final acceptance. Delivery freezes the exact specification bytes into a private same-directory snapshot, renders and checks that snapshot, atomically commits the HTML, and reports SHA-256 plus byte counts for both specification and artifact.
 
-After delivery, collect bounded desktop evidence without modifying or rerendering the trusted HTML:
+After delivery, collect bounded desktop evidence without modifying or rerendering the trusted HTML. Pass several artifacts to one command when checking a suite; Archify probes once and reuses one reset browser session:
 
 ```bash
 node bin/archify.mjs visual-check <output.html> --json
+node bin/archify.mjs visual-check <architecture.html> <workflow.html> <sequence.html> <dataflow.html> <lifecycle.html> --json
 ```
+
+For a repeatable multi-diagram run, use `run-suite` with a full pinned commit, an isolated output directory, and a manifest of typed `validate` → `deliver` → `visual-check` commands. The runner records append-only timing events and canonical per-stage/suite receipts; it never authors diagram semantics or calls a model.
 
 `visual-check` measures containment at 1440×900, 1600×1000, 1920×1080, and 2048×1320; captures light/dark screenshots at the smallest and largest sizes; and writes a relative-path contact sheet plus JSON sidecars beside the artifact. Its automated receipt always reports `visualReview: "pending"`: screenshots are evidence for inspection, never an automatic polish claim. Exit 0 means containment and captures passed, 1 means overflow or capture failure, and 2 means Chrome/Chromium was unavailable and the receipt is `skipped`. The command never changes the delivered HTML.
 

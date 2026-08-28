@@ -845,8 +845,8 @@ test('packaged skill puts a bounded ordinary-model path before progressive featu
   assert.ok(fastPath < progressiveReferences, 'fast authoring path must precede progressive references');
   assert.ok(skill.trimEnd().split('\n').length <= 160, 'ordinary authors must not ingest the viewer catalogue');
   for (const required of [
-    'one matching schema',
-    'one matching JSON example',
+    'authoring-kit <type> --json',
+    'exact type schema, common schema, and single matching example',
     'the next tool action must write the candidate',
     'Do not plan exact coordinates in prose',
     'Fresh authorship means new stable IDs, domain wording, and layout',

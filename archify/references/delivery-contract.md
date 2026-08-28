@@ -2,7 +2,13 @@
 
 ## Validate and deliver
 
-Use `validate` after every candidate edit. Use final atomic delivery only after the candidate is frozen:
+Use `validate` after every candidate edit. Run the real-browser containment preflight on the first deterministic pass and again before freezing the candidate:
+
+```bash
+node bin/archify.mjs validate <type> <candidate.json> --quality showcase --preflight --json
+```
+
+Use final atomic delivery only after the candidate is frozen:
 
 ```bash
 node bin/archify.mjs deliver <type> <candidate.json> <output.html> --quality showcase --json
@@ -20,6 +26,8 @@ it:
 ```bash
 node bin/archify.mjs visual-check <output.html> --json
 ```
+
+For several artifacts, pass every path to one `visual-check` command so one capability probe and one reset browser session serve the batch. For repeatable suites, `run-suite` performs one upfront capability gate, revision-pinned isolated runs, preflight validation, delivery, final visual checks, and canonical timing/report receipts. It does not author diagram semantics.
 
 The zero-dependency command uses Chrome/Chromium through the DevTools pipe. It
 measures light-theme containment at 1440×900, 1600×1000, 1920×1080, and

@@ -178,4 +178,56 @@ test('repair receipt: public validate reports borderline desktop readability wit
   assert.ok(repair.supportedFixes.some((fix) => fix.includes('reduce the viewBox width')));
 });
 
+test('repair receipt: lifecycle bounds expose required height and the exact yOffset interval', () => {
+  const source = JSON.parse(fs.readFileSync(path.join(skillRoot, 'examples/agent-run.lifecycle.json'), 'utf8'));
+  source.meta.viewBox[1] = 566;
+  const input = writeFixture('lifecycle-resolved-bounds.lifecycle.json', source);
+  const result = run(['validate', 'lifecycle', input, '--json']);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  assert.equal(result.stderr, '');
+  const failure = receipt(result);
+  const repair = failure.diagnostics.find(
+    (entry) => entry.code === 'layout/lifecycle-state-vertical-bounds'
+      && entry.subject.id === 'cancelled',
+  );
+  assert.ok(repair, JSON.stringify(failure.diagnostics));
+  assert.deepEqual(repair.subject, {
+    diagramType: 'lifecycle',
+    path: '/states/8/yOffset',
+    id: 'cancelled',
+  });
+  assert.equal(repair.evidence.requiredViewBoxHeight, 630);
+  assert.deepEqual(repair.evidence.allowedYOffset, { min: -386, max: -64 });
+  assert.deepEqual(repair.evidence.allowedY, { min: 64, max: 386 });
+  assert.ok(repair.supportedFixes.some((fix) => fix.includes('meta.viewBox[1] to at least 630')));
+  assert.ok(repair.supportedFixes.some((fix) => fix.includes('yOffset between -386 and -64')));
+});
+
+test('repair receipt: architecture labels outside the viewBox identify one exact labelAt control', () => {
+  const source = JSON.parse(fs.readFileSync(path.join(skillRoot, 'examples/web-app.architecture.json'), 'utf8'));
+  source.connections[0].labelAt = [1078, 80];
+  const input = writeFixture('label-containment.architecture.json', source);
+  const result = run(['validate', 'architecture', input, '--json']);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  assert.equal(result.stderr, '');
+  const failure = receipt(result);
+  const repair = failure.diagnostics.find(
+    (entry) => entry.code === 'composition/relationship-label-containment',
+  );
+  assert.ok(repair, JSON.stringify(failure.diagnostics));
+  assert.deepEqual(repair.subject, {
+    diagramType: 'architecture',
+    path: '/connections/0/labelAt',
+    id: 'users-to-cdn',
+  });
+  assert.equal(repair.evidence.viewBox.width, 1080);
+  assert.ok(repair.evidence.overflow.right > 0);
+  assert.ok(repair.evidence.allowedLabelAt.maxX < 1078);
+  assert.deepEqual(repair.supportedFixes, [
+    `set /connections/0/labelAt inside x ${repair.evidence.allowedLabelAt.minX}..${repair.evidence.allowedLabelAt.maxX} and y ${repair.evidence.allowedLabelAt.minY}..${repair.evidence.allowedLabelAt.maxY}`,
+  ]);
+});
+
 process.on('exit', () => fs.rmSync(tmp, { recursive: true, force: true }));
