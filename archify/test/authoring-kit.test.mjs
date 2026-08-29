@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +9,10 @@ import {
   AUTHORING_TYPES,
   loadAuthoringKit,
 } from '../authoring/authoring-kit.mjs';
+import {
+  QUALITY_CONTRACT,
+  QUALITY_CONTRACT_DIGEST,
+} from '../authoring/quality-contract.mjs';
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cli = path.join(skillRoot, 'bin', 'archify.mjs');
@@ -36,9 +41,18 @@ test('authoring kit returns the exact schema, common schema, and one matching ex
     assert.equal(kit.layoutBudget.qualityGuards.desktopViewports.length, 4);
     assert.equal(kit.layoutBudget.qualityGuards.semanticDeletionAllowed, false);
     assert.match(kit.commands.validate, new RegExp(`validate ${type}`));
+    assert.match(kit.commands.inspectLayout, /--layout-json/);
     assert.match(kit.commands.preflight, /--preflight/);
+    assert.match(kit.commands.sourceSearch, /project-index source-search/);
+    assert.match(kit.commands.sourceInspect, /project-index inspect/);
     assert.match(kit.commands.evidenceHydrate, /evidence-ledger hydrate/);
-    assert.equal(kit.capabilities.repositoryEvidence, type === 'architecture');
+    assert.match(kit.commands.evidenceVerify, /evidence-ledger verify/);
+    assert.match(kit.commands.authoringRunStart, new RegExp(`authoring-run start ${type}`));
+    assert.match(kit.commands.authoringRunFinalize, /authoring-run finalize/);
+    assert.equal(kit.capabilities.repositoryEvidence, true);
+    assert.equal(kit.capabilities.projectSourceSearch, true);
+    assert.equal(kit.capabilities.evidenceLedgerVerify, true);
+    assert.equal(kit.capabilities.machineAuthoringReport, true);
     assert.equal(kit.capabilities.deterministicRepairPlan, true);
     assert.ok(kit.workflow.length >= 5);
     assert.deepEqual(Object.keys(kit.files), ['schema', 'commonSchema', 'example']);
@@ -62,6 +76,41 @@ test('authoring kit rejects unknown types without falling back to another exampl
   );
 });
 
+test('authoring kit binds the exact shared quality and skill contracts', () => {
+  const kit = loadAuthoringKit('lifecycle', {
+    expectContract: QUALITY_CONTRACT_DIGEST,
+  });
+
+  assert.deepEqual(kit.layoutBudget.qualityGuards, QUALITY_CONTRACT.guards);
+  assert.deepEqual(kit.layoutBudget.recommendedViewBox, [1080, 630]);
+  assert.equal(kit.contract.quality.sha256, QUALITY_CONTRACT_DIGEST);
+  assert.equal(kit.contract.quality.schemaVersion, QUALITY_CONTRACT.schemaVersion);
+  assert.equal(kit.contract.skill.version, '2.16');
+  assert.match(kit.contract.skill.sha256, /^[a-f0-9]{64}$/);
+  assert.throws(
+    () => loadAuthoringKit('workflow', { expectContract: '0'.repeat(64) }),
+    /quality contract mismatch/i,
+  );
+});
+
+test('context-json packet carries lossless parsed documents without escaped source copies', () => {
+  const packet = loadAuthoringKit('dataflow', { contextJson: true });
+  const serialized = JSON.stringify(packet);
+  const roundTripped = JSON.parse(serialized);
+
+  for (const file of Object.values(roundTripped.files)) {
+    const source = fs.readFileSync(path.join(skillRoot, file.path), 'utf8');
+    assert.deepEqual(file.document, JSON.parse(source));
+    assert.equal(file.content, undefined);
+    assert.equal(file.bytes, Buffer.byteLength(source));
+    assert.equal(file.sha256, sha256(source));
+  }
+
+  const legacy = loadAuthoringKit('dataflow');
+  assert.equal(typeof legacy.files.schema.content, 'string');
+  assert.equal(legacy.files.schema.document, undefined);
+});
+
 test('authoring-kit CLI emits a complete machine packet without an extra discovery round trip', () => {
   const result = spawnSync(process.execPath, [cli, 'authoring-kit', 'workflow', '--json'], {
     cwd: skillRoot,
@@ -77,4 +126,41 @@ test('authoring-kit CLI emits a complete machine packet without an extra discove
   assert.deepEqual(packet.layoutBudget.recommendedViewBox, [1000, 540]);
   assert.match(packet.commands.deliver, /deliver workflow/);
   assert.doesNotMatch(packet.commands.deliver, /--repo-root/);
+});
+
+test('authoring-kit CLI emits compact context JSON and rejects contract drift', () => {
+  const accepted = spawnSync(process.execPath, [
+    cli,
+    'authoring-kit',
+    'workflow',
+    '--json',
+    '--context-json',
+    '--expect-contract',
+    QUALITY_CONTRACT_DIGEST,
+  ], { cwd: skillRoot, encoding: 'utf8' });
+  assert.equal(accepted.status, 0, accepted.stderr);
+  const packet = JSON.parse(accepted.stdout);
+  assert.equal(packet.files.schema.content, undefined);
+  assert.deepEqual(packet.files.schema.document, JSON.parse(
+    fs.readFileSync(path.join(skillRoot, 'schemas/workflow.schema.json'), 'utf8'),
+  ));
+  const legacy = spawnSync(process.execPath, [
+    cli,
+    'authoring-kit',
+    'workflow',
+    '--json',
+  ], { cwd: skillRoot, encoding: 'utf8' });
+  assert.equal(legacy.status, 0, legacy.stderr);
+  assert.ok(Buffer.byteLength(accepted.stdout) < Buffer.byteLength(legacy.stdout));
+
+  const rejected = spawnSync(process.execPath, [
+    cli,
+    'authoring-kit',
+    'workflow',
+    '--json',
+    '--expect-contract',
+    '0'.repeat(64),
+  ], { cwd: skillRoot, encoding: 'utf8' });
+  assert.equal(rejected.status, 1);
+  assert.match(JSON.parse(rejected.stdout).error, /quality contract mismatch/i);
 });

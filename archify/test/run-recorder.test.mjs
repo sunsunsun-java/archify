@@ -3,7 +3,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { RunRecorder, recoverRunTiming, timingV1 } from '../orchestration/run-recorder.mjs';
+import {
+  RunRecorder,
+  normalizeAuthoringTiming,
+  recoverRunTiming,
+  timingV1,
+} from '../orchestration/run-recorder.mjs';
 
 function fakeClock() {
   let now = 0;
@@ -22,6 +27,78 @@ function files(directory) {
     timingPath: path.join(directory, 'timing.json'),
   };
 }
+
+test('authoring timing normalization: derives every duration from endpoints across all five legacy shapes', () => {
+  const variants = [
+    {
+      diagramType: 'architecture',
+      stage: { name: 'authoring-kit', startedAtMs: 1_010, endedAtMs: 1_025, durationMs: 99_999 },
+    },
+    {
+      diagramType: 'workflow',
+      stage: { name: 'authoring-kit', startMs: 1_010, endMs: 1_025, durationMs: 99_999 },
+    },
+    {
+      diagramType: 'sequence',
+      stage: { name: 'authoring-kit', startMs: 1_010, endMs: 1_025, durationMs: 99_999, status: 'completed' },
+    },
+    {
+      diagramType: 'dataflow',
+      stage: { name: 'authoring-kit', startMs: 1_010, endMs: 1_025, durationMs: 99_999, notes: 'legacy marker window' },
+    },
+    {
+      diagramType: 'lifecycle',
+      stage: { name: 'authoring-kit', startMs: 1_010, endMs: 1_025, durationMs: 10_015 },
+    },
+  ];
+
+  for (const { diagramType, stage } of variants) {
+    const timing = normalizeAuthoringTiming({
+      schemaVersion: 1,
+      diagramType,
+      agentStartMs: 1_000,
+      agentEndMs: 1_050,
+      totalMs: 88_888,
+      stages: [stage],
+    });
+
+    assert.equal(timing.kind, 'archify.run-timing');
+    assert.equal(timing.run.diagramType, diagramType);
+    assert.equal(timing.durationMs, 50);
+    assert.equal(timing.stages[0].startOffsetMs, 10);
+    assert.equal(timing.stages[0].endOffsetMs, 25);
+    assert.equal(timing.stages[0].durationMs, 15);
+    assert.equal(timing.accounting.stagedMs, 15);
+    assert.equal(timing.accounting.agentOverheadMs, 35);
+    assert.equal(Date.parse(timing.endedAt) - Date.parse(timing.startedAt), timing.durationMs);
+  }
+});
+
+test('authoring timing normalization: rejects non-monotonic and overlapping stage markers', () => {
+  const base = {
+    diagramType: 'workflow',
+    agentStartMs: 1_000,
+    agentEndMs: 1_100,
+  };
+  assert.throws(() => normalizeAuthoringTiming({
+    ...base,
+    stages: [
+      { name: 'second', startMs: 1_040, endMs: 1_050 },
+      { name: 'first', startMs: 1_010, endMs: 1_020 },
+    ],
+  }), /not monotonic/);
+  assert.throws(() => normalizeAuthoringTiming({
+    ...base,
+    stages: [
+      { name: 'first', startMs: 1_010, endMs: 1_040 },
+      { name: 'second', startMs: 1_030, endMs: 1_050 },
+    ],
+  }), /overlap/);
+  assert.throws(() => normalizeAuthoringTiming({
+    ...base,
+    stages: [{ name: 'broken', startMs: 1_020, endMs: 1_010 }],
+  }), /ends before it starts/);
+});
 
 test('run recorder: durable events compile into canonical timing v1 with nested spans and attempts', async (t) => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-run-recorder-'));

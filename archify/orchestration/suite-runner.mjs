@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { runCandidatePreflightBatch } from '../authoring/candidate-preflight.mjs';
-import { buildProjectIndex } from '../evidence/project-index.mjs';
+import { QUALITY_CONTRACT } from '../authoring/quality-contract.mjs';
+import { buildProjectIndex, verifyEvidenceLedger } from '../evidence/project-index.mjs';
 import { RunRecorder, recoverRunTiming } from './run-recorder.mjs';
 import { renderSuiteReport } from './report.mjs';
 
@@ -12,13 +13,19 @@ const DIAGRAM_TYPES = new Set(['architecture', 'workflow', 'sequence', 'dataflow
 const COMMAND_KINDS = new Set(['exec', 'validate', 'deliver', 'visual-check']);
 const SAFE_ID = /^[a-z0-9][a-z0-9._-]*$/;
 const PINNED_REVISION = /^[0-9a-f]{40,64}$/i;
+const SHA256 = /^[0-9a-f]{64}$/i;
 const MAX_COMMAND_OUTPUT_BYTES = 16 * 1024 * 1024;
-const PREFLIGHT_VIEWPORTS = Object.freeze([
-  Object.freeze({ width: 1440, height: 900 }),
-  Object.freeze({ width: 1600, height: 1000 }),
-  Object.freeze({ width: 1920, height: 1080 }),
-  Object.freeze({ width: 2048, height: 1320 }),
-]);
+const QUALITY_GUARDS = QUALITY_CONTRACT.guards;
+const PREFLIGHT_VIEWPORTS = QUALITY_GUARDS.desktopViewports;
+const CAPTURE_VIEWPORTS = QUALITY_GUARDS.captureViewports;
+const CAPTURE_THEMES = QUALITY_GUARDS.captureThemes;
+const ENTITY_ID_PATHS = Object.freeze({
+  architecture: Object.freeze([['components'], ['connections'], ['meta', 'views']]),
+  workflow: Object.freeze([['lanes'], ['phases'], ['groups'], ['nodes'], ['edges'], ['meta', 'views']]),
+  sequence: Object.freeze([['participants'], ['messages'], ['meta', 'views']]),
+  dataflow: Object.freeze([['nodes'], ['flows'], ['meta', 'views']]),
+  lifecycle: Object.freeze([['lanes'], ['states'], ['transitions'], ['meta', 'views']]),
+});
 
 function jsonClone(value, label) {
   try {
@@ -47,6 +54,17 @@ function assertString(value, label) {
   return value;
 }
 
+function assertUniqueStringArray(value, label) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new TypeError(`${label} must be a non-empty string array.`);
+  }
+  const normalized = value.map((entry, index) => assertString(entry, `${label}[${index}]`));
+  if (new Set(normalized).size !== normalized.length) {
+    throw new Error(`${label} must not contain duplicate IDs.`);
+  }
+  return normalized;
+}
+
 function outputChild(root, relative, label) {
   if (typeof relative !== 'string' || !relative.trim() || path.isAbsolute(relative)) {
     throw new TypeError(`${label} must be a relative path.`);
@@ -57,6 +75,73 @@ function outputChild(root, relative, label) {
     throw new Error(`${label} escapes its isolated diagram directory.`);
   }
   return resolved;
+}
+
+function portablePathKey(file) {
+  return path.resolve(file).normalize('NFC').toLowerCase();
+}
+
+function pathIdentityTokens(file) {
+  const resolved = path.resolve(file);
+  const tokens = new Set([`path:${portablePathKey(resolved)}`]);
+  try {
+    tokens.add(`realpath:${portablePathKey(fs.realpathSync.native(resolved))}`);
+  } catch {
+    try {
+      const parent = fs.realpathSync.native(path.dirname(resolved));
+      tokens.add(`realpath:${portablePathKey(path.join(parent, path.basename(resolved)))}`);
+    } catch {
+      // A future exec-produced candidate still has a stable lexical identity.
+    }
+  }
+  try {
+    const stat = fs.statSync(resolved);
+    tokens.add(`inode:${String(stat.dev)}:${String(stat.ino)}`);
+  } catch {
+    // Missing future paths cannot have an inode identity yet.
+  }
+  return tokens;
+}
+
+function aliasToken(left, right) {
+  for (const token of left) if (right.has(token)) return token;
+  return null;
+}
+
+function auditCandidatePathIdentities(diagrams) {
+  const seenCandidates = [];
+  const orchestrationOutputs = diagrams.flatMap((diagram) => [
+    { owner: diagram.id, path: diagram.artifactPath },
+    { owner: diagram.id, path: path.join(diagram.outputDirectory, 'timing.events.jsonl') },
+    { owner: diagram.id, path: path.join(diagram.outputDirectory, 'timing.json') },
+    { owner: diagram.id, path: path.join(diagram.outputDirectory, 'visual-review.json') },
+    { owner: diagram.id, path: path.join(diagram.outputDirectory, 'evidence-ledger.verified.json') },
+  ]).map((entry) => ({ ...entry, tokens: pathIdentityTokens(entry.path) }));
+
+  for (const diagram of diagrams) {
+    const tokens = pathIdentityTokens(diagram.candidatePath);
+    const duplicate = seenCandidates.find((entry) => aliasToken(tokens, entry.tokens));
+    if (duplicate) {
+      throw new Error(`diagram ${diagram.id} and diagram ${duplicate.id} candidate paths alias the same filesystem entry.`);
+    }
+    const outputAlias = orchestrationOutputs.find((entry) => aliasToken(tokens, entry.tokens));
+    if (outputAlias) {
+      throw new Error(`diagram ${diagram.id} candidate path aliases reserved orchestration output for diagram ${outputAlias.owner}.`);
+    }
+    seenCandidates.push({ id: diagram.id, tokens });
+  }
+  for (const diagram of diagrams) {
+    if (!diagram.evidenceLedgerPath) continue;
+    const tokens = pathIdentityTokens(diagram.evidenceLedgerPath);
+    const outputAlias = orchestrationOutputs.find((entry) => aliasToken(tokens, entry.tokens));
+    if (outputAlias) {
+      throw new Error(`diagram ${diagram.id} evidence ledger path aliases reserved orchestration output for diagram ${outputAlias.owner}.`);
+    }
+    const candidateAlias = seenCandidates.find((entry) => aliasToken(tokens, entry.tokens));
+    if (candidateAlias) {
+      throw new Error(`diagram ${diagram.id} evidence ledger path aliases candidate for diagram ${candidateAlias.id}.`);
+    }
+  }
 }
 
 function expand(value, replacements, label) {
@@ -81,6 +166,21 @@ function writeNewFile(file, contents) {
 
 function writeNewJson(file, value) {
   writeNewFile(file, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function replaceJsonAtomically(file, value) {
+  const temporary = `${file}.tmp-${process.pid}`;
+  writeNewJson(temporary, value);
+  try {
+    fs.renameSync(temporary, file);
+  } catch (error) {
+    try {
+      fs.unlinkSync(temporary);
+    } catch {
+      // Preserve the original error from the atomic commit boundary.
+    }
+    throw error;
+  }
 }
 
 function commandOrder(commands, diagramLabel) {
@@ -121,9 +221,9 @@ function normalizeManifest(manifest, manifestPath, outputRoot) {
   assertObject(manifest, 'manifest');
   if (manifest.schemaVersion !== 1) throw new Error(`Unsupported suite manifest schema ${JSON.stringify(manifest.schemaVersion)}.`);
   const id = assertSafeId(manifest.id, 'manifest.id');
-  const qualityProfile = manifest.qualityProfile ?? 'showcase';
-  if (!['showcase', 'standard'].includes(qualityProfile)) {
-    throw new Error(`manifest.qualityProfile must be "showcase" or "standard".`);
+  const qualityProfile = manifest.qualityProfile ?? QUALITY_GUARDS.qualityProfile;
+  if (qualityProfile !== QUALITY_GUARDS.qualityProfile) {
+    throw new Error(`manifest.qualityProfile must be "${QUALITY_GUARDS.qualityProfile}".`);
   }
   if (!Array.isArray(manifest.diagrams) || manifest.diagrams.length === 0) {
     throw new Error('manifest.diagrams must contain at least one diagram.');
@@ -133,6 +233,9 @@ function normalizeManifest(manifest, manifestPath, outputRoot) {
   }
   if (manifest.viewportPreflight !== undefined && typeof manifest.viewportPreflight !== 'boolean') {
     throw new Error('manifest.viewportPreflight must be boolean when specified.');
+  }
+  if (manifest.viewportPreflight === false) {
+    throw new Error('manifest.viewportPreflight must be enabled for showcase suites.');
   }
   if (manifest.sharedViewportPreflight !== undefined && typeof manifest.sharedViewportPreflight !== 'boolean') {
     throw new Error('manifest.sharedViewportPreflight must be boolean when specified.');
@@ -164,10 +267,70 @@ function normalizeManifest(manifest, manifestPath, outputRoot) {
     const candidatePath = path.isAbsolute(expandedCandidate)
       ? path.normalize(expandedCandidate)
       : path.resolve(manifestDirectory, expandedCandidate);
+    let evidenceLedgerPath = null;
+    if (diagram.evidenceLedger !== undefined) {
+      const expandedLedger = expand(
+        diagram.evidenceLedger,
+        replacements,
+        `diagram ${diagramId} evidenceLedger`,
+      );
+      evidenceLedgerPath = path.isAbsolute(expandedLedger)
+        ? path.normalize(expandedLedger)
+        : path.resolve(manifestDirectory, expandedLedger);
+    }
+    const semanticFields = ['requiredConcepts', 'requiredClaimIds', 'coverageMap'];
+    const hasSemanticCoverage = semanticFields.some((field) => diagram[field] !== undefined);
+    let semanticCoverage = null;
+    if (hasSemanticCoverage) {
+      if (semanticFields.some((field) => diagram[field] === undefined)) {
+        throw new Error(`diagram ${diagramId} semantic coverage requires requiredConcepts, requiredClaimIds, and coverageMap together.`);
+      }
+      if (!evidenceLedgerPath) {
+        throw new Error(`diagram ${diagramId} semantic coverage requires evidenceLedger.`);
+      }
+      const requiredConcepts = assertUniqueStringArray(
+        diagram.requiredConcepts,
+        `diagram ${diagramId} requiredConcepts`,
+      );
+      const requiredClaimIds = assertUniqueStringArray(
+        diagram.requiredClaimIds,
+        `diagram ${diagramId} requiredClaimIds`,
+      );
+      const coverageMap = assertObject(diagram.coverageMap, `diagram ${diagramId} coverageMap`);
+      const coverageKeys = Object.keys(coverageMap);
+      if (coverageKeys.length !== requiredConcepts.length
+        || requiredConcepts.some((concept) => !Object.hasOwn(coverageMap, concept))) {
+        throw new Error(`diagram ${diagramId} coverageMap must cover every requiredConcept exactly once.`);
+      }
+      const requiredClaims = new Set(requiredClaimIds);
+      const normalizedMap = Object.fromEntries(requiredConcepts.map((concept) => {
+        const mapping = assertObject(coverageMap[concept], `diagram ${diagramId} coverageMap.${concept}`);
+        const candidateIds = assertUniqueStringArray(
+          mapping.candidateIds,
+          `diagram ${diagramId} coverageMap.${concept}.candidateIds`,
+        );
+        const claimIds = assertUniqueStringArray(
+          mapping.claimIds,
+          `diagram ${diagramId} coverageMap.${concept}.claimIds`,
+        );
+        const unknownClaim = claimIds.find((claimId) => !requiredClaims.has(claimId));
+        if (unknownClaim) {
+          throw new Error(`diagram ${diagramId} coverageMap.${concept} references undeclared claim ID ${JSON.stringify(unknownClaim)}.`);
+        }
+        return [concept, { candidateIds, claimIds }];
+      }));
+      const mappedClaims = new Set(Object.values(normalizedMap).flatMap((mapping) => mapping.claimIds));
+      const unmappedClaim = requiredClaimIds.find((claimId) => !mappedClaims.has(claimId));
+      if (unmappedClaim) {
+        throw new Error(`diagram ${diagramId} required claim ID ${JSON.stringify(unmappedClaim)} is not covered by coverageMap.`);
+      }
+      semanticCoverage = { requiredConcepts, requiredClaimIds, coverageMap: normalizedMap };
+    }
     const reserved = [
       path.join(outputDirectory, 'timing.events.jsonl'),
       path.join(outputDirectory, 'timing.json'),
       path.join(outputDirectory, 'visual-review.json'),
+      path.join(outputDirectory, 'evidence-ledger.verified.json'),
     ];
     if (reserved.includes(candidatePath)) {
       throw new Error(`diagram ${diagramId} candidate conflicts with reserved orchestration file ${candidatePath}.`);
@@ -221,6 +384,8 @@ function normalizeManifest(manifest, manifestPath, outputRoot) {
       candidatePath,
       artifactPath,
       outputDirectory,
+      evidenceLedgerPath,
+      semanticCoverage,
       commands,
     };
   });
@@ -232,6 +397,10 @@ function normalizeManifest(manifest, manifestPath, outputRoot) {
   if (sharedViewportPreflight && diagrams.some((diagram) => diagram.commands.some((command) => command.kind === 'exec'))) {
     throw new Error('manifest.sharedViewportPreflight requires frozen candidates and does not permit exec commands.');
   }
+  if (diagrams.some((diagram) => diagram.evidenceLedgerPath) && manifest.projectIndex !== true) {
+    throw new Error('diagram evidenceLedger requires manifest.projectIndex to be enabled.');
+  }
+  auditCandidatePathIdentities(diagrams);
 
   return {
     id,
@@ -428,6 +597,9 @@ function parseVisualBatchReceipt(result, expectedCount) {
   if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) {
     throw new Error('Visual-check batch emitted a non-object JSON receipt.');
   }
+  if (receipt.schemaVersion !== 2) {
+    throw new Error('Visual-check batch must emit schemaVersion 2; legacy receipts must be regenerated.');
+  }
   const artifacts = receipt.command === 'visual-check' ? [receipt] : receipt.artifacts;
   if (!['visual-check', 'visual-check-batch'].includes(receipt.command)
     || typeof receipt.ok !== 'boolean'
@@ -435,7 +607,8 @@ function parseVisualBatchReceipt(result, expectedCount) {
     || artifacts.length !== expectedCount) {
     throw new Error('Visual-check batch emitted an invalid artifact receipt set.');
   }
-  if (artifacts.some((artifact) => artifact?.command !== 'visual-check'
+  if (artifacts.some((artifact) => artifact?.schemaVersion !== 2
+    || artifact?.command !== 'visual-check'
     || typeof artifact?.ok !== 'boolean'
     || typeof artifact?.status !== 'string')) {
     throw new Error('Visual-check batch emitted malformed child receipts.');
@@ -560,17 +733,78 @@ function parseCommandReceipt(command, result) {
 function commandFailure(command, result, receipt) {
   const failed = result.exitCode !== 0 || receipt?.ok === false;
   if (!failed) return null;
-  const error = new Error(`${command.kind} command ${command.id} failed with exit code ${result.exitCode}.`);
+  const error = new Error(typeof receipt?.error === 'string' && receipt.error
+    ? receipt.error
+    : `${command.kind} command ${command.id} failed with exit code ${result.exitCode}.`);
   error.code = 'ARCHIFY_SUITE_COMMAND_FAILED';
   error.exitCode = result.exitCode;
   return error;
 }
 
+function viewportKey(viewport) {
+  return `${viewport?.width}x${viewport?.height}:${viewport?.theme}`;
+}
+
+function exactViewportMatrix(viewports, expectedViewports, expectedThemes) {
+  const expected = expectedViewports.flatMap(({ width, height }) => expectedThemes.map(
+    (theme) => `${width}x${height}:${theme}`,
+  ));
+  if (!Array.isArray(viewports) || viewports.length !== expected.length) return false;
+  const actual = new Set(viewports.map(viewportKey));
+  return actual.size === expected.length && expected.every((key) => actual.has(key));
+}
+
+function resolvedThemesMatch(viewports) {
+  return viewports.every((viewport) => (
+    typeof viewport?.theme === 'string'
+    && viewport.resolvedTheme === viewport.theme
+  ));
+}
+
+function stateViewportKey(observation) {
+  return `${observation?.width}x${observation?.height}:${observation?.requestedTheme}`;
+}
+
+function exactStateMatrix(observations, expectedViewports, expectedThemes) {
+  const expected = expectedViewports.flatMap(({ width, height }) => expectedThemes.map(
+    (theme) => `${width}x${height}:${theme}`,
+  ));
+  if (!Array.isArray(observations) || observations.length !== expected.length) return false;
+  const actual = new Set(observations.map(stateViewportKey));
+  return actual.size === expected.length && expected.every((key) => actual.has(key));
+}
+
+function observedStatesMatch(observations) {
+  return observations.every((observation) => (
+    observation?.resolvedTheme === observation?.requestedTheme
+    && observation?.detailLevel === 'read'
+    && observation?.motion === 'still'
+    && observation?.ok === true
+  ));
+}
+
+function hasCanonicalDeterministicChecks(checks) {
+  const expected = QUALITY_GUARDS.deterministicCheckNames;
+  if (!Array.isArray(checks) || checks.length !== expected.length) return false;
+  const actual = new Set(checks.map((check) => check?.name));
+  return actual.size === expected.length
+    && expected.every((name) => actual.has(name))
+    && checks.every((check) => check?.ok === true);
+}
+
+function pngIhdrDimensions(bytes) {
+  const validHeader = bytes.length >= 24
+    && bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))
+    && bytes.subarray(12, 16).toString('ascii') === 'IHDR';
+  if (!validHeader) return null;
+  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+}
+
 function verifyQualityReceipt(diagram, command, receipt, qualityProfile, viewportPreflight) {
   if (!receipt?.ok || command.kind === 'exec') return;
   if (command.kind === 'validate') {
-    if (!Array.isArray(receipt.checks) || receipt.checks.length < 9 || receipt.checks.some((check) => check?.ok !== true)) {
-      throw new Error(`validate success receipt does not preserve the 9/9 deterministic quality floor.`);
+    if (!hasCanonicalDeterministicChecks(receipt.checks)) {
+      throw new Error('validate success receipt does not preserve the canonical 9/9 deterministic checks.');
     }
     if (receipt.composition?.summary?.errors !== 0 || receipt.composition?.summary?.warnings !== 0) {
       throw new Error('validate success receipt must contain 0 composition errors and 0 warnings.');
@@ -581,18 +815,19 @@ function verifyQualityReceipt(diagram, command, receipt, qualityProfile, viewpor
     if (viewportPreflight) {
       const preflight = receipt.preflight;
       const viewports = preflight?.containment?.viewports;
-      const actualViewports = Array.isArray(viewports)
-        ? new Set(viewports.map((viewport) => `${viewport.width}x${viewport.height}`))
-        : new Set();
-      const expectedViewports = new Set(PREFLIGHT_VIEWPORTS.map((viewport) => `${viewport.width}x${viewport.height}`));
+      const stateObservations = preflight?.state?.observations;
       if (preflight?.ok !== true
+        || preflight?.schemaVersion !== 2
         || preflight?.status !== 'pass'
+        || preflight?.state?.status !== 'pass'
+        || preflight?.state?.detail !== 'read'
+        || preflight?.state?.motion !== 'still'
+        || !exactStateMatrix(stateObservations, PREFLIGHT_VIEWPORTS, ['light'])
+        || !observedStatesMatch(stateObservations)
         || preflight?.containment?.status !== 'pass'
-        || !Array.isArray(viewports)
-        || viewports.length !== PREFLIGHT_VIEWPORTS.length
-        || actualViewports.size !== expectedViewports.size
-        || [...expectedViewports].some((viewport) => !actualViewports.has(viewport))
-        || viewports.some((viewport) => viewport?.ok !== true || viewport?.theme !== 'light')) {
+        || !exactViewportMatrix(viewports, PREFLIGHT_VIEWPORTS, ['light'])
+        || !resolvedThemesMatch(viewports)
+        || viewports.some((viewport) => viewport?.ok !== true)) {
         throw new Error('validate success receipt must contain a passing 4/4 viewport preflight.');
       }
     }
@@ -600,7 +835,9 @@ function verifyQualityReceipt(diagram, command, receipt, qualityProfile, viewpor
   }
   if (command.kind === 'deliver') {
     const validation = receipt.validation;
-    if (!validation || validation.checkCount < 9 || validation.checksPassed !== validation.checkCount) {
+    if (!validation
+      || validation.checkCount !== QUALITY_GUARDS.deterministicChecksRequired
+      || validation.checksPassed !== validation.checkCount) {
       throw new Error('deliver success receipt does not preserve the 9/9 deterministic quality floor.');
     }
     if (validation.errors !== 0 || validation.warnings !== 0) {
@@ -611,28 +848,100 @@ function verifyQualityReceipt(diagram, command, receipt, qualityProfile, viewpor
     }
     return;
   }
+  const fullStateObservations = receipt.state?.observations;
+  const expectedFullState = [
+    ...PREFLIGHT_VIEWPORTS.map((viewport) => ({ ...viewport, theme: 'light' })),
+    ...CAPTURE_VIEWPORTS.map((viewport) => ({ ...viewport, theme: 'dark' })),
+  ];
+  const actualFullState = Array.isArray(fullStateObservations)
+    ? new Set(fullStateObservations.map(stateViewportKey))
+    : new Set();
+  const expectedFullStateKeys = expectedFullState.map(
+    ({ width, height, theme }) => `${width}x${height}:${theme}`,
+  );
+  if (receipt.state?.detail !== 'read'
+    || receipt.state?.motion !== 'still'
+    || receipt.state?.status !== 'pass'
+    || !Array.isArray(fullStateObservations)
+    || fullStateObservations.length !== expectedFullStateKeys.length
+    || actualFullState.size !== expectedFullStateKeys.length
+    || expectedFullStateKeys.some((key) => !actualFullState.has(key))
+    || !observedStatesMatch(fullStateObservations)) {
+    throw new Error('visual-check success receipt must preserve the READ detail and Still motion state.');
+  }
   const viewports = receipt.containment?.viewports;
   if (receipt.containment?.status !== 'pass'
-    || !Array.isArray(viewports)
-    || viewports.length < 4
+    || !exactViewportMatrix(viewports, PREFLIGHT_VIEWPORTS, ['light'])
+    || !resolvedThemesMatch(viewports)
     || viewports.some((viewport) => viewport?.ok !== true)) {
-    throw new Error('visual-check success receipt must pass all four desktop containment viewports.');
+    throw new Error('visual-check success receipt must preserve the exact four-viewport light containment matrix.');
+  }
+  const readabilityViewports = receipt.readability?.viewports;
+  if (receipt.readability?.status !== 'pass'
+    || receipt.readability?.minimumProjectedNodeTextPx !== QUALITY_GUARDS.minimumProjectedNodeTextPx
+    || !exactViewportMatrix(readabilityViewports, PREFLIGHT_VIEWPORTS, ['light'])
+    || !resolvedThemesMatch(readabilityViewports)
+    || readabilityViewports.some((viewport) => viewport?.readabilityOk !== true)) {
+    throw new Error('visual-check success receipt must preserve a passing four-viewport readability receipt.');
+  }
+  const viewerChromeViewports = receipt.viewerChrome?.viewports;
+  if (receipt.viewerChrome?.status !== 'pass'
+    || !exactViewportMatrix(viewerChromeViewports, PREFLIGHT_VIEWPORTS, ['light'])
+    || !resolvedThemesMatch(viewerChromeViewports)
+    || viewerChromeViewports.some((viewport) => (
+      viewport?.viewerChromeOk !== true || viewport?.viewerChromeStageOk !== true
+    ))) {
+    throw new Error('visual-check success receipt must preserve a passing four-viewport viewerChrome receipt.');
   }
   const screenshots = receipt.captures?.screenshots;
   if (receipt.captures?.status !== 'pass'
-    || !Array.isArray(screenshots)
-    || screenshots.length < 4
+    || !exactViewportMatrix(screenshots, CAPTURE_VIEWPORTS, CAPTURE_THEMES)
     || screenshots.some((screenshot) => screenshot?.ok !== true)) {
-    throw new Error('visual-check success receipt must include four passing light/dark screenshots.');
+    throw new Error('visual-check success receipt must preserve the exact four-screenshot light/dark capture matrix.');
   }
-  const themes = new Set(screenshots.map((screenshot) => screenshot.theme));
-  if (!themes.has('light') || !themes.has('dark')) {
-    throw new Error('visual-check screenshots must include both light and dark themes.');
+  if (!resolvedThemesMatch(screenshots)) {
+    throw new Error('Every visual-check screenshot resolved theme must match its requested theme.');
   }
+  if (screenshots.some((screenshot) => (
+    screenshot?.readabilityOk !== true || screenshot?.viewerChromeOk !== true
+  ))) {
+    throw new Error('Every visual-check screenshot must preserve passing readability and viewerChrome observations.');
+  }
+  const screenshotIdentities = [];
+  const artifactStem = path.basename(
+    diagram.artifactPath,
+    path.extname(diagram.artifactPath),
+  );
   for (const screenshot of screenshots) {
     const file = screenshot.file;
-    if (typeof file !== 'string' || !file || !fs.existsSync(path.resolve(diagram.outputDirectory, file))) {
+    if (typeof file !== 'string' || !file || path.basename(file) !== file) {
+      throw new Error(`visual-check screenshot path is not an isolated sidecar: ${String(file)}`);
+    }
+    const expectedFile = `${artifactStem}.visual-check.${screenshot.width}x${screenshot.height}.${screenshot.theme}.png`;
+    if (file !== expectedFile) {
+      throw new Error(`visual-check screenshot does not use its canonical sidecar basename: ${String(file)}`);
+    }
+    const screenshotPath = path.resolve(diagram.outputDirectory, file);
+    if (!fs.existsSync(screenshotPath)) {
       throw new Error(`visual-check screenshot is missing: ${String(file)}`);
+    }
+    const tokens = pathIdentityTokens(screenshotPath);
+    if (screenshotIdentities.some((identity) => aliasToken(tokens, identity))) {
+      throw new Error(`visual-check screenshot paths alias the same sidecar: ${String(file)}`);
+    }
+    screenshotIdentities.push(tokens);
+    const bytes = fs.readFileSync(screenshotPath);
+    const actualSha256 = createHash('sha256').update(bytes).digest('hex');
+    const dimensions = pngIhdrDimensions(bytes);
+    if (!SHA256.test(screenshot.sha256 || '')
+      || screenshot.sha256 !== actualSha256
+      || screenshot.bytes !== bytes.byteLength
+      || screenshot.pixelWidth !== screenshot.width
+      || screenshot.pixelHeight !== screenshot.height) {
+      throw new Error(`visual-check screenshot content digest or pixel dimensions do not match: ${String(file)}`);
+    }
+    if (dimensions?.width !== screenshot.width || dimensions?.height !== screenshot.height) {
+      throw new Error(`visual-check screenshot PNG IHDR dimensions do not match: ${String(file)}`);
     }
   }
 }
@@ -648,6 +957,68 @@ function verifyReceiptArtifact(diagram, command, receipt) {
   if (actualSha !== expectedSha) {
     throw new Error(`${command.kind} artifact sha256 does not match its receipt.`);
   }
+  if (command.kind === 'visual-check') {
+    const verification = receipt.artifact?.verification;
+    if (verification?.unchanged !== true
+      || verification?.before?.sha256 !== expectedSha
+      || verification?.after?.sha256 !== expectedSha
+      || verification?.before?.bytes !== receipt.artifact?.bytes
+      || verification?.after?.bytes !== receipt.artifact?.bytes) {
+      throw new Error('visual-check success receipt must prove the artifact stayed unchanged during inspection.');
+    }
+  }
+}
+
+function verifyDeliverySpecification(
+  diagram,
+  receipt,
+  sharedPreflightReceipt,
+  semanticCoverageReceipt,
+) {
+  if (!receipt?.ok) return;
+  const specification = receipt.specification;
+  if (!Number.isInteger(specification?.bytes) || specification.bytes < 1 || !SHA256.test(specification?.sha256 || '')) {
+    throw new Error('deliver success receipt must contain a valid specification digest.');
+  }
+  const shared = sharedPreflightReceipt?.specification;
+  if (shared && (specification.bytes !== shared.bytes || specification.sha256 !== shared.sha256)) {
+    throw new Error('deliver specification digest does not match shared candidate preflight.');
+  }
+  if (sharedPreflightReceipt) {
+    const sharedArtifact = sharedPreflightReceipt.artifact;
+    const deliveredArtifact = receipt.artifact;
+    if (!Number.isInteger(sharedArtifact?.bytes)
+      || !SHA256.test(sharedArtifact?.sha256 || '')
+      || deliveredArtifact?.bytes !== sharedArtifact.bytes
+      || deliveredArtifact?.sha256 !== sharedArtifact.sha256) {
+      throw new Error('deliver artifact digest does not match shared candidate preflight.');
+    }
+  }
+  const bytes = fs.readFileSync(diagram.candidatePath);
+  const actualSha256 = createHash('sha256').update(bytes).digest('hex');
+  if (specification.bytes !== bytes.byteLength || specification.sha256 !== actualSha256) {
+    throw new Error('deliver specification digest does not match the current candidate bytes.');
+  }
+  if (semanticCoverageReceipt
+    && specification.sha256 !== semanticCoverageReceipt.candidateSha256) {
+    throw new Error('deliver specification digest does not match semantic coverage candidate.');
+  }
+}
+
+function verifyDeliveredArtifactChain(commandReceipts, visualReceipt) {
+  let deliver = null;
+  for (let index = commandReceipts.length - 1; index >= 0; index -= 1) {
+    if (commandReceipts[index].kind === 'deliver') {
+      deliver = commandReceipts[index].receipt?.artifact;
+      break;
+    }
+  }
+  const visual = visualReceipt?.artifact;
+  if (!deliver || !visual
+    || deliver.sha256 !== visual.sha256
+    || deliver.bytes !== visual.bytes) {
+    throw new Error('visual-check artifact digest does not match deliver.');
+  }
 }
 
 function verifyCandidateRevision(diagram, revision) {
@@ -660,6 +1031,183 @@ function verifyCandidateRevision(diagram, revision) {
   const declared = candidate?.meta?.repository?.revision;
   if (declared && String(declared).toLowerCase() !== revision.toLowerCase()) {
     throw new Error(`Candidate repository revision ${declared} does not match pinned revision ${revision}.`);
+  }
+}
+
+function verifyDiagramEvidenceLedger(diagram, suite) {
+  if (!diagram.evidenceLedgerPath) return null;
+  if (!suite.projectIndexDocument) {
+    throw new Error(`Evidence ledger for ${diagram.id} requires the original ProjectIndex document.`);
+  }
+  let ledger;
+  let ledgerBytes;
+  try {
+    ledgerBytes = fs.readFileSync(diagram.evidenceLedgerPath);
+    ledger = JSON.parse(ledgerBytes.toString('utf8'));
+  } catch (error) {
+    throw new Error(`Could not read evidence ledger for ${diagram.id}: ${error.message}`);
+  }
+  const verified = verifyEvidenceLedger(ledger, {
+    repoRoot: suite.repository.root,
+    projectIndex: suite.projectIndexDocument,
+  });
+  const frozenPath = path.join(diagram.outputDirectory, 'evidence-ledger.verified.json');
+  if (fs.existsSync(frozenPath)) {
+    const frozen = fs.readFileSync(frozenPath);
+    if (!frozen.equals(ledgerBytes)) {
+      throw new Error(`Evidence ledger for ${diagram.id} changed between delivery boundaries.`);
+    }
+  } else {
+    writeNewFile(frozenPath, ledgerBytes);
+  }
+  return {
+    ledger,
+    receipt: {
+      ...verified,
+      path: frozenPath,
+      sourcePath: diagram.evidenceLedgerPath,
+      bytes: ledgerBytes.byteLength,
+      sha256: createHash('sha256').update(ledgerBytes).digest('hex'),
+    },
+  };
+}
+
+function collectCandidateIdPointers(candidate, diagramType) {
+  const pointersById = new Map();
+  for (const entityPath of ENTITY_ID_PATHS[diagramType] || []) {
+    const entities = entityPath.reduce((value, segment) => value?.[segment], candidate);
+    if (!Array.isArray(entities)) continue;
+    for (const [index, entity] of entities.entries()) {
+      if (entity && typeof entity === 'object' && !Array.isArray(entity)
+        && typeof entity.id === 'string' && entity.id.trim()) {
+        const pointers = pointersById.get(entity.id) || [];
+        pointers.push(`/${[...entityPath, index, 'id'].join('/')}`);
+        pointersById.set(entity.id, pointers);
+      }
+    }
+  }
+  return pointersById;
+}
+
+function verifySemanticCoverage(diagram, ledger, evidenceReceipt) {
+  if (!diagram.semanticCoverage) return null;
+  const candidateBytes = fs.readFileSync(diagram.candidatePath);
+  let candidate;
+  try {
+    candidate = JSON.parse(candidateBytes.toString('utf8'));
+  } catch (error) {
+    throw new Error(`Could not read semantic coverage candidate for ${diagram.id}: ${error.message}`);
+  }
+  const candidateIdPointers = collectCandidateIdPointers(candidate, diagram.type);
+  const ledgerClaimIds = new Set(ledger.facts.map((fact) => fact.claimId));
+  for (const claimId of diagram.semanticCoverage.requiredClaimIds) {
+    if (!ledgerClaimIds.has(claimId)) {
+      throw new Error(`Semantic coverage requires ledger claim ID ${JSON.stringify(claimId)}, but it is absent.`);
+    }
+  }
+  for (const [concept, mapping] of Object.entries(diagram.semanticCoverage.coverageMap)) {
+    for (const candidateId of mapping.candidateIds) {
+      const pointers = candidateIdPointers.get(candidateId);
+      if (!pointers) {
+        throw new Error(`Semantic concept ${JSON.stringify(concept)} references required candidate ID ${JSON.stringify(candidateId)}, but it is absent.`);
+      }
+      if (pointers.length !== 1) {
+        throw new Error(`Semantic concept ${JSON.stringify(concept)} references ambiguous candidate ID ${JSON.stringify(candidateId)} at ${pointers.join(', ')}.`);
+      }
+    }
+    for (const claimId of mapping.claimIds) {
+      if (!ledgerClaimIds.has(claimId)) {
+        throw new Error(`Semantic concept ${JSON.stringify(concept)} references required ledger claim ID ${JSON.stringify(claimId)}, but it is absent.`);
+      }
+    }
+  }
+  const referencedCandidateIds = [...new Set(Object.values(diagram.semanticCoverage.coverageMap)
+    .flatMap((mapping) => mapping.candidateIds))];
+  const bound = {
+    presenceVerified: true,
+    verificationScope: 'mechanical-presence-only',
+    semanticCorrectness: 'not-assessed',
+    blindReview: 'required',
+    requiredConcepts: diagram.semanticCoverage.requiredConcepts,
+    requiredClaimIds: diagram.semanticCoverage.requiredClaimIds,
+    coverageMap: diagram.semanticCoverage.coverageMap,
+    candidateEntityPointers: Object.fromEntries(referencedCandidateIds.map(
+      (candidateId) => [candidateId, candidateIdPointers.get(candidateId)],
+    )),
+    candidateSha256: createHash('sha256').update(candidateBytes).digest('hex'),
+    ledgerDigest: evidenceReceipt.ledgerDigest,
+  };
+  return {
+    schemaVersion: 1,
+    ...bound,
+    digest: createHash('sha256').update(JSON.stringify(bound)).digest('hex'),
+  };
+}
+
+function reverifyFrozenEvidenceLedger(context) {
+  const expected = context.evidenceLedgerReceipt;
+  if (!expected) return;
+  try {
+    const bytes = fs.readFileSync(expected.path);
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    if (bytes.byteLength !== expected.bytes || sha256 !== expected.sha256) {
+      throw new Error('frozen ledger bytes do not match the delivery-bound receipt');
+    }
+    const ledger = JSON.parse(bytes.toString('utf8'));
+    const verified = verifyEvidenceLedger(ledger, {
+      repoRoot: context.suite.repository.root,
+      projectIndex: context.suite.projectIndexDocument,
+    });
+    if (verified.ledgerDigest !== expected.ledgerDigest
+      || verified.indexDigest !== expected.indexDigest
+      || verified.factCount !== expected.factCount) {
+      throw new Error('frozen ledger verification does not match the delivery-bound receipt');
+    }
+  } catch (error) {
+    throw new Error(`verified evidence ledger changed before final receipt for ${context.diagram.id}: ${error.message}`);
+  }
+}
+
+function sanitizeEvidenceReceipts(context) {
+  try {
+    reverifyFrozenEvidenceLedger(context);
+    return null;
+  } catch (error) {
+    context.evidenceLedgerReceipt = null;
+    context.semanticCoverageReceipt = null;
+    return error;
+  }
+}
+
+function verifyFinalProjectIndexFile(suite) {
+  const expected = suite.projectIndexReceipt;
+  if (!expected) return;
+  let bytes;
+  try {
+    bytes = fs.readFileSync(expected.path);
+  } catch (error) {
+    throw new Error(`project index changed before final receipt: ${error.message}`);
+  }
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  if (bytes.byteLength !== expected.bytes || sha256 !== expected.sha256) {
+    throw new Error(
+      `project index changed before final receipt: expected ${expected.bytes} bytes/${expected.sha256}, got ${bytes.byteLength} bytes/${sha256}`,
+    );
+  }
+}
+
+function sanitizeProjectIndexEvidence(suite, contexts) {
+  try {
+    verifyFinalProjectIndexFile(suite);
+    return null;
+  } catch (error) {
+    for (const context of contexts) {
+      context.evidenceLedgerReceipt = null;
+      context.semanticCoverageReceipt = null;
+    }
+    suite.projectIndexReceipt = null;
+    suite.projectIndexDocument = null;
+    return error;
   }
 }
 
@@ -688,7 +1236,37 @@ function pendingVisualReview(diagram, artifactPath) {
   };
 }
 
-function finalReceipt({ suite, diagram, commandReceipts, status, error = null }) {
+function evidenceBoundVisualReview(review, visualReceipt) {
+  return {
+    ...review,
+    artifact: {
+      path: visualReceipt.artifact.path,
+      sha256: visualReceipt.artifact.sha256,
+      bytes: visualReceipt.artifact.bytes,
+    },
+    screenshots: visualReceipt.captures.screenshots.map((screenshot) => ({
+      file: screenshot.file,
+      width: screenshot.width,
+      height: screenshot.height,
+      theme: screenshot.theme,
+      resolvedTheme: screenshot.resolvedTheme,
+      sha256: screenshot.sha256,
+      bytes: screenshot.bytes,
+      pixelWidth: screenshot.pixelWidth,
+      pixelHeight: screenshot.pixelHeight,
+    })),
+  };
+}
+
+function finalReceipt({
+  suite,
+  diagram,
+  commandReceipts,
+  evidenceLedgerReceipt = null,
+  semanticCoverageReceipt = null,
+  status,
+  error = null,
+}) {
   return {
     schemaVersion: 1,
     kind: 'archify.diagram-run',
@@ -706,6 +1284,8 @@ function finalReceipt({ suite, diagram, commandReceipts, status, error = null })
       candidate: diagram.candidatePath,
       artifact: diagram.artifactPath,
     },
+    ...(evidenceLedgerReceipt ? { evidenceLedger: evidenceLedgerReceipt } : {}),
+    ...(semanticCoverageReceipt ? { semanticCoverage: semanticCoverageReceipt } : {}),
     commands: commandReceipts,
     ...(error ? {
       error: {
@@ -730,10 +1310,13 @@ function diagramResult(context, timing, artifactPath) {
 }
 
 function finalizeDiagramFailure(context, error) {
+  sanitizeEvidenceReceipts(context);
   const receipt = finalReceipt({
     suite: context.suite,
     diagram: context.diagram,
     commandReceipts: context.commandReceipts,
+    evidenceLedgerReceipt: context.evidenceLedgerReceipt,
+    semanticCoverageReceipt: context.semanticCoverageReceipt,
     status: 'failed',
     error,
   });
@@ -777,6 +1360,8 @@ async function runDiagramUntilVisual({ suite, diagram, archifyCli, commandRunner
     visualReviewPath,
     visualCommand: diagram.commands.at(-1),
     pendingVisual: true,
+    evidenceLedgerReceipt: null,
+    semanticCoverageReceipt: null,
   };
 
   try {
@@ -785,12 +1370,32 @@ async function runDiagramUntilVisual({ suite, diagram, archifyCli, commandRunner
       await recorder.stage(command.id, async (stage) => {
         await stage.attempt(command.kind, async (attempt) => {
           if (['validate', 'deliver'].includes(command.kind)) {
+            await attempt.span('candidate-identity', async () => auditCandidatePathIdentities(suite.diagrams));
             await attempt.span('candidate-revision', async () => verifyCandidateRevision(diagram, suite.repository.revision));
             if (suite.sharedViewportPreflight) {
               await attempt.span('shared-preflight-specification', async () => verifySharedCandidateDigest(
                 diagram,
                 suite.sharedPreflightReceipts?.[diagram.id],
               ));
+            }
+            if (command.kind === 'deliver' && diagram.evidenceLedgerPath) {
+              if (context.evidenceLedgerReceipt) {
+                await attempt.span('evidence-ledger-continuity', async () => {
+                  const evidenceIntegrityError = sanitizeEvidenceReceipts(context);
+                  if (evidenceIntegrityError) throw evidenceIntegrityError;
+                });
+              }
+              const evidence = await attempt.span(
+                'evidence-ledger',
+                async () => verifyDiagramEvidenceLedger(diagram, suite),
+              );
+              context.evidenceLedgerReceipt = evidence.receipt;
+              if (diagram.semanticCoverage) {
+                context.semanticCoverageReceipt = await attempt.span(
+                  'semantic-coverage',
+                  async () => verifySemanticCoverage(diagram, evidence.ledger, evidence.receipt),
+                );
+              }
             }
           }
           const result = await attempt.span('command', async () => commandRunner(request));
@@ -814,6 +1419,14 @@ async function runDiagramUntilVisual({ suite, diagram, archifyCli, commandRunner
             suite.qualityProfile,
             suite.viewportPreflight,
           );
+          if (command.kind === 'deliver') {
+            verifyDeliverySpecification(
+              diagram,
+              receipt,
+              suite.sharedPreflightReceipts?.[diagram.id],
+              context.semanticCoverageReceipt,
+            );
+          }
           verifyReceiptArtifact(diagram, command, receipt);
           const failure = commandFailure(command, result, receipt);
           if (failure) throw failure;
@@ -829,7 +1442,12 @@ async function runDiagramUntilVisual({ suite, diagram, archifyCli, commandRunner
   }
 }
 
-async function completeDiagramVisual(context, { receipt, exitCode, batchDurationMs }) {
+async function completeDiagramVisual(context, {
+  receipt,
+  exitCode,
+  batchDurationMs,
+  finalIntegrityError = null,
+}) {
   const { suite, diagram, recorder, commandReceipts, visualCommand } = context;
   try {
     await recorder.stage(visualCommand.id, async (stage) => {
@@ -842,6 +1460,7 @@ async function completeDiagramVisual(context, { receipt, exitCode, batchDuration
             sharedBatch: true,
             receipt,
           });
+          const evidenceIntegrityError = sanitizeEvidenceReceipts(context);
           verifyQualityReceipt(
             diagram,
             visualCommand,
@@ -849,18 +1468,27 @@ async function completeDiagramVisual(context, { receipt, exitCode, batchDuration
             suite.qualityProfile,
             suite.viewportPreflight,
           );
-          verifyReceiptArtifact(diagram, visualCommand, receipt);
           const failure = commandFailure(visualCommand, { exitCode }, receipt);
           if (failure) throw failure;
+          if (evidenceIntegrityError) throw evidenceIntegrityError;
+          verifyDeliveredArtifactChain(commandReceipts, receipt);
+          verifyReceiptArtifact(diagram, visualCommand, receipt);
+          context.visualReview = evidenceBoundVisualReview(context.visualReview, receipt);
+          replaceJsonAtomically(context.visualReviewPath, context.visualReview);
         });
       }, { kind: 'visual-check', sharedBatchDurationMs: batchDurationMs });
       stage.milestone('reviewReady', { sharedBatchDurationMs: batchDurationMs });
     }, { kind: 'visual-check', sharedBatch: true, sharedBatchDurationMs: batchDurationMs });
 
+    const finalEvidenceIntegrityError = sanitizeEvidenceReceipts(context);
+    if (finalEvidenceIntegrityError) throw finalEvidenceIntegrityError;
+    if (finalIntegrityError) throw finalIntegrityError;
     const final = finalReceipt({
       suite,
       diagram,
       commandReceipts,
+      evidenceLedgerReceipt: context.evidenceLedgerReceipt,
+      semanticCoverageReceipt: context.semanticCoverageReceipt,
       status: 'completed',
     });
     const timing = recorder.finalize({ status: 'completed', finalReceipt: final });
@@ -1040,12 +1668,16 @@ export async function runSuite({
           repoRoot: absoluteRepo,
           revision: pinnedRevision,
         }));
+        suite.projectIndexDocument = index;
         const indexPath = path.join(absoluteOutput, 'project-index.json');
-        writeNewJson(indexPath, index);
+        const indexBytes = Buffer.from(`${JSON.stringify(index, null, 2)}\n`);
+        writeNewFile(indexPath, indexBytes);
         suite.projectIndexReceipt = {
           schemaVersion: index.schemaVersion,
           path: indexPath,
           digest: index.digest,
+          bytes: indexBytes.byteLength,
+          sha256: createHash('sha256').update(indexBytes).digest('hex'),
           repository: {
             origin: index.repository.origin,
             revision: index.repository.revision,
@@ -1116,6 +1748,7 @@ export async function runSuite({
   }
 
   if (!suiteError) {
+    let projectIndexIntegrityChecked = false;
     const pendingVisual = prepared.filter((entry) => entry.pendingVisual === true);
     const alreadyFinalized = prepared.filter((entry) => entry.pendingVisual !== true);
     let finalizedVisual = [];
@@ -1132,21 +1765,29 @@ export async function runSuite({
         durationMs: batch.durationMs,
         artifacts: pendingVisual.map((context) => context.diagram.artifactPath),
       };
+      const projectIndexIntegrityError = sanitizeProjectIndexEvidence(suite, pendingVisual);
+      projectIndexIntegrityChecked = true;
       finalizedVisual = await suiteRecorder.stage('visualReceiptFanout', async (stage) => Promise.all(
         pendingVisual.map((context) => stage.span(
           context.diagram.id,
           async () => completeDiagramVisual(context, {
             ...mappedVisualReceipt(context, batch),
             batchDurationMs: batch.durationMs,
+            finalIntegrityError: projectIndexIntegrityError,
           }),
           { diagramType: context.diagram.type, sharedBatchDurationMs: batch.durationMs },
         )),
       ));
       if (batch.error) suiteError = batch.error;
+      else if (projectIndexIntegrityError) suiteError = projectIndexIntegrityError;
     }
     const finalizedById = new Map([...alreadyFinalized, ...finalizedVisual]
       .map((result) => [result.diagram.id, result]));
     results = suite.diagrams.map((diagram) => finalizedById.get(diagram.id)).filter(Boolean);
+    if (!projectIndexIntegrityChecked && suite.projectIndexReceipt) {
+      const projectIndexIntegrityError = sanitizeProjectIndexEvidence(suite, []);
+      if (projectIndexIntegrityError && !suiteError) suiteError = projectIndexIntegrityError;
+    }
   }
 
   suite.automationError = suiteError ? {

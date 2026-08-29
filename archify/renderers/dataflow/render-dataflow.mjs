@@ -13,12 +13,16 @@ import { throwDiagnosticProblems } from '../shared/diagnostics.mjs';
 import { relationshipLabelContainmentIssues } from '../shared/viewbox-containment.mjs';
 import { resolveLegend, renderLegend as renderResolvedLegend } from '../shared/legend.mjs';
 import { availableNodeTextWidth, fittedNodeFontSize, minimumNodeTextWidth } from '../shared/text-fit.mjs';
+import { maximumReadableViewBoxWidth } from '../shared/desktop-readability.mjs';
 import { brandLabelFitWidth, brandMetadataFor, brandTopRailProblem, renderBrandMark } from '../shared/brand-marks.mjs';
 import { translateMessage as i18nText } from '../shared/i18n.mjs';
 import {
   asArray,
   isFinitePoint,
   rectsOverlap,
+  entityOverlapIssue,
+  relationshipLabelObstacleIssue,
+  relationshipLabelPairIssue,
   cleanEndpointSideProblems,
   cleanFlowProblems,
   cleanCrossingProblems,
@@ -26,8 +30,6 @@ import {
   cleanBorderRunProblems,
   cleanRouteRhythmProblems,
   cleanLabelRouteClearanceProblems,
-  suggestLabelObstacleFix,
-  suggestLabelPairFix,
   anchor,
   automaticPortSpread,
   defaultFromSide,
@@ -117,6 +119,7 @@ function measureNode(node) {
 }
 
 const nodes = new Map(asArray(dataflow.nodes).map((node) => [node.id, measureNode(node)]));
+const nodeInputIndexes = new Map(asArray(dataflow.nodes).map((node, index) => [node.id, index]));
 const nodeSteps = new Map();
 for (const [index, flow] of asArray(dataflow.flows).entries()) {
   if (!nodeSteps.has(flow.from)) nodeSteps.set(flow.from, index);
@@ -124,6 +127,54 @@ for (const [index, flow] of asArray(dataflow.flows).entries()) {
 }
 for (const [index, node] of asArray(dataflow.nodes).entries()) {
   if (!nodeSteps.has(node.id)) nodeSteps.set(node.id, index);
+}
+
+function dataflowLayoutConstraints() {
+  const stageCount = asArray(dataflow.stages).length;
+  const minViewBoxWidth = stageCount
+    ? Math.ceil(stageX(stageCount - 1) + layout.stageW / 2 + 24)
+    : null;
+  const readableText = [];
+  for (const node of nodes.values()) {
+    const nodeIndex = nodeInputIndexes.get(node.id);
+    if (!Number.isInteger(nodeIndex) || !Number.isFinite(node.width)) continue;
+    const labelFont = fittedNodeFontSize(node.label, brandLabelFitWidth(node, node.width), 10, 8);
+    readableText.push({
+      path: `/nodes/${nodeIndex}/label`,
+      id: node.id,
+      text: node.label,
+      sourceFontPx: labelFont,
+      maxReadableViewBoxWidth: maximumReadableViewBoxWidth(labelFont),
+    });
+    if (node.sublabel) {
+      const sourceFontPx = fittedNodeFontSize(
+        node.sublabel,
+        node.width,
+        nodeTextFit.sublabelPreferred,
+        nodeTextFit.sublabelMinimum,
+      );
+      readableText.push({
+        path: `/nodes/${nodeIndex}/sublabel`,
+        id: node.id,
+        text: node.sublabel,
+        sourceFontPx,
+        maxReadableViewBoxWidth: maximumReadableViewBoxWidth(sourceFontPx),
+      });
+    }
+  }
+  const limitingText = readableText
+    .filter((entry) => Number.isFinite(entry.maxReadableViewBoxWidth))
+    .sort((left, right) => (
+      left.maxReadableViewBoxWidth - right.maxReadableViewBoxWidth
+      || left.path.localeCompare(right.path)
+    ))[0] || null;
+  return {
+    minViewBoxWidth,
+    maxReadableViewBoxWidth: limitingText
+      ? Math.round(limitingText.maxReadableViewBoxWidth * 1000) / 1000
+      : null,
+    limitingText,
+  };
 }
 
 function validateDataflow() {
@@ -143,8 +194,22 @@ function validateDataflow() {
 
   const stageCount = asArray(dataflow.stages).length;
   for (const node of nodes.values()) {
+    const nodeIndex = nodeInputIndexes.get(node.id);
     if (typeof node.stage !== 'number' || node.stage < 0 || node.stage >= stageCount) {
-      problems.push(`Node "${node.id}" uses invalid stage ${node.stage} — valid stages are 0..${stageCount - 1}.`);
+      problems.push({
+        code: 'layout/dataflow-node-stage',
+        message: `Node "${node.id}" uses invalid stage ${node.stage} — valid stages are 0..${stageCount - 1}.`,
+        subject: {
+          path: `/nodes/${nodeIndex}/stage`,
+          id: node.id,
+        },
+        evidence: {
+          currentStage: node.stage,
+          allowedStage: { min: 0, max: stageCount - 1 },
+        },
+        supportedFixes: [`set /nodes/${nodeIndex}/stage to an integer between 0 and ${stageCount - 1}`],
+      });
+      continue;
     }
     if (typeof node.row !== 'number' || node.row < 0 || node.row >= layout.rowYs.length) {
       problems.push(`Node "${node.id}" uses invalid row ${node.row} — valid rows are 0..${layout.rowYs.length - 1}.`);
@@ -186,7 +251,16 @@ function validateDataflow() {
       const a = nodes.get(nodeList[i].id);
       const b = nodes.get(nodeList[j].id);
       if (rectsOverlap(a, b, 10)) {
-        problems.push(`Nodes "${a.id}" and "${b.id}" are less than 10px apart — move one to another stage/row or adjust yOffset.`);
+        problems.push(entityOverlapIssue({
+          diagramType: 'dataflow',
+          collection: 'nodes',
+          entity: b,
+          entityIndex: j,
+          otherEntity: a,
+          otherEntityIndex: i,
+          minimumGapPx: 10,
+          controls: ['stage', 'row', 'yOffset'],
+        }));
       }
     }
   }
@@ -283,14 +357,35 @@ function validateDataflow() {
   for (const rect of labelRects) {
     for (const node of nodes.values()) {
       if (rectsOverlap(rect, node, -2)) {
-        problems.push(`Label "${rect.label}" overlaps node "${node.id}" — adjust labelDx/labelDy/labelSegment or set labelAt.\n${suggestLabelObstacleFix(rect, rect.lx, rect.ly, node, 'node')}`);
+        problems.push(relationshipLabelObstacleIssue({
+          diagramType: 'dataflow',
+          relationCollection: 'flows',
+          relation: rect.relation,
+          relationIndex: rect.relationIndex,
+          labelRect: rect,
+          obstacleCollection: 'nodes',
+          obstacle: node,
+          obstacleIndex: nodeInputIndexes.get(node.id),
+          avoidRects: [...nodes.values()],
+          viewBox,
+        }));
       }
     }
   }
   for (let i = 0; i < labelRects.length; i += 1) {
     for (let j = i + 1; j < labelRects.length; j += 1) {
       if (rectsOverlap(labelRects[i], labelRects[j], -2)) {
-        problems.push(`Labels "${labelRects[i].label}" and "${labelRects[j].label}" overlap — adjust labelDx/labelDy.\n${suggestLabelPairFix(labelRects[i], labelRects[j])}`);
+        problems.push(relationshipLabelPairIssue({
+          diagramType: 'dataflow',
+          relationCollection: 'flows',
+          labelRect: labelRects[j],
+          otherLabelRect: labelRects[i],
+          avoidRects: [
+            ...nodes.values(),
+            ...labelRects.filter((entry) => entry !== labelRects[j]),
+          ],
+          viewBox,
+        }));
       }
     }
   }
@@ -521,6 +616,7 @@ function buildLayoutReport(validation) {
     entities: [...nodes.values()].map(componentBox),
     relationships,
     labels,
+    constraints: dataflowLayoutConstraints(),
     extras: { stages: compositionFrames },
   });
 }

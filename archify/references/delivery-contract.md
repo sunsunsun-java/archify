@@ -42,8 +42,14 @@ measures light-theme containment at 1440×900, 1600×1000, 1920×1080, and
 2048×1320, then captures light/dark screenshots at 1440×900 and 2048×1320. It
 writes four PNG sidecars, one relative-path HTML contact sheet, and one JSON
 receipt beside the artifact. The receipt binds the source artifact SHA-256 and
-byte count, records READ plus Still runtime state, and always reports
-`visualReview: "pending"`; automated evidence cannot claim perceptual review.
+byte count, records measured READ plus Still runtime state at every requested
+viewport/theme, and binds each screenshot's SHA-256, byte count, and measured
+PNG pixel dimensions. Full, preflight, and batch visual receipts use
+`schemaVersion: 2`; the independent capability-probe receipt remains v1. A
+stored v1 visual receipt predates these proofs and must fail closed in current
+consumers—rerun the visual command instead of silently upgrading it. Automated
+receipts always report `visualReview: "pending"`; automated evidence cannot
+claim perceptual review.
 
 Exit 0 means every containment measurement and capture passed. Exit 1 means an
 overflow or capture failure. Exit 2 means Chrome/Chromium was unavailable and

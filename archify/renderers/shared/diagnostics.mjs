@@ -4,6 +4,8 @@ import path from 'node:path';
 const DIAGNOSTIC_MODE = process.env.ARCHIFY_DIAGNOSTIC_FORMAT === 'json';
 const recorded = [];
 const recordedDiagnosticKeys = new Set();
+const recordedDiagnosticIndexesByMessage = new Map();
+const knownDiagnosticsByMessage = new Map();
 const boundaryKey = Symbol.for('archify.renderer-diagnostic-boundary');
 
 function plainObject(value) {
@@ -49,11 +51,32 @@ export function layoutIssue(issue, defaults = {}) {
 }
 
 export function recordDiagnostic(diagnostic) {
-  if (!DIAGNOSTIC_MODE) return;
   const normalized = normalizedDiagnostic(diagnostic);
+  const messageKey = `${normalized.severity}\u0000${normalized.message}`;
+  const priorKnown = knownDiagnosticsByMessage.get(messageKey);
+  const specificity = (entry) => (
+    (entry.code === 'layout/constraint' || entry.code === 'internal/unclassified' ? 0 : 100)
+    + Object.keys(entry.subject).length * 4
+    + Object.keys(entry.evidence).length * 2
+    + entry.supportedFixes.length
+  );
+  if (!priorKnown || specificity(normalized) > specificity(priorKnown)) {
+    knownDiagnosticsByMessage.set(messageKey, normalized);
+  }
+  if (!DIAGNOSTIC_MODE) return;
   const key = JSON.stringify(normalized);
   if (recordedDiagnosticKeys.has(key)) return;
+  const priorIndex = recordedDiagnosticIndexesByMessage.get(messageKey);
+  if (priorIndex !== undefined) {
+    const prior = recorded[priorIndex];
+    if (specificity(normalized) > specificity(prior)) {
+      recorded[priorIndex] = normalized;
+      recordedDiagnosticKeys.add(key);
+    }
+    return;
+  }
   recordedDiagnosticKeys.add(key);
+  recordedDiagnosticIndexesByMessage.set(messageKey, recorded.length);
   recorded.push(normalized);
 }
 
@@ -71,13 +94,18 @@ export function throwDiagnosticProblems(prefix, problems, {
   evidence = {},
   supportedFixes = [],
 } = {}) {
-  const diagnostics = (problems || []).map((problem) => layoutIssue(problem, {
-    code,
-    severity,
-    subject,
-    evidence,
-    supportedFixes,
-  }));
+  const diagnostics = (problems || []).map((problem) => {
+    const known = typeof problem === 'string'
+      ? knownDiagnosticsByMessage.get(`${severity}\u0000${problem.trim()}`)
+      : null;
+    return layoutIssue(known || problem, {
+      code,
+      severity,
+      subject,
+      evidence,
+      supportedFixes,
+    });
+  });
   const messages = diagnostics.map((diagnostic) => diagnostic.message);
   throwDiagnosticError(`${prefix}:\n- ${messages.join('\n- ')}`, diagnostics);
 }

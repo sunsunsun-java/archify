@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { QUALITY_CONTRACT_DIGEST } from '../authoring/quality-contract.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(__dirname, '..');
@@ -11,6 +12,14 @@ const authoringContract = fs.readFileSync(
   path.join(skillRoot, 'references', 'authoring-contract.md'),
   'utf8',
 );
+
+test('skill pins compact authoring context to the shipped quality contract', () => {
+  const command = skill.match(
+    /node bin\/archify\.mjs authoring-kit <type> --json --context-json --expect-contract ([a-f0-9]{64})/,
+  );
+  assert.ok(command, 'SKILL.md must use the compact fail-closed authoring-kit command');
+  assert.equal(command[1], QUALITY_CONTRACT_DIGEST);
+});
 
 test('relationship labels remain semantic data and deletion is an auditable last resort', () => {
   for (const [name, source] of [['SKILL.md', skill], ['authoring contract', authoringContract]]) {

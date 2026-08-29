@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -14,10 +14,38 @@ const defaultPackageRoot = process.env.RUNNER_TEMP
 const skillRoot = path.resolve(process.argv[2] || defaultPackageRoot);
 const cli = path.join(skillRoot, 'bin', 'archify.mjs');
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-package-smoke-'));
+const authoringTypes = ['architecture', 'workflow', 'sequence', 'dataflow', 'lifecycle'];
+const requiredAuthoringRuntimes = [
+  path.join('authoring', 'quality-contract.mjs'),
+  path.join('authoring', 'authoring-run.mjs'),
+];
 
 function requireAbsent(relative) {
   if (fs.existsSync(path.join(skillRoot, relative))) {
     throw new Error(`packaged skill must not contain ${relative}`);
+  }
+}
+
+function requireAuthoringRuntime(relative) {
+  const target = path.join(skillRoot, relative);
+  let stat;
+  try {
+    stat = fs.statSync(target);
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
+  if (!stat?.isFile()) {
+    throw new Error(`packaged authoring runtime is missing: ${relative}`);
+  }
+  return target;
+}
+
+async function importAuthoringRuntime(relative) {
+  const target = requireAuthoringRuntime(relative);
+  try {
+    return await import(`${pathToFileURL(target).href}?package-smoke=${process.pid}`);
+  } catch (error) {
+    throw new Error(`packaged authoring runtime failed to import: ${relative}: ${error.message}`);
   }
 }
 
@@ -72,8 +100,26 @@ try {
   if (declaredDependencyField) {
     throw new Error(`packaged skill must not declare dependency metadata: ${declaredDependencyField}`);
   }
+  for (const runtime of requiredAuthoringRuntimes) requireAuthoringRuntime(runtime);
 
   const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+  const contractMatches = [...skill.matchAll(/--expect-contract[ \t]+([a-f0-9]{64})(?![a-f0-9])/g)];
+  if (contractMatches.length !== 1) {
+    throw new Error('packaged SKILL.md must contain exactly one --expect-contract <64hex>');
+  }
+  const expectedContract = contractMatches[0][1];
+  const qualityContractRuntime = await importAuthoringRuntime(
+    path.join('authoring', 'quality-contract.mjs'),
+  );
+  if (qualityContractRuntime.QUALITY_CONTRACT_DIGEST !== expectedContract) {
+    throw new Error(`packaged SKILL.md contract ${expectedContract} does not match the runtime contract ${qualityContractRuntime.QUALITY_CONTRACT_DIGEST || '<missing>'}`);
+  }
+  const authoringRunRuntime = await importAuthoringRuntime(
+    path.join('authoring', 'authoring-run.mjs'),
+  );
+  if (typeof authoringRunRuntime.AuthoringRun !== 'function') {
+    throw new Error('packaged authoring runtime did not export AuthoringRun');
+  }
   const skillReferences = [...skill.matchAll(
     /`((?:assets|bin|examples|recipes|references|renderers|schemas|scripts)\/[^`\s]+)`/g,
   )]
@@ -100,6 +146,26 @@ try {
   }
   run(['demo', path.join(scratch, 'demo')]);
   run(['examples']);
+
+  for (const type of authoringTypes) {
+    const packet = JSON.parse(run([
+      'authoring-kit',
+      type,
+      '--json',
+      '--context-json',
+      '--expect-contract',
+      expectedContract,
+    ]));
+    const contextFiles = ['schema', 'commonSchema', 'example'];
+    if (packet.type !== type || packet.contract?.quality?.sha256 !== expectedContract
+      || !contextFiles.every((name) => (
+        packet.files?.[name]?.document
+        && typeof packet.files[name].document === 'object'
+        && !Array.isArray(packet.files[name].document)
+      ))) {
+      throw new Error(`packaged ${type} authoring-kit did not return its complete pinned context`);
+    }
+  }
 
   const fixtures = [
     ['architecture', 'production-deployment.architecture.json'],

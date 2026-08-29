@@ -216,6 +216,10 @@ function compileTiming(eventsPath, { interruptedStatus = 'interrupted' } = {}) {
   const lastEvent = finish || events.at(-1);
   const endedAt = finish?.at || null;
   const durationMs = roundMs(lastEvent.elapsedMs);
+  const stagedMs = roundMs(stages.reduce(
+    (sum, stage) => sum + (Number.isFinite(stage.durationMs) ? stage.durationMs : 0),
+    0,
+  ));
   return {
     schemaVersion: TIMING_SCHEMA_VERSION,
     kind: TIMING_KIND,
@@ -227,6 +231,13 @@ function compileTiming(eventsPath, { interruptedStatus = 'interrupted' } = {}) {
     stages,
     milestones,
     finalReceipt,
+    ...(start.run?.measurementDomain === 'agent-authoring' ? {
+      accounting: {
+        stagedMs,
+        agentOverheadMs: roundMs(durationMs - stagedMs),
+        durationSource: 'monotonic-endpoints',
+      },
+    } : {}),
     eventLog: {
       path: absoluteEventsPath,
       eventCount: events.length,
@@ -244,6 +255,100 @@ export function recoverRunTiming(eventsPath, timingPath, options = {}) {
   const timing = compileTiming(eventsPath, options);
   writeAtomicJson(timingPath, timing);
   return timing;
+}
+
+function legacyStageEndpoints(stage, index) {
+  const startMs = stage?.startedAtMs ?? stage?.startMs;
+  const endMs = stage?.endedAtMs ?? stage?.endMs;
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    throw new TypeError(`authoring stage ${index + 1} must contain finite start and end markers.`);
+  }
+  if (endMs < startMs) {
+    throw new Error(`authoring stage ${index + 1} ends before it starts.`);
+  }
+  return { startMs, endMs };
+}
+
+/**
+ * Normalize the historical per-agent timing shapes into the same canonical
+ * timing receipt consumed by reporting. Legacy duration fields are treated as
+ * untrusted annotations: every duration is re-derived from endpoint markers.
+ */
+export function normalizeAuthoringTiming(source) {
+  const input = jsonValue(source, 'authoring timing');
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new TypeError('authoring timing must be an object.');
+  }
+  const startedMs = input.agentStartMs;
+  const endedMs = input.agentEndMs;
+  if (!Number.isFinite(startedMs) || !Number.isFinite(endedMs)) {
+    throw new TypeError('authoring timing must contain finite agentStartMs and agentEndMs.');
+  }
+  if (endedMs < startedMs) throw new Error('authoring timing ends before it starts.');
+
+  const stages = (Array.isArray(input.stages) ? input.stages : []).map((stage, index) => {
+    const name = assertName(stage?.name, `authoring stage ${index + 1} name`);
+    const endpoints = legacyStageEndpoints(stage, index);
+    if (endpoints.startMs < startedMs || endpoints.endMs > endedMs) {
+      throw new Error(`authoring stage ${JSON.stringify(name)} is outside the run endpoints.`);
+    }
+    return {
+      id: `stage-${index + 1}`,
+      name,
+      status: stage.status === 'failed' ? 'failed' : 'passed',
+      startedAt: new Date(endpoints.startMs).toISOString(),
+      endedAt: new Date(endpoints.endMs).toISOString(),
+      startOffsetMs: roundMs(endpoints.startMs - startedMs),
+      endOffsetMs: roundMs(endpoints.endMs - startedMs),
+      durationMs: roundMs(endpoints.endMs - endpoints.startMs),
+      metadata: {},
+      spans: [],
+      attempts: [],
+    };
+  });
+  for (let index = 1; index < stages.length; index += 1) {
+    if (stages[index].startOffsetMs < stages[index - 1].startOffsetMs) {
+      throw new Error(`Top-level authoring stages are not monotonic: ${stages[index - 1].name} and ${stages[index].name}.`);
+    }
+    if (stages[index].startOffsetMs < stages[index - 1].endOffsetMs) {
+      throw new Error(`Top-level authoring stages overlap: ${stages[index - 1].name} and ${stages[index].name}.`);
+    }
+  }
+  const durationMs = roundMs(endedMs - startedMs);
+  const stagedMs = roundMs(stages.reduce((sum, stage) => sum + stage.durationMs, 0));
+  return {
+    schemaVersion: TIMING_SCHEMA_VERSION,
+    kind: TIMING_KIND,
+    run: {
+      id: typeof input.runId === 'string' && input.runId.trim()
+        ? input.runId.trim()
+        : `authoring/${assertName(input.diagramType, 'diagramType')}`,
+      diagramType: assertName(input.diagramType, 'diagramType'),
+      measurementDomain: 'agent-authoring',
+      ...(input.repository && typeof input.repository === 'object'
+        ? { repository: input.repository }
+        : {}),
+    },
+    status: input.status === 'failed' ? 'failed' : 'completed',
+    startedAt: new Date(startedMs).toISOString(),
+    endedAt: new Date(endedMs).toISOString(),
+    durationMs,
+    stages,
+    milestones: [],
+    finalReceipt: null,
+    accounting: {
+      stagedMs,
+      agentOverheadMs: roundMs(durationMs - stagedMs),
+      durationSource: 'endpoints',
+    },
+    eventLog: {
+      path: null,
+      eventCount: 0,
+      durableAppend: false,
+      truncatedTail: false,
+      migratedFrom: 'legacy-agent-timing',
+    },
+  };
 }
 
 class Scope {

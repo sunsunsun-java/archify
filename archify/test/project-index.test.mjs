@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,6 +9,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   buildProjectIndex,
   createEvidenceLedger,
+  inspectProjectSource,
+  searchProjectSource,
   queryProjectIndex,
   repositoryIdentity,
   verifyEvidenceLedger,
@@ -78,6 +81,19 @@ function traceGitCalls(action) {
     ? fs.readFileSync(logPath, 'utf8').trim().split('\n').filter(Boolean).map((line) => JSON.parse(line))
     : [];
   return { result, calls };
+}
+
+function rehashProjectIndex(index) {
+  return createHash('sha256').update(JSON.stringify({
+    repository: {
+      origin: index.repository.origin,
+      revision: index.repository.revision,
+      objectFormat: index.repository.objectFormat,
+    },
+    files: index.files,
+    packages: index.packages,
+    analysis: index.analysis,
+  })).digest('hex');
 }
 
 test('project index pins repository facts, imports, symbols, and package metadata to one revision', () => {
@@ -151,6 +167,260 @@ test('project index query returns a compact mechanical slice with editable evide
   assert.deepEqual(packageReceipt.packages[0].matched, ['zod']);
   assert.throws(() => queryProjectIndex(index), /requires at least one/);
   assert.throws(() => queryProjectIndex(index, { symbols: ['run'], maxResults: 0 }), /1 through 200/);
+});
+
+test('source search reads line-numbered evidence from the pinned commit instead of the working tree', () => {
+  const data = fixture();
+  const index = buildProjectIndex({ repoRoot: data.root, revision: data.revision });
+  fs.writeFileSync(path.join(data.root, 'src', 'index.ts'), 'working tree answer should never be searched\n');
+
+  const receipt = searchProjectSource(index, {
+    terms: ['return answer'],
+    paths: ['src/index.ts'],
+    contextLines: 0,
+  });
+
+  assert.equal(receipt.schemaVersion, 1);
+  assert.equal(receipt.command, 'project-index-source-search');
+  assert.equal(receipt.indexDigest, index.digest);
+  assert.equal(receipt.repository.origin, 'https://github.com/example/indexed-app');
+  assert.equal(receipt.repository.revision, data.revision);
+  assert.match(receipt.repository.revision, /^[a-f0-9]{40}$/);
+  assert.equal(receipt.truncated, false);
+  assert.deepEqual(receipt.matches, [{
+    path: 'src/index.ts',
+    blobOid: index.files.find((file) => file.path === 'src/index.ts').blobOid,
+    line: 2,
+    endLine: 2,
+    matchedLines: [{ line: 2, terms: ['return answer'] }],
+    sourceLines: [{ line: 2, text: 'export function run() { return answer; }' }],
+    rangeSha256: '9baf13b41e5ca7d1b8f0e54af609d2aa5c69491e9e86c841e3034e32e5d4fe57',
+  }]);
+});
+
+test('source search batches multiple terms and paths with stable result limiting', () => {
+  const data = fixture();
+  const index = buildProjectIndex({ repoRoot: data.root, revision: data.revision });
+  const searched = traceGitCalls(() => searchProjectSource(index, {
+    terms: ['run', 'answer'],
+    paths: ['src/util.ts', 'src/index.ts'],
+    contextLines: 0,
+    maxResults: 2,
+  }));
+
+  assert.equal(searched.calls.filter((args) => args.includes('cat-file') && args.includes('--batch')).length, 1);
+  assert.deepEqual(searched.result.query.terms, ['answer', 'run']);
+  assert.deepEqual(searched.result.query.paths, ['src/index.ts', 'src/util.ts']);
+  assert.equal(searched.result.matchesFound, 3);
+  assert.equal(searched.result.returned, 2);
+  assert.equal(searched.result.truncated, true);
+  assert.deepEqual(searched.result.matches.map((match) => ({
+    path: match.path,
+    line: match.line,
+    matchedLines: match.matchedLines,
+  })), [
+    { path: 'src/index.ts', line: 1, matchedLines: [{ line: 1, terms: ['answer'] }] },
+    { path: 'src/index.ts', line: 2, matchedLines: [{ line: 2, terms: ['answer', 'run'] }] },
+  ]);
+});
+
+test('source inspect stably limits exact ranges and reads multiple paths in one blob batch', () => {
+  const data = fixture();
+  const index = buildProjectIndex({ repoRoot: data.root, revision: data.revision });
+  const inspected = traceGitCalls(() => inspectProjectSource(index, {
+    ranges: [
+      { path: 'src/util.ts', line: 1, endLine: 1 },
+      { path: 'src/index.ts', line: 2, endLine: 2 },
+      { path: 'package.json', line: 1, endLine: 1 },
+      { path: 'src/index.ts', line: 1, endLine: 1 },
+    ],
+    maxResults: 3,
+  }));
+
+  assert.equal(inspected.calls.filter((args) => args.includes('cat-file') && args.includes('--batch')).length, 1);
+  assert.equal(inspected.result.indexDigest, index.digest);
+  assert.equal(inspected.result.repository.revision, data.revision);
+  assert.equal(inspected.result.returned, 3);
+  assert.equal(inspected.result.truncated, true);
+  assert.deepEqual(inspected.result.ranges, [
+    {
+      path: 'package.json',
+      blobOid: index.files.find((file) => file.path === 'package.json').blobOid,
+      line: 1,
+      endLine: 1,
+      sourceLines: [{ line: 1, text: '{' }],
+      rangeSha256: '021fb596db81e6d02bf3d2586ee3981fe519f275c0ac9ca76bbcf2ebb4097d96',
+    },
+    {
+      path: 'src/index.ts',
+      blobOid: index.files.find((file) => file.path === 'src/index.ts').blobOid,
+      line: 1,
+      endLine: 1,
+      sourceLines: [{ line: 1, text: "import { answer } from './util.js';" }],
+      rangeSha256: '463ec5abd950497523b0eecfc2e514b7dc84e8b94f6b6fe20e5efff4e477bc01',
+    },
+    {
+      path: 'src/index.ts',
+      blobOid: index.files.find((file) => file.path === 'src/index.ts').blobOid,
+      line: 2,
+      endLine: 2,
+      sourceLines: [{ line: 2, text: 'export function run() { return answer; }' }],
+      rangeSha256: '9baf13b41e5ca7d1b8f0e54af609d2aa5c69491e9e86c841e3034e32e5d4fe57',
+    },
+  ]);
+});
+
+test('source packets fail closed for tampered origin, revision, index digest, and blob facts', () => {
+  const data = fixture();
+  const index = buildProjectIndex({ repoRoot: data.root, revision: data.revision });
+
+  const malformedIndex = structuredClone(index);
+  delete malformedIndex.files.find((file) => file.path === 'src/index.ts').mode;
+  malformedIndex.digest = rehashProjectIndex(malformedIndex);
+  assert.throws(
+    () => searchProjectSource(malformedIndex, { terms: ['answer'], paths: ['src/index.ts'] }),
+    (error) => error.code === 'evidence-ledger/index-invalid',
+  );
+
+  const originTampered = structuredClone(index);
+  originTampered.repository.origin = 'https://github.com/example/not-the-repository';
+  originTampered.digest = rehashProjectIndex(originTampered);
+  assert.throws(
+    () => searchProjectSource(originTampered, { terms: ['answer'], paths: ['src/index.ts'] }),
+    (error) => error.code === 'project-index/source-origin-mismatch',
+  );
+
+  const digestTampered = structuredClone(index);
+  digestTampered.digest = `${index.digest[0] === '0' ? '1' : '0'}${index.digest.slice(1)}`;
+  assert.throws(
+    () => searchProjectSource(digestTampered, { terms: ['answer'], paths: ['src/index.ts'] }),
+    (error) => error.code === 'evidence-ledger/index-digest-mismatch',
+  );
+
+  const blobTampered = structuredClone(index);
+  blobTampered.files.find((file) => file.path === 'src/index.ts').blobOid = '0'.repeat(40);
+  blobTampered.digest = rehashProjectIndex(blobTampered);
+  assert.throws(
+    () => inspectProjectSource(blobTampered, {
+      ranges: [{ path: 'src/index.ts', line: 1, endLine: 1 }],
+    }),
+    (error) => error.code === 'project-index/source-tree-mismatch',
+  );
+
+  fs.writeFileSync(path.join(data.root, 'src', 'later.ts'), 'export const later = true;\n');
+  git(data.root, 'add', '.');
+  git(data.root, 'commit', '-m', 'later revision');
+  const revisionTampered = structuredClone(index);
+  revisionTampered.repository.revision = git(data.root, 'rev-parse', 'HEAD');
+  revisionTampered.digest = rehashProjectIndex(revisionTampered);
+
+  assert.throws(
+    () => searchProjectSource(revisionTampered, { terms: ['return answer'], paths: ['src/index.ts'] }),
+    (error) => error.code === 'project-index/source-tree-mismatch',
+  );
+});
+
+test('source packet queries reject unbounded term, path, and inspect-range inputs', () => {
+  const data = fixture();
+  const index = buildProjectIndex({ repoRoot: data.root, revision: data.revision });
+  assert.throws(
+    () => searchProjectSource(index, { terms: Array.from({ length: 201 }, (_, value) => `term-${value}`) }),
+    (error) => error.code === 'project-index/source-query-limit',
+  );
+  assert.throws(
+    () => searchProjectSource(index, {
+      terms: ['answer'],
+      paths: Array.from({ length: 201 }, (_, value) => `src/path-${value}.ts`),
+    }),
+    (error) => error.code === 'project-index/source-query-limit',
+  );
+  assert.throws(
+    () => inspectProjectSource(index, {
+      ranges: Array.from({ length: 1001 }, () => ({ path: 'src/index.ts', line: 1, endLine: 1 })),
+    }),
+    (error) => error.code === 'project-index/source-query-limit',
+  );
+});
+
+test('project-index source-search CLI emits a bounded revision-pinned source receipt', () => {
+  const data = fixture();
+  const index = buildProjectIndex({ repoRoot: data.root, revision: data.revision });
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-source-search-cli-'));
+  const indexPath = path.join(directory, 'project-index.json');
+  const outputPath = path.join(directory, 'source-search.json');
+  fs.writeFileSync(indexPath, JSON.stringify(index));
+  fs.writeFileSync(path.join(data.root, 'src', 'index.ts'), 'uncommitted source must not appear\n');
+
+  const result = spawnSync(process.execPath, [
+    cli,
+    'project-index',
+    'source-search',
+    indexPath,
+    '--term', 'return answer',
+    '--term=missing literal',
+    '--path', 'src',
+    '--context', '0',
+    '--max-results', '1',
+    '--output', outputPath,
+    '--json',
+  ], { cwd: skillRoot, encoding: 'utf8' });
+
+  assert.equal(result.status, 0, result.stderr);
+  const receipt = JSON.parse(result.stdout);
+  assert.deepEqual(JSON.parse(fs.readFileSync(outputPath, 'utf8')), receipt);
+  assert.equal(receipt.command, 'project-index-source-search');
+  assert.equal(receipt.indexDigest, index.digest);
+  assert.equal(receipt.repository.revision, data.revision);
+  assert.deepEqual(receipt.query, {
+    terms: ['missing literal', 'return answer'],
+    paths: ['src'],
+    contextLines: 0,
+    maxResults: 1,
+  });
+  assert.equal(receipt.returned, 1);
+  assert.equal(receipt.matches[0].sourceLines[0].text, 'export function run() { return answer; }');
+});
+
+test('project-index inspect CLI resolves explicit ranges from the index revision', () => {
+  const data = fixture();
+  const index = buildProjectIndex({ repoRoot: data.root, revision: data.revision });
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-source-inspect-cli-'));
+  const indexPath = path.join(directory, 'project-index.json');
+  const outputPath = path.join(directory, 'source-inspect.json');
+  fs.writeFileSync(indexPath, JSON.stringify(index));
+
+  const result = spawnSync(process.execPath, [
+    cli,
+    'project-index',
+    'inspect',
+    indexPath,
+    '--range', 'src/util.ts:1-1',
+    '--range=src/index.ts:1-2',
+    '--max-results', '1',
+    '--output', outputPath,
+    '--json',
+  ], { cwd: skillRoot, encoding: 'utf8' });
+
+  assert.equal(result.status, 0, result.stderr);
+  const receipt = JSON.parse(result.stdout);
+  assert.deepEqual(JSON.parse(fs.readFileSync(outputPath, 'utf8')), receipt);
+  assert.equal(receipt.command, 'project-index-source-inspect');
+  assert.equal(receipt.indexDigest, index.digest);
+  assert.equal(receipt.repository.revision, data.revision);
+  assert.equal(receipt.requested, 2);
+  assert.equal(receipt.returned, 1);
+  assert.equal(receipt.truncated, true);
+  assert.deepEqual(receipt.ranges[0], {
+    path: 'src/index.ts',
+    blobOid: index.files.find((file) => file.path === 'src/index.ts').blobOid,
+    line: 1,
+    endLine: 2,
+    sourceLines: [
+      { line: 1, text: "import { answer } from './util.js';" },
+      { line: 2, text: 'export function run() { return answer; }' },
+    ],
+    rangeSha256: '0f869bdeaa85dd46327c490808cf6f757529ba42451f387ceb6f3c4558302112',
+  });
 });
 
 test('project-index query and evidence-ledger hydrate CLI avoid full-index rediscovery', () => {

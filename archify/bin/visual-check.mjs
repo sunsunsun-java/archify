@@ -13,6 +13,7 @@ export const VISUAL_CHECK_VIEWPORTS = Object.freeze([
   Object.freeze({ width: 2048, height: 1320 }),
 ]);
 export const VISUAL_PREFLIGHT_VIEWPORTS = VISUAL_CHECK_VIEWPORTS;
+export const VISUAL_RECEIPT_SCHEMA_VERSION = 2;
 
 const CAPTURE_VIEWPORTS = Object.freeze([
   Object.freeze({ width: 1440, height: 900 }),
@@ -24,6 +25,130 @@ export const CHROME_NO_SANDBOX_ENV = 'ARCHIFY_CHROME_NO_SANDBOX';
 
 function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
+}
+
+class ScreenshotEvidenceError extends Error {
+  constructor(message, evidence) {
+    super(message);
+    this.name = 'ScreenshotEvidenceError';
+    this.evidence = evidence;
+  }
+}
+
+const PNG_SIGNATURE = Buffer.from('89504e470d0a1a0a', 'hex');
+const PNG_CRC_TABLE = Object.freeze(Array.from({ length: 256 }, (_, index) => {
+  let value = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    value = (value >>> 1) ^ (value & 1 ? 0xedb88320 : 0);
+  }
+  return value >>> 0;
+}));
+
+function pngCrc32(parts) {
+  let crc = 0xffffffff;
+  for (const part of parts) {
+    for (const byte of part) {
+      crc = (crc >>> 8) ^ PNG_CRC_TABLE[(crc ^ byte) & 0xff];
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function parsePngStructure(buffer) {
+  if (buffer.byteLength < 45 || !buffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
+    throw new Error('missing PNG signature or required chunks');
+  }
+  let offset = 8;
+  let width = null;
+  let height = null;
+  let sawIdat = false;
+  let sawIend = false;
+  let chunkIndex = 0;
+  while (offset < buffer.byteLength) {
+    if (offset + 12 > buffer.byteLength) throw new Error('truncated PNG chunk header');
+    const length = buffer.readUInt32BE(offset);
+    const typeStart = offset + 4;
+    const dataStart = offset + 8;
+    const dataEnd = dataStart + length;
+    const chunkEnd = dataEnd + 4;
+    if (chunkEnd > buffer.byteLength) throw new Error('truncated PNG chunk data');
+    const typeBytes = buffer.subarray(typeStart, dataStart);
+    const type = typeBytes.toString('ascii');
+    const data = buffer.subarray(dataStart, dataEnd);
+    if (buffer.readUInt32BE(dataEnd) !== pngCrc32([typeBytes, data])) {
+      throw new Error(`invalid ${type || 'unknown'} chunk CRC`);
+    }
+    if (chunkIndex === 0 && (type !== 'IHDR' || length !== 13)) {
+      throw new Error('first chunk must be a 13-byte IHDR');
+    }
+    if (type === 'IHDR') {
+      if (chunkIndex !== 0 || width !== null) throw new Error('duplicate or misplaced IHDR');
+      width = data.readUInt32BE(0);
+      height = data.readUInt32BE(4);
+      if (width < 1 || height < 1) throw new Error('IHDR dimensions must be positive');
+      if (data[10] !== 0 || data[11] !== 0 || ![0, 1].includes(data[12])) {
+        throw new Error('unsupported IHDR compression, filter, or interlace method');
+      }
+    } else if (type === 'IDAT') {
+      if (width === null || sawIend) throw new Error('misplaced IDAT');
+      sawIdat = true;
+    } else if (type === 'IEND') {
+      if (length !== 0 || !sawIdat) throw new Error('invalid IEND or missing IDAT');
+      sawIend = true;
+      if (chunkEnd !== buffer.byteLength) throw new Error('data follows IEND');
+    }
+    offset = chunkEnd;
+    chunkIndex += 1;
+  }
+  if (width === null || !sawIdat || !sawIend) throw new Error('missing IHDR, IDAT, or IEND');
+  return { width, height };
+}
+
+function screenshotEvidence(file, { width, height }) {
+  let buffer;
+  try {
+    buffer = fs.readFileSync(file);
+  } catch (error) {
+    throw new ScreenshotEvidenceError(
+      `The expected screenshot could not be read: ${error.message}`,
+      { file, expected: { width, height }, actual: null, reason: error.message },
+    );
+  }
+  let pixels;
+  try {
+    pixels = parsePngStructure(buffer);
+  } catch (error) {
+    throw new ScreenshotEvidenceError(
+      `Chrome screenshot evidence does not have a complete PNG chunk structure: ${error.message}.`,
+      {
+        file,
+        expected: { width, height },
+        actual: null,
+        bytes: buffer.byteLength,
+        sha256: sha256(buffer),
+      },
+    );
+  }
+  const pixelWidth = pixels.width;
+  const pixelHeight = pixels.height;
+  if (pixelWidth !== width || pixelHeight !== height) {
+    throw new ScreenshotEvidenceError(
+      `Chrome screenshot pixels ${pixelWidth}x${pixelHeight} do not match the requested ${width}x${height} viewport.`,
+      {
+        file,
+        expected: { width, height },
+        actual: { width: pixelWidth, height: pixelHeight },
+        bytes: buffer.byteLength,
+        sha256: sha256(buffer),
+      },
+    );
+  }
+  return {
+    sha256: sha256(buffer),
+    bytes: buffer.byteLength,
+    pixelWidth,
+    pixelHeight,
+  };
 }
 
 function htmlEscape(value) {
@@ -469,6 +594,7 @@ export class ChromeVisualBrowser {
         ].filter(Boolean).join('\n');
       },
     });
+    this.loadedArtifactTheme = null;
     this.sessionPromise = this.attach();
   }
 
@@ -516,33 +642,31 @@ export class ChromeVisualBrowser {
 
     const url = new URL(pathToFileURL(artifactPath).href);
     url.searchParams.set('theme', theme);
-    const loaded = this.cdp.waitFor('Page.loadEventFired', sessionId);
-    const navigation = await this.cdp.send('Page.navigate', { url: url.href }, sessionId);
-    if (navigation.errorText) throw new Error(`Chrome navigation failed: ${navigation.errorText}`);
-    await loaded;
+    if (this.loadedArtifactTheme !== url.href) {
+      const loaded = this.cdp.waitFor('Page.loadEventFired', sessionId);
+      const navigation = await this.cdp.send('Page.navigate', { url: url.href }, sessionId);
+      if (navigation.errorText) throw new Error(`Chrome navigation failed: ${navigation.errorText}`);
+      await loaded;
+      this.loadedArtifactTheme = url.href;
+    }
     await evaluate(this.cdp, sessionId, `(function () {
       document.documentElement.setAttribute('data-motion', 'still');
       var panel = document.querySelector('.diagram-container');
       if (panel) panel.setAttribute('data-detail-level', 'read');
+      function stableRound() {
+        var barriers = [];
+        if (window.Archify && Archify.readerLayout && typeof Archify.readerLayout.whenStable === 'function') {
+          barriers.push(Archify.readerLayout.whenStable());
+        }
+        if (window.Archify && Archify.viewerChromeLayout && typeof Archify.viewerChromeLayout.whenStable === 'function') {
+          barriers.push(Archify.viewerChromeLayout.whenStable());
+        }
+        return Promise.all(barriers);
+      }
       var fontsReady = document.fonts && document.fonts.ready
         ? document.fonts.ready.catch(function () {})
         : Promise.resolve();
-      return fontsReady.then(function () {
-        if (window.Archify && Archify.readerLayout && typeof Archify.readerLayout.whenStable === 'function') {
-          return Archify.readerLayout.whenStable();
-        }
-      }).then(function () {
-        if (window.Archify && Archify.viewerChromeLayout && typeof Archify.viewerChromeLayout.whenStable === 'function') {
-          return Archify.viewerChromeLayout.whenStable();
-        }
-      }).then(function () {
-        if (window.Archify && Archify.readerLayout && typeof Archify.readerLayout.whenStable === 'function') {
-          return Archify.readerLayout.whenStable();
-        }
-      }).then(function () {
-        if (window.Archify && Archify.viewerChromeLayout && typeof Archify.viewerChromeLayout.whenStable === 'function') {
-          return Archify.viewerChromeLayout.whenStable();
-        }
+      return fontsReady.then(stableRound).then(stableRound).then(function () {
         return new Promise(function (resolve) {
           requestAnimationFrame(function () { requestAnimationFrame(resolve); });
         });
@@ -645,6 +769,8 @@ export class ChromeVisualBrowser {
         scrollWidth: Math.ceil(document.documentElement.scrollWidth),
         scrollHeight: Math.ceil(document.documentElement.scrollHeight),
         resolvedTheme: document.documentElement.getAttribute('data-theme') || '',
+        detailLevel: diagram ? diagram.getAttribute('data-detail-level') || '' : '',
+        motion: document.documentElement.getAttribute('data-motion') || '',
         readerWidth: reader ? reader.getBoundingClientRect().width : 0,
         diagramWidth: diagramWidth,
         viewBoxWidth: viewBoxWidth,
@@ -686,7 +812,7 @@ export class ChromeVisualBrowser {
       captureBeyondViewport: false,
     }, sessionId, 20000);
     if (!capture.data) throw new Error('Chrome returned an empty screenshot.');
-    fs.writeFileSync(screenshotPath, Buffer.from(capture.data, 'base64'));
+    writeAtomic(screenshotPath, Buffer.from(capture.data, 'base64'));
   }
 
   async reset() {
@@ -715,6 +841,7 @@ export class ChromeVisualBrowser {
     await loaded;
     const href = await evaluate(this.cdp, sessionId, 'location.href');
     if (href !== 'about:blank') throw new Error(`Chrome reset failed closed: expected about:blank, received ${href}.`);
+    this.loadedArtifactTheme = null;
   }
 
   async close() {
@@ -938,6 +1065,12 @@ function observation({ width, height, theme, metrics }) {
     && dockStageGap >= requiredDockStageGap - 1
   );
   const viewerChromeOk = legendDockIntersectionArea <= 0.5 && viewerChromeStageOk;
+  const resolvedTheme = typeof metrics.resolvedTheme === 'string' ? metrics.resolvedTheme : '';
+  const detailLevel = typeof metrics.detailLevel === 'string' ? metrics.detailLevel : '';
+  const motion = typeof metrics.motion === 'string' ? metrics.motion : '';
+  const themeStateOk = resolvedTheme === theme;
+  const detailStateOk = detailLevel === 'read';
+  const motionStateOk = motion === 'still';
   return {
     width,
     height,
@@ -969,7 +1102,14 @@ function observation({ width, height, theme, metrics }) {
     viewerChromeReserve: Number(metrics.viewerChromeReserve) || 0,
     viewerChromeActive: Boolean(metrics.viewerChromeActive),
     viewerChromeOk,
-    resolvedTheme: metrics.resolvedTheme || theme,
+    requestedTheme: theme,
+    resolvedTheme,
+    detailLevel,
+    motion,
+    themeStateOk,
+    detailStateOk,
+    motionStateOk,
+    stateOk: themeStateOk && detailStateOk && motionStateOk,
     readerLayout: {
       active: Boolean(metrics.readerLayoutActive),
       overflowState: metrics.readerOverflowState || null,
@@ -990,7 +1130,14 @@ function containmentObservation({ width, height, theme, metrics }) {
     width: entry.width,
     height: entry.height,
     theme: entry.theme,
+    requestedTheme: entry.requestedTheme,
     resolvedTheme: entry.resolvedTheme,
+    detailLevel: entry.detailLevel,
+    motion: entry.motion,
+    themeStateOk: entry.themeStateOk,
+    detailStateOk: entry.detailStateOk,
+    motionStateOk: entry.motionStateOk,
+    stateOk: entry.stateOk,
     innerWidth: entry.innerWidth,
     innerHeight: entry.innerHeight,
     scrollWidth: entry.scrollWidth,
@@ -1073,8 +1220,57 @@ function containmentDiagnostics({ artifact, observations, command = 'visual-chec
   return diagnostics;
 }
 
+function stateDiagnostics({ artifact, observations, command = 'visual-check' }) {
+  const diagnostics = [];
+  for (const entry of observations) {
+    if (!entry.themeStateOk) {
+      diagnostics.push(failureDiagnostic({
+        code: 'viewer/theme-state',
+        message: `The viewer resolved ${entry.resolvedTheme || 'no theme'} instead of the requested ${entry.requestedTheme} theme at ${entry.width}x${entry.height}.`,
+        subject: viewportSubject(artifact, entry),
+        evidence: { requested: entry.requestedTheme, resolved: entry.resolvedTheme || null },
+        supportedFixes: [`make the viewer resolve the requested ${entry.requestedTheme} theme, then rerun ${command}`],
+      }));
+    }
+    if (!entry.detailStateOk) {
+      diagnostics.push(failureDiagnostic({
+        code: 'viewer/detail-state',
+        message: `The viewer resolved ${entry.detailLevel || 'no detail state'} instead of READ detail at ${entry.width}x${entry.height} (${entry.theme}).`,
+        subject: viewportSubject(artifact, entry),
+        evidence: { requested: 'read', resolved: entry.detailLevel || null },
+        supportedFixes: [`make the diagram container resolve READ detail, then rerun ${command}`],
+      }));
+    }
+    if (!entry.motionStateOk) {
+      diagnostics.push(failureDiagnostic({
+        code: 'viewer/motion-state',
+        message: `The viewer resolved ${entry.motion || 'no motion state'} instead of Still motion at ${entry.width}x${entry.height} (${entry.theme}).`,
+        subject: viewportSubject(artifact, entry),
+        evidence: { requested: 'still', resolved: entry.motion || null },
+        supportedFixes: [`make the viewer resolve Still motion, then rerun ${command}`],
+      }));
+    }
+  }
+  return diagnostics;
+}
+
+function stateReceiptObservations(observations) {
+  return observations.map((entry) => ({
+    width: entry.width,
+    height: entry.height,
+    requestedTheme: entry.requestedTheme,
+    resolvedTheme: entry.resolvedTheme,
+    detailLevel: entry.detailLevel,
+    motion: entry.motion,
+    ok: entry.stateOk,
+  }));
+}
+
 function observationDiagnostics({ artifact, allObservations, readabilityObservations }) {
-  const diagnostics = containmentDiagnostics({ artifact, observations: allObservations });
+  const diagnostics = [
+    ...containmentDiagnostics({ artifact, observations: allObservations }),
+    ...stateDiagnostics({ artifact, observations: allObservations }),
+  ];
   for (const entry of allObservations) {
     if (entry.legendDockIntersectionArea > 0.5) {
       diagnostics.push(failureDiagnostic({
@@ -1129,7 +1325,7 @@ function observationDiagnostics({ artifact, allObservations, readabilityObservat
 function baseReceipt({ artifactPath, artifact, outputs, chrome }) {
   const initialSha256 = sha256(artifact);
   return {
-    schemaVersion: 1,
+    schemaVersion: VISUAL_RECEIPT_SCHEMA_VERSION,
     ok: false,
     command: 'visual-check',
     status: 'fail',
@@ -1144,7 +1340,7 @@ function baseReceipt({ artifactPath, artifact, outputs, chrome }) {
         unchanged: null,
       },
     },
-    state: { detail: 'read', motion: 'still' },
+    state: { detail: 'read', motion: 'still', status: 'fail', observations: [] },
     chrome,
     diagnostics: [],
     containment: { status: 'fail', viewports: [] },
@@ -1207,7 +1403,7 @@ function artifactChangedDiagnostic({ receipt, artifact, command, capabilityError
 function basePreflightReceipt({ artifactPath, artifact, outputs, chrome }) {
   const initialSha256 = sha256(artifact);
   return {
-    schemaVersion: 1,
+    schemaVersion: VISUAL_RECEIPT_SCHEMA_VERSION,
     ok: false,
     command: 'visual-preflight',
     status: 'fail',
@@ -1222,7 +1418,9 @@ function basePreflightReceipt({ artifactPath, artifact, outputs, chrome }) {
         unchanged: null,
       },
     },
-    state: { detail: 'read', motion: 'still', theme: 'light' },
+    state: {
+      detail: 'read', motion: 'still', theme: 'light', status: 'fail', observations: [],
+    },
     chrome,
     diagnostics: [],
     containment: { status: 'fail', viewports: [] },
@@ -1239,6 +1437,7 @@ function unavailableReceipt({ receipt, capability, artifact, command }) {
   receipt.error = capability.error
     || 'Chrome or Chromium is unavailable. Set ARCHIFY_CHROME to its executable path.';
   receipt.chrome = capability.chrome;
+  receipt.state.status = receipt.status === 'skipped' ? 'skipped' : 'fail';
   receipt.containment.status = receipt.status === 'skipped' ? 'skipped' : 'fail';
   if (receipt.readability) receipt.readability.status = receipt.status === 'skipped' ? 'skipped' : 'fail';
   if (receipt.viewerChrome) receipt.viewerChrome.status = receipt.status === 'skipped' ? 'skipped' : 'fail';
@@ -1334,8 +1533,9 @@ export async function runVisualCheck(options = {}) {
   }
 
   try {
-    const observations = await activeSession.useBrowser(async (browser) => {
+    const inspection = await activeSession.useBrowser(async (browser) => {
       const values = new Map();
+      const captures = new Map();
       const screenshotsByKey = new Map(outputs.screenshots.map((entry) => [
         screenshotKey(entry.width, entry.height, entry.theme),
         entry,
@@ -1351,6 +1551,9 @@ export async function runVisualCheck(options = {}) {
           ...(screenshot ? { screenshotPath: screenshot.path } : {}),
         });
         values.set(key, observation({ ...viewport, theme: 'light', metrics }));
+        if (screenshot) {
+          captures.set(key, screenshotEvidence(screenshot.path, viewport));
+        }
       }
       for (const viewport of CAPTURE_VIEWPORTS) {
         const key = screenshotKey(viewport.width, viewport.height, 'dark');
@@ -1362,36 +1565,41 @@ export async function runVisualCheck(options = {}) {
           screenshotPath: screenshot.path,
         });
         values.set(key, observation({ ...viewport, theme: 'dark', metrics }));
+        captures.set(key, screenshotEvidence(screenshot.path, viewport));
       }
-      return values;
+      return { observations: values, captures };
     }, { finalArtifact: isFinalArtifact });
     assertArtifactUnchanged(artifact, receipt);
 
     receipt.containment.viewports = VISUAL_CHECK_VIEWPORTS.map(({ width, height }) => (
-      observations.get(screenshotKey(width, height, 'light'))
+      inspection.observations.get(screenshotKey(width, height, 'light'))
     ));
     receipt.readability.viewports = receipt.containment.viewports.map((entry) => ({ ...entry }));
     receipt.viewerChrome.viewports = receipt.containment.viewports.map((entry) => ({ ...entry }));
     receipt.captures.screenshots = outputs.screenshots.map((entry) => ({
-      ...observations.get(screenshotKey(entry.width, entry.height, entry.theme)),
+      ...inspection.observations.get(screenshotKey(entry.width, entry.height, entry.theme)),
+      ...inspection.captures.get(screenshotKey(entry.width, entry.height, entry.theme)),
       file: path.basename(entry.path),
     }));
-    const allObservations = [...observations.values()];
+    const allObservations = [...inspection.observations.values()];
     const containmentPass = allObservations.every((entry) => entry.ok);
-    const readabilityPass = receipt.readability.viewports.every((entry) => entry.readabilityOk);
+    const readabilityPass = allObservations.every((entry) => entry.readabilityOk);
     const viewerChromePass = allObservations.every((entry) => entry.viewerChromeOk);
+    const statePass = allObservations.every((entry) => entry.stateOk);
+    receipt.state.observations = stateReceiptObservations(allObservations);
+    receipt.state.status = statePass ? 'pass' : 'fail';
     receipt.diagnostics = observationDiagnostics({
       artifact,
       allObservations,
-      readabilityObservations: receipt.readability.viewports,
+      readabilityObservations: allObservations,
     });
     receipt.containment.status = containmentPass ? 'pass' : 'fail';
     receipt.readability.status = readabilityPass ? 'pass' : 'fail';
     receipt.viewerChrome.status = viewerChromePass ? 'pass' : 'fail';
     receipt.captures.status = 'pass';
     receipt.captures.contactSheet = path.basename(outputs.contactSheet);
-    receipt.status = containmentPass && readabilityPass && viewerChromePass ? 'pass' : 'fail';
-    receipt.ok = containmentPass && readabilityPass && viewerChromePass;
+    receipt.status = containmentPass && readabilityPass && viewerChromePass && statePass ? 'pass' : 'fail';
+    receipt.ok = containmentPass && readabilityPass && viewerChromePass && statePass;
     writeAtomic(outputs.contactSheet, contactSheetHtml({
       artifactPath: artifact,
       receipt,
@@ -1408,19 +1616,28 @@ export async function runVisualCheck(options = {}) {
     receipt.status = 'fail';
     receipt.ok = false;
     receipt.error = integrityDiagnostic?.message || error.message;
+    receipt.state.status = 'fail';
     receipt.containment.status = 'fail';
     receipt.readability.status = 'fail';
     receipt.viewerChrome.status = 'fail';
     receipt.captures.status = 'fail';
     receipt.captures.screenshots = [];
     receipt.captures.contactSheet = null;
-    receipt.diagnostics = integrityDiagnostic ? [integrityDiagnostic] : [failureDiagnostic({
-      code: 'viewer/visual-check-runtime',
-      message: 'visual-check could not complete its Chrome inspection.',
-      subject: { artifact },
-      evidence: { reason: error.message },
-      supportedFixes: ['resolve the reported Chrome inspection error, then rerun visual-check'],
-    })];
+    receipt.diagnostics = integrityDiagnostic ? [integrityDiagnostic] : [error instanceof ScreenshotEvidenceError
+      ? failureDiagnostic({
+        code: 'viewer/screenshot-evidence',
+        message: error.message,
+        subject: { artifact },
+        evidence: error.evidence,
+        supportedFixes: ['recapture the exact requested viewport and verify its PNG evidence, then rerun visual-check'],
+      })
+      : failureDiagnostic({
+        code: 'viewer/visual-check-runtime',
+        message: 'visual-check could not complete its Chrome inspection.',
+        subject: { artifact },
+        evidence: { reason: error.message },
+        supportedFixes: ['resolve the reported Chrome inspection error, then rerun visual-check'],
+      })];
     persistReceipt(outputs, receipt);
     return { exitCode: EXIT.fail, receipt };
   } finally {
@@ -1496,12 +1713,15 @@ export async function runVisualPreflight({
                 screenshotPath: outputs.diagnosticScreenshot,
               });
             }
+            const evidence = screenshotEvidence(outputs.diagnosticScreenshot, viewport);
             diagnostic = {
               ...entry,
+              ...evidence,
               file: path.basename(outputs.diagnosticScreenshot),
             };
           } catch (error) {
-            captureError = error.message;
+            safeUnlink(outputs.diagnosticScreenshot);
+            captureError = error;
           }
         }
       }
@@ -1510,27 +1730,42 @@ export async function runVisualPreflight({
     assertArtifactUnchanged(artifact, receipt);
 
     const containmentPass = result.viewports.every((entry) => entry.ok);
+    const statePass = result.viewports.every((entry) => entry.stateOk);
+    receipt.state.observations = stateReceiptObservations(result.viewports);
+    receipt.state.status = statePass ? 'pass' : 'fail';
     receipt.containment.viewports = result.viewports;
     receipt.containment.status = containmentPass ? 'pass' : 'fail';
     receipt.captures.status = result.diagnostic ? 'diagnostic' : 'not-requested';
     receipt.captures.screenshots = result.diagnostic ? [result.diagnostic] : [];
-    receipt.diagnostics = containmentDiagnostics({
-      artifact,
-      observations: result.viewports,
-      command: 'visual-preflight',
-    });
+    receipt.diagnostics = [
+      ...containmentDiagnostics({
+        artifact,
+        observations: result.viewports,
+        command: 'visual-preflight',
+      }),
+      ...stateDiagnostics({
+        artifact,
+        observations: result.viewports,
+        command: 'visual-preflight',
+      }),
+    ];
     if (result.captureError) {
       receipt.diagnostics.push(failureDiagnostic({
         code: 'viewer/preflight-diagnostic-capture',
         severity: 'warning',
         message: 'Containment failed and the optional diagnostic screenshot could not be captured.',
         subject: { artifact },
-        evidence: { reason: result.captureError },
+        evidence: {
+          reason: result.captureError.message,
+          ...(result.captureError instanceof ScreenshotEvidenceError
+            ? { screenshot: result.captureError.evidence }
+            : {}),
+        },
         supportedFixes: ['use the structured containment metrics to repair overflow, then rerun visual-preflight'],
       }));
     }
-    receipt.ok = containmentPass;
-    receipt.status = containmentPass ? 'pass' : 'fail';
+    receipt.ok = containmentPass && statePass;
+    receipt.status = receipt.ok ? 'pass' : 'fail';
     persistReceipt(outputs, receipt);
     return { exitCode: receipt.ok ? EXIT.pass : EXIT.fail, receipt };
   } catch (error) {
@@ -1542,6 +1777,7 @@ export async function runVisualPreflight({
     receipt.status = 'fail';
     receipt.ok = false;
     receipt.error = integrityDiagnostic?.message || error.message;
+    receipt.state.status = 'fail';
     receipt.containment.status = 'fail';
     receipt.captures.status = 'fail';
     receipt.captures.screenshots = [];

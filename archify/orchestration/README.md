@@ -111,3 +111,51 @@ actual child process, so model/agent marker gaps are not misreported as CLI
 runtime.
 Deterministic validation and browser screenshots never promote the independent
 human review to `passed`.
+
+## Authoring-run library seam
+
+Model-assisted authoring uses the `AuthoringRun` library seam; it does not ask
+an agent to calculate durations or write timing/report JSON. Callers execute
+named work inside `stage()` and finish with paths to the frozen candidate,
+EvidenceLedger, and final validation receipt:
+
+```js
+import { AuthoringRun } from '../authoring/authoring-run.mjs';
+
+const authoring = AuthoringRun.open({
+  run: { id: 'repository/workflow', diagramType: 'workflow', repository },
+  outputDirectory,
+});
+await authoring.stage('candidate-authoring', authorCandidate);
+await authoring.stage('deterministic-validation', validateCandidate);
+const result = authoring.finalize({ candidatePath, evidencePath, validationPath });
+```
+
+`finalize()` mechanically emits `timing.events.jsonl`, canonical `timing.json`,
+digest-bound `handoff.json`, and receipt-derived `authoring-report.md`. The
+handoff is only ready when the validation receipt contains exactly 9/9 passing
+checks and 0 errors/warnings. Unstaged time inside the measured authoring
+envelope is explicitly reported as `agent-overhead`, never as child-process
+runtime. `normalizeAuthoringTiming()` remains the migration adapter for the
+five historical handwritten timing shapes; its duration fields are always
+re-derived from endpoint markers.
+
+For model-assisted work that spans multiple processes, the CLI delegates to a
+durable envelope adapter in the same module:
+
+```bash
+node bin/archify.mjs authoring-run start workflow \
+  --run-id repository/workflow --output ./run --json
+
+node bin/archify.mjs authoring-run finalize ./run/authoring-run.json \
+  --candidate ./workflow.json \
+  --evidence ./workflow.evidence-ledger.json \
+  --validation ./workflow.validation.json \
+  --json
+```
+
+`start` owns the wall-clock anchor plus the host monotonic start marker and
+writes only `authoring-run.json`. `finalize` owns the monotonic end marker,
+validates the frozen receipts, and mechanically
+writes `timing.json`, `handoff.json`, and `authoring-report.md`. The CLI accepts
+no agent-supplied duration, stage timing, quality claim, or report prose.

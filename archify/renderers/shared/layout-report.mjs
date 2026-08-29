@@ -86,9 +86,39 @@ export function resolvedLayoutReport({
   entities,
   relationships,
   labels,
+  constraints,
   extras = {},
   compatibility = {},
 }) {
+  const normalizedConstraints = constraints ? {
+    viewBox: {
+      current: {
+        width: layoutNumber(viewBox[0]),
+        height: layoutNumber(viewBox[1]),
+      },
+      ...(Number.isFinite(constraints.minViewBoxWidth)
+        ? { minViewBoxWidth: layoutNumber(constraints.minViewBoxWidth) }
+        : {}),
+      ...(Number.isFinite(constraints.maxReadableViewBoxWidth)
+        ? { maxReadableViewBoxWidth: layoutNumber(constraints.maxReadableViewBoxWidth) }
+        : {}),
+      ...(Number.isFinite(constraints.minViewBoxWidth) && Number.isFinite(constraints.maxReadableViewBoxWidth)
+        ? { widthFeasible: constraints.minViewBoxWidth <= constraints.maxReadableViewBoxWidth }
+        : {}),
+      ...(Number.isFinite(constraints.minViewBoxHeight)
+        ? { minViewBoxHeight: layoutNumber(constraints.minViewBoxHeight) }
+        : {}),
+      ...(constraints.limitingText?.path && Number.isFinite(constraints.limitingText.sourceFontPx)
+        ? {
+            limitingText: {
+              path: constraints.limitingText.path,
+              ...(constraints.limitingText.id ? { id: constraints.limitingText.id } : {}),
+              sourceFontPx: layoutNumber(constraints.limitingText.sourceFontPx),
+            },
+          }
+        : {}),
+    },
+  } : null;
   return {
     schemaVersion: 1,
     ok: validation.status === 'pass',
@@ -96,7 +126,9 @@ export function resolvedLayoutReport({
     diagram_type: type,
     viewBox: viewBox.map(layoutNumber),
     validation,
+    ...(normalizedConstraints ? { constraints: normalizedConstraints } : {}),
     resolved: {
+      status: validation.status === 'pass' ? 'complete' : 'partial',
       [entityKey]: entities,
       relationships,
       labels,

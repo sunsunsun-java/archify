@@ -13,12 +13,16 @@ import { throwDiagnosticProblems } from '../shared/diagnostics.mjs';
 import { relationshipLabelContainmentIssues } from '../shared/viewbox-containment.mjs';
 import { resolveLegend, renderLegend as renderResolvedLegend } from '../shared/legend.mjs';
 import { availableNodeTextWidth, fittedNodeFontSize, minimumNodeTextWidth } from '../shared/text-fit.mjs';
+import { maximumReadableViewBoxWidth } from '../shared/desktop-readability.mjs';
 import { brandLabelFitWidth, brandMarkFor, brandMetadataFor, brandTopRailProblem, renderBrandMark } from '../shared/brand-marks.mjs';
 import { translateMessage as i18nText } from '../shared/i18n.mjs';
 import {
   asArray,
   isFinitePoint,
   rectsOverlap,
+  entityOverlapIssue,
+  relationshipLabelObstacleIssue,
+  relationshipLabelPairIssue,
   cleanEndpointSideProblems,
   cleanFlowProblems,
   cleanCrossingProblems,
@@ -26,8 +30,6 @@ import {
   cleanBorderRunProblems,
   cleanRouteRhythmProblems,
   cleanLabelRouteClearanceProblems,
-  suggestLabelObstacleFix,
-  suggestLabelPairFix,
   anchor,
   automaticPortSpread,
   defaultFromSide,
@@ -148,6 +150,51 @@ for (const [index, transition] of asArray(lifecycle.transitions).entries()) {
 }
 for (const [index, state] of asArray(lifecycle.states).entries()) {
   if (!stateSteps.has(state.id)) stateSteps.set(state.id, index);
+}
+
+function lifecycleLayoutConstraints() {
+  const readableText = [];
+  for (const state of states.values()) {
+    const stateIndex = stateInputIndexes.get(state.id);
+    if (!Number.isInteger(stateIndex) || !Number.isFinite(state.width)) continue;
+    const labelFont = fittedNodeFontSize(state.label, brandLabelFitWidth(state, state.width), 10, 8);
+    readableText.push({
+      path: `/states/${stateIndex}/label`,
+      sourceFontPx: labelFont,
+      maxReadableViewBoxWidth: maximumReadableViewBoxWidth(labelFont),
+    });
+    if (state.sublabel) {
+      const sourceFontPx = fittedNodeFontSize(
+        state.sublabel,
+        state.width,
+        stateTextFit.sublabelPreferred,
+        stateTextFit.sublabelMinimum,
+      );
+      readableText.push({
+        path: `/states/${stateIndex}/sublabel`,
+        sourceFontPx,
+        maxReadableViewBoxWidth: maximumReadableViewBoxWidth(sourceFontPx),
+      });
+    }
+  }
+  const readableWidths = readableText
+    .map((entry) => entry.maxReadableViewBoxWidth)
+    .filter(Number.isFinite);
+  const finiteStates = [...states.values()].filter((state) => (
+    isFinitePoint(state.x, state.y, state.width, state.height)
+  ));
+  return {
+    minViewBoxWidth: finiteStates.length
+      ? Math.ceil(Math.max(...finiteStates.map((state) => state.x + state.width + 32)))
+      : null,
+    maxReadableViewBoxWidth: readableWidths.length
+      ? Math.round(Math.min(...readableWidths) * 1000) / 1000
+      : null,
+    minViewBoxHeight: Math.ceil(Math.max(
+      566,
+      ...finiteStates.map((state) => state.y + state.height + 122),
+    )),
+  };
 }
 
 function validateLifecycle() {
@@ -273,7 +320,16 @@ function validateLifecycle() {
   for (let i = 0; i < allStates.length; i += 1) {
     for (let j = i + 1; j < allStates.length; j += 1) {
       if (rectsOverlap(allStates[i], allStates[j], 10)) {
-        problems.push(`States "${allStates[i].id}" and "${allStates[j].id}" are less than 10px apart — move one to another col or separate them with yOffset (lanes other than "main"/"terminal" share one band).`);
+        problems.push(entityOverlapIssue({
+          diagramType: 'lifecycle',
+          collection: 'states',
+          entity: allStates[j],
+          entityIndex: stateInputIndexes.get(allStates[j].id),
+          otherEntity: allStates[i],
+          otherEntityIndex: stateInputIndexes.get(allStates[i].id),
+          minimumGapPx: 10,
+          controls: ['col', 'yOffset'],
+        }));
       }
     }
   }
@@ -367,14 +423,35 @@ function validateLifecycle() {
   for (const rect of labelRects) {
     for (const state of states.values()) {
       if (rectsOverlap(rect, state, -2)) {
-        problems.push(`Label "${rect.label}" overlaps state "${state.id}" — adjust labelDx/labelDy/labelSegment or set labelAt.\n${suggestLabelObstacleFix(rect, rect.lx, rect.ly, state, 'state')}`);
+        problems.push(relationshipLabelObstacleIssue({
+          diagramType: 'lifecycle',
+          relationCollection: 'transitions',
+          relation: rect.relation,
+          relationIndex: rect.relationIndex,
+          labelRect: rect,
+          obstacleCollection: 'states',
+          obstacle: state,
+          obstacleIndex: stateInputIndexes.get(state.id),
+          avoidRects: [...states.values()],
+          viewBox,
+        }));
       }
     }
   }
   for (let i = 0; i < labelRects.length; i += 1) {
     for (let j = i + 1; j < labelRects.length; j += 1) {
       if (rectsOverlap(labelRects[i], labelRects[j], -2)) {
-        problems.push(`Labels "${labelRects[i].label}" and "${labelRects[j].label}" overlap — adjust labelDx/labelDy.\n${suggestLabelPairFix(labelRects[i], labelRects[j])}`);
+        problems.push(relationshipLabelPairIssue({
+          diagramType: 'lifecycle',
+          relationCollection: 'transitions',
+          labelRect: labelRects[j],
+          otherLabelRect: labelRects[i],
+          avoidRects: [
+            ...states.values(),
+            ...labelRects.filter((entry) => entry !== labelRects[j]),
+          ],
+          viewBox,
+        }));
       }
     }
   }
@@ -662,6 +739,7 @@ function buildLayoutReport(validation) {
     entities: [...states.values()].map(componentBox),
     relationships,
     labels,
+    constraints: lifecycleLayoutConstraints(),
     extras: {
       bands: [112, 264, 436].map((y, index) => ({
         index,

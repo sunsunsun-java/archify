@@ -78,6 +78,10 @@ test('cli: help lists commands and diagram types', () => {
   assert.match(result.stdout, /archify preview <type>/);
   assert.match(result.stdout, /archify visual-check <output\.html>/);
   assert.match(result.stdout, /archify authoring-kit <type>/);
+  assert.match(result.stdout, /archify authoring-run start <type>/);
+  assert.match(result.stdout, /archify authoring-run finalize <authoring-run\.json>/);
+  assert.match(result.stdout, /archify project-index source-search <index\.json>/);
+  assert.match(result.stdout, /archify project-index inspect <index\.json>/);
   assert.match(result.stdout, /archify run-suite --manifest/);
   assert.match(result.stdout, /--open/);
   assert.match(result.stdout, /archify guide \[scenario or question\]/);

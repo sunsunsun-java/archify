@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createRepairPlan } from '../authoring/repair-plan.mjs';
+import {
+  createRepairPlan,
+  diagnosticFingerprint,
+  evaluateRepairProgress,
+} from '../authoring/repair-plan.mjs';
+import { QUALITY_CONTRACT } from '../authoring/quality-contract.mjs';
 
 test('repair plan turns viewport overflow into exact semantic-preserving viewBox bounds', () => {
   const plan = createRepairPlan({
@@ -57,4 +62,116 @@ test('repair plan preserves structured deterministic diagnostics without inventi
   assert.deepEqual(plan.actions[0].evidence, diagnostic.evidence);
   assert.deepEqual(plan.actions[0].supportedFixes, ['adjust labelAt']);
   assert.equal(plan.containment, undefined);
+});
+
+test('repair plan exposes the same fail-closed guards as the authoring contract', () => {
+  const plan = createRepairPlan({
+    type: 'workflow',
+    stage: 'render',
+    candidate: { meta: { viewBox: [1000, 540] } },
+  });
+
+  assert.deepEqual(plan.qualityGuards, QUALITY_CONTRACT.guards);
+  assert.equal(plan.qualityGuards.overflowHidingAllowed, false);
+});
+
+test('repair plan reports an infeasible viewBox width interval instead of recommending 992px', () => {
+  const plan = createRepairPlan({
+    type: 'dataflow',
+    stage: 'check',
+    candidate: { meta: { viewBox: [1080, 600] } },
+    diagnostics: [
+      {
+        code: 'layout/dataflow-stage-width',
+        subject: { path: '/meta/viewBox/0' },
+        evidence: { minViewBoxWidth: 1068 },
+        supportedFixes: ['increase the viewBox width to at least 1068px'],
+      },
+      {
+        code: 'composition/desktop-readability',
+        subject: { path: '/meta/viewBox/0' },
+        evidence: { maxReadableViewBoxWidth: 992 },
+        supportedFixes: ['reduce the viewBox width to at most 992px'],
+      },
+    ],
+  });
+
+  assert.equal(plan.status, 'constraint-conflict');
+  assert.deepEqual(plan.constraints.viewBoxWidth, {
+    status: 'conflict',
+    minViewBoxWidth: 1068,
+    maxReadableViewBoxWidth: 992,
+  });
+  assert.equal(plan.actions[0].code, 'layout/viewbox-width-constraint-conflict');
+  assert.match(plan.actions[0].supportedFixes.join(' '), /reflow|wrap|copy/i);
+  assert.doesNotMatch(JSON.stringify(plan.actions.map(({ supportedFixes }) => supportedFixes)), /at most 992/i);
+});
+
+test('bounded repair progress treats a deeper validation stage as progress and stops repeated churn', () => {
+  const routeDiagnostic = {
+    code: 'composition/label-route-clearance',
+    subject: { relationship: { from: 'a', to: 'b' } },
+    evidence: { clearance: 2, threshold: 8 },
+    message: 'first wording',
+  };
+  assert.equal(
+    diagnosticFingerprint([routeDiagnostic]),
+    diagnosticFingerprint([{ ...routeDiagnostic, message: 'different wording' }]),
+  );
+
+  const progress = evaluateRepairProgress([
+    { stage: 'render', diagnostics: [routeDiagnostic] },
+    { stage: 'check', diagnostics: [routeDiagnostic, { code: 'composition/micro-segment', subject: { edge: 'b-c' } }] },
+    { stage: 'check', diagnostics: [routeDiagnostic, { code: 'composition/micro-segment', subject: { edge: 'b-c' } }] },
+    { stage: 'check', diagnostics: [routeDiagnostic, { code: 'composition/micro-segment', subject: { edge: 'b-c' } }] },
+  ]);
+
+  assert.equal(progress.best.stage, 'check');
+  assert.equal(progress.consecutiveNonImprovingAttempts, 2);
+  assert.equal(progress.shouldStop, true);
+  assert.match(progress.reason, /two consecutive/i);
+});
+
+test('repair plan carries bounded-stop progress without treating unresolved errors as success', () => {
+  const diagnostic = {
+    code: 'composition/label-route-clearance',
+    subject: { relationship: { from: 'a', to: 'b' } },
+  };
+  const plan = createRepairPlan({
+    type: 'workflow',
+    stage: 'check',
+    candidate: { meta: { viewBox: [1000, 540] } },
+    diagnostics: [diagnostic],
+    attemptHistory: [
+      { stage: 'render', diagnostics: [diagnostic] },
+      { stage: 'check', diagnostics: [diagnostic] },
+      { stage: 'check', diagnostics: [diagnostic] },
+    ],
+  });
+
+  assert.equal(plan.status, 'bounded-stop');
+  assert.equal(plan.progress.shouldStop, true);
+  assert.equal(plan.diagnosticFingerprint, diagnosticFingerprint([diagnostic]));
+  assert.match(plan.acceptance.join(' '), /0 errors and 0 warnings/);
+});
+
+test('repair plan does not duplicate a renderer-classified width conflict', () => {
+  const plan = createRepairPlan({
+    type: 'dataflow',
+    stage: 'render',
+    candidate: { meta: { viewBox: [1080, 600] } },
+    diagnostics: [{
+      code: 'layout/viewbox-width-constraint-conflict',
+      subject: { path: '/meta/viewBox/0' },
+      evidence: { minViewBoxWidth: 1068, maxReadableViewBoxWidth: 992 },
+      supportedFixes: ['reflow /nodes/3/sublabel while preserving every source-backed fact'],
+    }],
+  });
+
+  assert.equal(plan.status, 'constraint-conflict');
+  assert.equal(
+    plan.actions.filter(({ code }) => code === 'layout/viewbox-width-constraint-conflict').length,
+    1,
+  );
+  assert.deepEqual(plan.actions[0].subject, { path: '/meta/viewBox/0' });
 });

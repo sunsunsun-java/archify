@@ -2,7 +2,7 @@
 // pure; renderers own their layout tables and pass measured rects
 // ({x, y, width, height, cx, cy}) in.
 
-import { recordDiagnostic } from './diagnostics.mjs';
+import { layoutIssue, recordDiagnostic } from './diagnostics.mjs';
 
 // In degraded mode (no ajv) a type-wrong top-level field reaches the renderer.
 // Coerce non-arrays to [] so the module-level Maps build without throwing and
@@ -32,6 +32,223 @@ export function rectsOverlap(a, b, gap = 0) {
     a.y + a.height + gap <= b.y ||
     b.y + b.height + gap <= a.y
   );
+}
+
+function finiteRect(rect) {
+  if (!rect || !isFinitePoint(rect.x, rect.y, rect.width, rect.height)) return null;
+  return {
+    x: rect.x,
+    y: rect.y,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function rectClearance(a, b) {
+  const horizontal = Math.max(a.x - (b.x + b.width), b.x - (a.x + a.width), 0);
+  const vertical = Math.max(a.y - (b.y + b.height), b.y - (a.y + a.height), 0);
+  return Math.round(Math.hypot(horizontal, vertical) * 1000) / 1000;
+}
+
+export function entityOverlapIssue({
+  diagramType,
+  collection,
+  entity,
+  entityIndex,
+  otherEntity,
+  otherEntityIndex,
+  minimumGapPx,
+  controls = [],
+}) {
+  const entityRect = finiteRect(entity);
+  const otherEntityRect = finiteRect(otherEntity);
+  if (!entityRect || !otherEntityRect) return null;
+  const subjectPath = `/${collection}/${entityIndex}`;
+  const otherPath = `/${collection}/${otherEntityIndex}`;
+  const supportedFixes = controls.length
+    ? [`move ${controls.map((control) => `${subjectPath}/${control}`).join(' or ')} until the measured clearance is at least ${minimumGapPx}px`]
+    : [`move ${subjectPath} until the measured clearance is at least ${minimumGapPx}px`];
+  return layoutIssue({
+    code: 'layout/entity-overlap',
+    message: `${collection}[${entityIndex}] "${entity.id}" and ${collection}[${otherEntityIndex}] "${otherEntity.id}" are less than ${minimumGapPx}px apart — move the selected entity using its renderer-supported placement controls.`,
+    subject: {
+      diagramType,
+      collection,
+      index: entityIndex,
+      path: subjectPath,
+      id: entity.id,
+    },
+    evidence: {
+      otherEntity: {
+        collection,
+        index: otherEntityIndex,
+        path: otherPath,
+        id: otherEntity.id,
+      },
+      entityRect,
+      otherEntityRect,
+      clearancePx: rectClearance(entityRect, otherEntityRect),
+      minimumGapPx,
+    },
+    supportedFixes,
+  });
+}
+
+function roundedGeometryNumber(value) {
+  return Math.round(value * 1000) / 1000;
+}
+
+function roundedRect(rect) {
+  const finite = finiteRect(rect);
+  return finite ? Object.fromEntries(
+    Object.entries(finite).map(([key, value]) => [key, roundedGeometryNumber(value)]),
+  ) : null;
+}
+
+function obstacleFreeLabelAtCandidates({
+  labelRect,
+  obstacleRect,
+  avoidRects,
+  viewBox,
+  minimumGapPx,
+}) {
+  const rect = finiteRect(labelRect);
+  const obstacle = finiteRect(obstacleRect);
+  const lx = labelRect?.lx;
+  const ly = labelRect?.ly;
+  if (!rect || !obstacle || !isFinitePoint(lx, ly)) return [];
+
+  const offsets = {
+    left: lx - rect.x,
+    right: rect.x + rect.width - lx,
+    top: ly - rect.y,
+    bottom: rect.y + rect.height - ly,
+  };
+  const candidates = [
+    [lx, obstacle.y - minimumGapPx - offsets.bottom],
+    [lx, obstacle.y + obstacle.height + minimumGapPx + offsets.top],
+    [obstacle.x - minimumGapPx - offsets.right, ly],
+    [obstacle.x + obstacle.width + minimumGapPx + offsets.left, ly],
+  ].map((point) => point.map(roundedGeometryNumber));
+  const shiftedRect = ([candidateX, candidateY]) => ({
+    x: candidateX - offsets.left,
+    y: candidateY - offsets.top,
+    width: rect.width,
+    height: rect.height,
+  });
+  const inViewBox = (candidateRect) => (
+    !Array.isArray(viewBox)
+    || (candidateRect.x >= 0
+      && candidateRect.y >= 0
+      && candidateRect.x + candidateRect.width <= viewBox[0]
+      && candidateRect.y + candidateRect.height <= viewBox[1])
+  );
+  return candidates.filter((candidate) => {
+    const candidateRect = shiftedRect(candidate);
+    if (!inViewBox(candidateRect)) return false;
+    return asArray(avoidRects).every((other) => {
+      const otherRect = other?.rect || other;
+      return !finiteRect(otherRect) || !rectsOverlap(candidateRect, otherRect, minimumGapPx);
+    });
+  }).slice(0, 3);
+}
+
+export function relationshipLabelObstacleIssue({
+  diagramType,
+  relationCollection,
+  relation,
+  relationIndex,
+  labelRect,
+  obstacleCollection,
+  obstacle,
+  obstacleIndex,
+  avoidRects = [],
+  viewBox,
+  minimumGapPx = 4,
+}) {
+  const rect = finiteRect(labelRect);
+  const obstacleRect = finiteRect(obstacle);
+  if (!rect || !obstacleRect || !isFinitePoint(labelRect?.lx, labelRect?.ly)) return null;
+  const obstacleFreeLabelAt = obstacleFreeLabelAtCandidates({
+    labelRect,
+    obstacleRect,
+    avoidRects,
+    viewBox,
+    minimumGapPx,
+  });
+  const path = `/${relationCollection}/${relationIndex}/labelAt`;
+  const fixes = obstacleFreeLabelAt.length
+    ? obstacleFreeLabelAt.map((candidate) => `set ${path} to [${candidate.join(', ')}]`)
+    : [`set ${path} to a point that clears every resolved entity by at least ${minimumGapPx}px`];
+  return layoutIssue({
+    code: 'composition/relationship-label-obstacle',
+    message: `Label "${labelRect.label || relation?.label || ''}" on ${relationCollection}[${relationIndex}] overlaps ${obstacleCollection.slice(0, -1)} "${obstacle.id}" — use one measured obstacle-free labelAt candidate.`,
+    subject: {
+      ...relationshipSubject(diagramType, relationCollection, relationIndex, relation),
+      path,
+    },
+    evidence: {
+      obstacle: {
+        collection: obstacleCollection,
+        index: obstacleIndex,
+        path: `/${obstacleCollection}/${obstacleIndex}`,
+        id: obstacle.id,
+      },
+      labelRect: roundedRect(rect),
+      obstacleRect: roundedRect(obstacleRect),
+      minimumGapPx,
+      obstacleFreeLabelAt,
+    },
+    supportedFixes: fixes,
+  });
+}
+
+export function relationshipLabelPairIssue({
+  diagramType,
+  relationCollection,
+  labelRect,
+  otherLabelRect,
+  avoidRects = [],
+  viewBox,
+  minimumGapPx = 4,
+}) {
+  const rect = finiteRect(labelRect);
+  const otherRect = finiteRect(otherLabelRect);
+  const relation = labelRect?.relation;
+  const relationIndex = labelRect?.relationIndex;
+  const otherRelation = otherLabelRect?.relation;
+  const otherRelationIndex = otherLabelRect?.relationIndex;
+  if (!rect || !otherRect || !Number.isInteger(relationIndex) || !Number.isInteger(otherRelationIndex)) return null;
+  const obstacleFreeLabelAt = obstacleFreeLabelAtCandidates({
+    labelRect,
+    obstacleRect: otherRect,
+    avoidRects,
+    viewBox,
+    minimumGapPx,
+  });
+  const path = `/${relationCollection}/${relationIndex}/labelAt`;
+  const fixes = obstacleFreeLabelAt.length
+    ? obstacleFreeLabelAt.map((candidate) => `set ${path} to [${candidate.join(', ')}]`)
+    : [`set ${path} to a point that clears every resolved entity and label by at least ${minimumGapPx}px`];
+  return layoutIssue({
+    code: 'composition/relationship-label-overlap',
+    message: `Label "${labelRect.label || relation?.label || ''}" on ${relationCollection}[${relationIndex}] overlaps the label on ${relationCollection}[${otherRelationIndex}] — move the selected label without deleting either relationship fact.`,
+    subject: {
+      ...relationshipSubject(diagramType, relationCollection, relationIndex, relation),
+      path,
+    },
+    evidence: {
+      otherRelationship: {
+        ...relationshipSubject(diagramType, relationCollection, otherRelationIndex, otherRelation),
+        path: `/${relationCollection}/${otherRelationIndex}/labelAt`,
+      },
+      labelRect: roundedRect(rect),
+      otherLabelRect: roundedRect(otherRect),
+      minimumGapPx,
+      obstacleFreeLabelAt,
+    },
+    supportedFixes: fixes,
+  });
 }
 
 export function segmentIntersectsRect(segment, rect, gap = 0) {
@@ -185,6 +402,7 @@ function relationshipSubject(diagramType, relationCollection, relationIndex, rel
     diagramType,
     collection: relationCollection,
     index: relationIndex,
+    path: `/${relationCollection}/${relationIndex}`,
     ...(relation?.id ? { id: relation.id } : {}),
     ...(relation?.from ? { from: relation.from } : {}),
     ...(relation?.to ? { to: relation.to } : {}),

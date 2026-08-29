@@ -24,9 +24,13 @@ function usage() {
   archify check <output.html>
   archify visual-check <output.html>... [--preflight] [--json]
   archify visual-check --probe [--json]
-  archify authoring-kit <type> [--json]
+  archify authoring-kit <type> [--json] [--context-json] [--expect-contract sha256]
+  archify authoring-run start <type> --run-id id --output directory [--json]
+  archify authoring-run finalize <authoring-run.json> --candidate path --evidence path --validation path [--json]
   archify project-index <repo-root> [--revision ref] [--output path] [--json]
   archify project-index query <index.json> [--symbol name] [--import specifier] [--path prefix] [--language name] [--package name] [--max-results n] [--output path] [--json]
+  archify project-index source-search <index.json> --term text [--term text] [--path prefix] [--context n] [--max-results n] [--output path] [--json]
+  archify project-index inspect <index.json> --range path:start-end [--range path:start-end] [--max-results n] [--output path] [--json]
   archify evidence-ledger create <index.json> <selections.json> [--output path] [--json]
   archify evidence-ledger hydrate <index.json> <selections.json> [--output path] [--json]
   archify evidence-ledger verify <ledger.json> --project-index <index.json> --repo-root path [--json]
@@ -1263,7 +1267,7 @@ async function commandVisualCheck(args) {
         ],
       });
       const receipt = {
-        schemaVersion: 1,
+        schemaVersion: visual.VISUAL_RECEIPT_SCHEMA_VERSION,
         ok: false,
         command,
         status: 'fail',
@@ -1271,7 +1275,7 @@ async function commandVisualCheck(args) {
         error: audit.message,
         diagnostics: [failure],
         artifacts: audit.artifacts.map((entry) => ({
-          schemaVersion: 1,
+          schemaVersion: visual.VISUAL_RECEIPT_SCHEMA_VERSION,
           ok: false,
           command: preflight ? 'visual-preflight' : 'visual-check',
           status: 'fail',
@@ -1306,7 +1310,7 @@ async function commandVisualCheck(args) {
         results.push({
           exitCode: 1,
           receipt: {
-            schemaVersion: 1,
+            schemaVersion: visual.VISUAL_RECEIPT_SCHEMA_VERSION,
             ok: false,
             command: preflight ? 'visual-preflight' : 'visual-check',
             status: 'fail',
@@ -1358,7 +1362,7 @@ async function commandVisualCheck(args) {
     ? 0
     : results.every((result) => result.exitCode === 2) ? 2 : 1;
   const receipt = {
-    schemaVersion: 1,
+    schemaVersion: visual.VISUAL_RECEIPT_SCHEMA_VERSION,
     ok: exitCode === 0,
     command: preflight ? 'visual-preflight-batch' : 'visual-check-batch',
     status: exitCode === 0 ? 'pass' : exitCode === 2 ? 'skipped' : 'fail',
@@ -1411,16 +1415,44 @@ function utilityFailure(command, error, json) {
 }
 
 async function commandAuthoringKit(args) {
-  const json = args.includes('--json');
-  const unknown = args.filter((arg) => arg.startsWith('--') && arg !== '--json');
-  if (unknown.length) fail(`Unknown authoring-kit option "${unknown[0]}".`);
-  const positional = args.filter((arg) => arg !== '--json');
+  let json = false;
+  let contextJson = false;
+  let expectContract;
+  const positional = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === '--json') {
+      json = true;
+      continue;
+    }
+    if (arg === '--context-json') {
+      contextJson = true;
+      continue;
+    }
+    if (arg === '--expect-contract') {
+      expectContract = args[index + 1];
+      if (!expectContract || expectContract.startsWith('--')) fail('--expect-contract requires a SHA-256 digest.');
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith('--expect-contract=')) {
+      expectContract = arg.slice('--expect-contract='.length);
+      if (!expectContract) fail('--expect-contract requires a SHA-256 digest.');
+      continue;
+    }
+    if (arg.startsWith('--')) fail(`Unknown authoring-kit option "${arg}".`);
+    positional.push(arg);
+  }
   if (positional.length !== 1) fail(usage());
   try {
     const { loadAuthoringKit } = await import('../authoring/authoring-kit.mjs');
-    const packet = loadAuthoringKit(positional[0], { skillRoot });
+    const packet = loadAuthoringKit(positional[0], {
+      skillRoot,
+      contextJson,
+      ...(expectContract ? { expectContract } : {}),
+    });
     if (json) {
-      console.log(JSON.stringify(packet, null, 2));
+      console.log(JSON.stringify(packet, null, contextJson ? 0 : 2));
       return;
     }
     console.log(`Archify authoring kit: ${packet.type}`);
@@ -1429,6 +1461,84 @@ async function commandAuthoringKit(args) {
     }
   } catch (error) {
     utilityFailure('authoring-kit', error, json);
+  }
+}
+
+async function commandAuthoringRun(args) {
+  const [action, ...actionArgs] = args;
+  const positional = [];
+  const values = {};
+  let json = false;
+  const allowed = action === 'start'
+    ? new Set(['--run-id', '--output'])
+    : action === 'finalize'
+      ? new Set(['--candidate', '--evidence', '--validation'])
+      : null;
+  if (!allowed) fail(usage());
+  for (let index = 0; index < actionArgs.length; index += 1) {
+    const arg = actionArgs[index];
+    if (arg === '--json') {
+      json = true;
+      continue;
+    }
+    const option = [...allowed].find((candidate) => arg === candidate || arg.startsWith(`${candidate}=`));
+    if (option) {
+      const inline = arg.startsWith(`${option}=`);
+      const value = inline ? arg.slice(option.length + 1) : actionArgs[index + 1];
+      if (!value || (!inline && value.startsWith('--'))) fail(`${option} requires a value.`);
+      if (!inline) index += 1;
+      values[option] = value;
+      continue;
+    }
+    if (arg.startsWith('--')) fail(`Unknown authoring-run ${action} option "${arg}".`);
+    positional.push(arg);
+  }
+  try {
+    const module = await import('../authoring/authoring-run.mjs');
+    if (action === 'start') {
+      if (positional.length !== 1 || !TYPES.has(positional[0])
+        || !values['--run-id'] || !values['--output']) fail(usage());
+      const started = module.startAuthoringRun({
+        run: { id: values['--run-id'], diagramType: positional[0] },
+        outputDirectory: values['--output'],
+      });
+      const receipt = {
+        schemaVersion: 1,
+        ok: true,
+        command: 'authoring-run-start',
+        status: 'started',
+        envelope: started.envelope,
+        paths: started.paths,
+      };
+      if (json) console.log(JSON.stringify(receipt, null, 2));
+      else console.log(`Authoring run started: ${started.paths.envelopePath}`);
+      return;
+    }
+    if (positional.length !== 1 || !values['--candidate']
+      || !values['--evidence'] || !values['--validation']) fail(usage());
+    const completed = module.finalizeAuthoringRun({
+      envelopePath: positional[0],
+      candidatePath: values['--candidate'],
+      evidencePath: values['--evidence'],
+      validationPath: values['--validation'],
+    });
+    const receipt = {
+      schemaVersion: 1,
+      ok: true,
+      command: 'authoring-run-finalize',
+      status: completed.report.status,
+      timing: completed.timing,
+      handoff: completed.handoff,
+      paths: completed.paths,
+    };
+    if (json) console.log(JSON.stringify(receipt, null, 2));
+    else {
+      console.log(`Authoring run ready: ${completed.paths.handoffPath}`);
+      console.log(`Timing: ${completed.paths.timingPath}`);
+      console.log(`Report: ${completed.paths.reportPath}`);
+    }
+  } catch (error) {
+    utilityFailure(`authoring-run-${action}`, error, json);
   }
 }
 
@@ -1511,6 +1621,100 @@ function utilityOptions(args, { allowRevision = false, allowRepoRoot = false, al
 }
 
 async function commandProjectIndex(args) {
+  if (args[0] === 'source-search') {
+    const searchArgs = args.slice(1);
+    const positional = [];
+    const terms = [];
+    const paths = [];
+    let contextLines = 2;
+    let maxResults = 20;
+    let output;
+    let json = false;
+    for (let index = 0; index < searchArgs.length; index += 1) {
+      const arg = searchArgs[index];
+      if (arg === '--json') {
+        json = true;
+        continue;
+      }
+      const matchedValueOption = ['--term', '--path', '--context', '--context-lines', '--max-results', '--output']
+        .find((option) => arg === option || arg.startsWith(`${option}=`));
+      if (matchedValueOption) {
+        const inline = arg.startsWith(`${matchedValueOption}=`);
+        const value = inline ? arg.slice(matchedValueOption.length + 1) : searchArgs[index + 1];
+        if (!value || (!inline && value.startsWith('--'))) fail(`${matchedValueOption} requires a value.`);
+        if (!inline) index += 1;
+        if (matchedValueOption === '--term') terms.push(value);
+        else if (matchedValueOption === '--path') paths.push(value);
+        else if (matchedValueOption === '--context' || matchedValueOption === '--context-lines') contextLines = Number(value);
+        else if (matchedValueOption === '--max-results') maxResults = Number(value);
+        else output = value;
+        continue;
+      }
+      if (arg.startsWith('--')) fail(`Unknown project-index source-search option "${arg}".`);
+      positional.push(arg);
+    }
+    if (positional.length !== 1) fail(usage());
+    try {
+      const { searchProjectSource } = await import('../evidence/project-index.mjs');
+      const projectIndex = JSON.parse(fs.readFileSync(path.resolve(positional[0]), 'utf8'));
+      const receipt = searchProjectSource(projectIndex, {
+        terms,
+        paths,
+        contextLines,
+        maxResults,
+      });
+      const outputPath = output ? writeJsonAtomic(output, receipt) : null;
+      if (json || !outputPath) console.log(JSON.stringify(receipt, null, 2));
+      else console.log(`Project source search ready: ${outputPath} (${receipt.returned} matches)`);
+    } catch (error) {
+      utilityFailure('project-index-source-search', error, json);
+    }
+    return;
+  }
+  if (args[0] === 'inspect') {
+    const inspectArgs = args.slice(1);
+    const positional = [];
+    const ranges = [];
+    let maxResults = 20;
+    let output;
+    let json = false;
+    for (let index = 0; index < inspectArgs.length; index += 1) {
+      const arg = inspectArgs[index];
+      if (arg === '--json') {
+        json = true;
+        continue;
+      }
+      const matchedValueOption = ['--range', '--max-results', '--output']
+        .find((option) => arg === option || arg.startsWith(`${option}=`));
+      if (matchedValueOption) {
+        const inline = arg.startsWith(`${matchedValueOption}=`);
+        const value = inline ? arg.slice(matchedValueOption.length + 1) : inspectArgs[index + 1];
+        if (!value || (!inline && value.startsWith('--'))) fail(`${matchedValueOption} requires a value.`);
+        if (!inline) index += 1;
+        if (matchedValueOption === '--range') {
+          const match = value.match(/^(.+):([1-9]\d*)-([1-9]\d*)$/);
+          if (!match) fail('--range requires path:start-end with positive line numbers.');
+          ranges.push({ path: match[1], line: Number(match[2]), endLine: Number(match[3]) });
+        } else if (matchedValueOption === '--max-results') maxResults = Number(value);
+        else output = value;
+        continue;
+      }
+      if (arg.startsWith('--')) fail(`Unknown project-index inspect option "${arg}".`);
+      positional.push(arg);
+    }
+    if (positional.length !== 1) fail(usage());
+    try {
+      const { inspectProjectSource } = await import('../evidence/project-index.mjs');
+      const projectIndex = JSON.parse(fs.readFileSync(path.resolve(positional[0]), 'utf8'));
+      const receipt = inspectProjectSource(projectIndex, { ranges, maxResults });
+      const outputPath = output ? writeJsonAtomic(output, receipt) : null;
+      if (json || !outputPath) console.log(JSON.stringify(receipt, null, 2));
+      else console.log(`Project source inspection ready: ${outputPath} (${receipt.returned} ranges)`);
+    } catch (error) {
+      utilityFailure('project-index-source-inspect', error, json);
+    }
+    return;
+  }
   if (args[0] === 'query') {
     const queryArgs = args.slice(1);
     const positional = [];
@@ -1673,6 +1877,8 @@ async function commandDoctor() {
 
   const optimizationRuntimes = [
     path.join(skillRoot, 'authoring', 'authoring-kit.mjs'),
+    path.join(skillRoot, 'authoring', 'authoring-run.mjs'),
+    path.join(skillRoot, 'authoring', 'quality-contract.mjs'),
     path.join(skillRoot, 'evidence', 'project-index.mjs'),
     path.join(skillRoot, 'orchestration', 'suite-runner.mjs'),
     path.join(skillRoot, 'orchestration', 'run-recorder.mjs'),
@@ -2121,6 +2327,9 @@ switch (command) {
     break;
   case 'authoring-kit':
     await commandAuthoringKit(args);
+    break;
+  case 'authoring-run':
+    await commandAuthoringRun(args);
     break;
   case 'project-index':
     await commandProjectIndex(args);

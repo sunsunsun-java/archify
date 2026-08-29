@@ -132,3 +132,54 @@ export function renderSuiteReport({ suite, results, outputRoot }) {
     markdown: `${lines.join('\n')}\n`,
   };
 }
+
+/**
+ * Render an authoring handoff without accepting agent-authored prose or
+ * duration fields. All claims are derived from canonical receipts.
+ */
+export function renderAuthoringReport({ timing, outputRoot }) {
+  if (timing?.kind !== 'archify.run-timing') {
+    throw new TypeError('authoring report requires a canonical timing receipt.');
+  }
+  const handoff = timing.finalReceipt;
+  if (handoff?.kind !== 'archify.authoring-handoff') {
+    throw new TypeError('authoring timing finalReceipt must be a canonical authoring handoff.');
+  }
+  const root = path.resolve(outputRoot);
+  const stagedMs = timing.stages.reduce(
+    (sum, stage) => sum + (Number.isFinite(stage.durationMs) ? stage.durationMs : 0),
+    0,
+  );
+  const agentOverheadMs = timing.accounting?.agentOverheadMs
+    ?? Math.max(0, timing.durationMs - stagedMs);
+  const lines = [
+    `# ${handoff.diagram.type} — ${handoff.diagram.id} authoring report`,
+    '',
+    '> Generated mechanically from canonical timing and handoff receipts. No duration or quality claim is supplied by the authoring agent.',
+    '',
+    `- Status: \`${timing.status}\` / handoff \`${handoff.status}\``,
+    `- Total measured authoring envelope: ${seconds(timing.durationMs)}`,
+    `- Staged work: ${seconds(stagedMs)}`,
+    `- Agent overhead: ${seconds(agentOverheadMs)}`,
+    `- Candidate: ${relativeLink(root, handoff.candidate.path)} (\`${handoff.candidate.sha256}\`)`,
+    `- Evidence ledger: ${relativeLink(root, handoff.evidence.path)} (\`${handoff.evidence.sha256}\`; ${handoff.evidence.factCount} facts)`,
+    `- Validation receipt: ${relativeLink(root, handoff.validation.path)} (\`${handoff.validation.sha256}\`; ${handoff.validation.checksPassed}/${handoff.validation.checksTotal}; ${handoff.validation.errors} errors; ${handoff.validation.warnings} warnings)`,
+    `- Handoff digest: \`${handoff.digest}\``,
+    '',
+    '## Stage timing',
+    '',
+    '| Stage | Status | Duration | Attempts |',
+    '| --- | --- | ---: | ---: |',
+    ...timing.stages.map((stage) => `| ${markdownCell(stage.name)} | ${markdownCell(stage.status)} | ${seconds(stage.durationMs)} | ${stage.attempts.length} |`),
+    ...(timing.stages.length === 0 ? ['| — | — | — | 0 |'] : []),
+    '',
+    '## Accounting contract',
+    '',
+    '`agent-overhead` is the mechanically measured run envelope not covered by named stages. It can include model reasoning, source reading, editing, scheduling, and serialization; it is never reported as CLI process time.',
+    '',
+  ];
+  return {
+    status: timing.status === 'completed' && handoff.status === 'ready' ? 'ready' : 'failed',
+    markdown: `${lines.join('\n')}\n`,
+  };
+}

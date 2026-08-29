@@ -2,6 +2,11 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  QUALITY_CONTRACT,
+  assertExpectedQualityContract,
+  qualityContractIdentity,
+} from './quality-contract.mjs';
 
 const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -47,50 +52,48 @@ const LAYOUT_BUDGETS = Object.freeze({
     composition: 'Use horizontal stage bands and keep persistence or recovery paths as compact side branches.',
   }),
   lifecycle: Object.freeze({
-    recommendedViewBox: Object.freeze([1080, 620]),
+    recommendedViewBox: Object.freeze([1080, 630]),
     maximumViewBoxAspectRatio: 0.575,
     primaryLimits: Object.freeze({ states: 10, lanes: 4, cards: 2, guidedViews: 2 }),
     composition: 'Keep the main lifecycle horizontal and place terminal outcomes in one compact terminal band.',
   }),
 });
 
-const QUALITY_GUARDS = Object.freeze({
-  qualityProfile: 'showcase',
-  deterministicChecks: 9,
-  compositionErrors: 0,
-  compositionWarnings: 0,
-  desktopViewports: Object.freeze([
-    Object.freeze([1440, 900]),
-    Object.freeze([1600, 1000]),
-    Object.freeze([1920, 1080]),
-    Object.freeze([2048, 1320]),
-  ]),
-  minimumProjectedNodeTextPx: 6,
-  semanticDeletionAllowed: false,
-  typographyReductionAllowed: false,
-});
-
 function authoringCommands(type) {
   const repositoryOption = type === 'architecture' ? ' [--repo-root <path>]' : '';
   return Object.freeze({
     validate: `node bin/archify.mjs validate ${type} <candidate.json> --quality showcase${repositoryOption} --json`,
+    inspectLayout: `node bin/archify.mjs validate ${type} <candidate.json> --quality showcase${repositoryOption} --layout-json`,
     preflight: `node bin/archify.mjs validate ${type} <candidate.json> --quality showcase${repositoryOption} --preflight --json`,
     preflightBatch: 'node bin/archify.mjs validate-batch <candidates.json> --quality showcase --json',
     deliver: `node bin/archify.mjs deliver ${type} <candidate.json> <output.html> --quality showcase${repositoryOption} --json`,
     visualCheck: 'node bin/archify.mjs visual-check <output.html>... --json',
     projectQuery: 'node bin/archify.mjs project-index query <index.json> [--symbol <name>] [--import <specifier>] [--path <prefix>] --json',
+    sourceSearch: 'node bin/archify.mjs project-index source-search <index.json> --term <literal> [--path <prefix>] --context-lines 3 --json',
+    sourceInspect: 'node bin/archify.mjs project-index inspect <index.json> --range <path:start-end> --json',
     evidenceHydrate: 'node bin/archify.mjs evidence-ledger hydrate <index.json> <selections.json> --output <ledger.json> --json',
+    evidenceVerify: 'node bin/archify.mjs evidence-ledger verify <ledger.json> --project-index <index.json> --repo-root <path> --json',
+    authoringRunStart: `node bin/archify.mjs authoring-run start ${type} --run-id <id> --output <run-directory> --json`,
+    authoringRunFinalize: 'node bin/archify.mjs authoring-run finalize <authoring-run.json> --candidate <candidate.json> --evidence <ledger.json> --validation <validation.json> --json',
   });
 }
 
-function filePacket(skillRoot, relativePath) {
+function freezeDocument(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) freezeDocument(child);
+  return Object.freeze(value);
+}
+
+function filePacket(skillRoot, relativePath, { contextJson = false } = {}) {
   const absolutePath = path.join(skillRoot, ...relativePath.split('/'));
   const content = fs.readFileSync(absolutePath, 'utf8');
   return Object.freeze({
     path: relativePath,
     bytes: Buffer.byteLength(content),
     sha256: createHash('sha256').update(content).digest('hex'),
-    content,
+    ...(contextJson
+      ? { document: freezeDocument(JSON.parse(content)) }
+      : { content }),
   });
 }
 
@@ -99,25 +102,34 @@ function filePacket(skillRoot, relativePath) {
  * Callers learn one interface; file discovery and matching-example selection
  * remain local to this module.
  */
-export function loadAuthoringKit(type, { skillRoot = moduleRoot } = {}) {
+export function loadAuthoringKit(type, {
+  skillRoot = moduleRoot,
+  expectContract,
+  contextJson = false,
+} = {}) {
   if (!AUTHORING_TYPES.includes(type)) {
     throw new Error(`Unknown diagram type "${type}". Expected one of: ${AUTHORING_TYPES.join(', ')}`);
   }
+  if (expectContract !== undefined) assertExpectedQualityContract(expectContract);
   const resolvedRoot = fs.realpathSync(path.resolve(skillRoot));
   return Object.freeze({
     schemaVersion: 1,
     type,
+    contract: qualityContractIdentity({ skillRoot: resolvedRoot }),
     layoutBudget: Object.freeze({
       targetViewport: Object.freeze([1440, 900]),
       ...LAYOUT_BUDGETS[type],
-      qualityGuards: QUALITY_GUARDS,
+      qualityGuards: QUALITY_CONTRACT.guards,
     }),
     commands: authoringCommands(type),
     capabilities: Object.freeze({
-      repositoryEvidence: type === 'architecture',
+      repositoryEvidence: true,
       projectIndexQuery: true,
+      projectSourceSearch: true,
       evidenceLedgerHydrate: true,
+      evidenceLedgerVerify: true,
       deterministicRepairPlan: true,
+      machineAuthoringReport: true,
       sharedVisualCheckSession: true,
       atomicDelivery: true,
     }),
@@ -130,9 +142,9 @@ export function loadAuthoringKit(type, { skillRoot = moduleRoot } = {}) {
       'deliver the frozen candidate exactly once',
     ]),
     files: Object.freeze({
-      schema: filePacket(resolvedRoot, `schemas/${type}.schema.json`),
-      commonSchema: filePacket(resolvedRoot, 'schemas/common.schema.json'),
-      example: filePacket(resolvedRoot, EXAMPLES[type]),
+      schema: filePacket(resolvedRoot, `schemas/${type}.schema.json`, { contextJson }),
+      commonSchema: filePacket(resolvedRoot, 'schemas/common.schema.json', { contextJson }),
+      example: filePacket(resolvedRoot, EXAMPLES[type], { contextJson }),
     }),
   });
 }

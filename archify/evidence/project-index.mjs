@@ -10,6 +10,9 @@ const OBJECT_FORMAT_LENGTHS = Object.freeze({ sha1: 40, sha256: 64 });
 const SAFE_REVISION_RE = /^[A-Za-z0-9][A-Za-z0-9._/@{}^~:+-]*$/;
 const MAX_ANALYZED_FILE_BYTES = 1024 * 1024;
 const MAX_ANALYZED_TOTAL_BYTES = 64 * 1024 * 1024;
+const MAX_SOURCE_TERMS = 200;
+const MAX_SOURCE_PATH_FILTERS = 200;
+const MAX_SOURCE_INSPECT_RANGES = 1000;
 
 const LANGUAGES = Object.freeze({
   '.c': 'c',
@@ -577,6 +580,7 @@ function validateProjectIndexForEvidence(index) {
   for (const file of index.files) {
     if (!file || typeof file !== 'object' || Array.isArray(file)
       || !validRepositoryPath(file.path)
+      || typeof file.mode !== 'string' || !/^[0-7]{6}$/.test(file.mode)
       || !validObjectId(file.blobOid, index.repository.objectFormat)
       || !Number.isInteger(file.bytes) || file.bytes < 0
       || seenPaths.has(file.path)) {
@@ -610,6 +614,235 @@ function suggestedClaimId(filePath, symbol) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
   return stem || 'source-symbol';
+}
+
+function sourceOptions(index, {
+  terms,
+  paths,
+  maxResults = 20,
+  contextLines = 2,
+  repoRoot = index?.repository?.root,
+} = {}) {
+  const normalizedTerms = queryTerms(terms, 'terms');
+  const normalizedPaths = queryTerms(paths, 'paths').map((filePath) => filePath.replace(/\/+$/, ''));
+  if (!normalizedTerms.length) {
+    throw projectError('Project source search requires at least one literal term.', {
+      code: 'project-index/source-term-required',
+    });
+  }
+  if (normalizedPaths.some((filePath) => !validRepositoryPath(filePath))) {
+    throw projectError('Project source search paths must be normalized repository-relative paths.', {
+      code: 'project-index/source-path-invalid',
+    });
+  }
+  if (normalizedTerms.length > MAX_SOURCE_TERMS || normalizedPaths.length > MAX_SOURCE_PATH_FILTERS) {
+    throw projectError(`Project source search accepts at most ${MAX_SOURCE_TERMS} terms and ${MAX_SOURCE_PATH_FILTERS} paths.`, {
+      code: 'project-index/source-query-limit',
+    });
+  }
+  if (!Number.isInteger(maxResults) || maxResults < 1 || maxResults > 200) {
+    throw projectError('maxResults must be an integer from 1 through 200.', {
+      code: 'project-index/source-limit',
+    });
+  }
+  if (!Number.isInteger(contextLines) || contextLines < 0 || contextLines > 20) {
+    throw projectError('contextLines must be an integer from 0 through 20.', {
+      code: 'project-index/source-context-limit',
+    });
+  }
+  return {
+    terms: normalizedTerms,
+    paths: [...new Set(normalizedPaths)].sort(compareBinaryText),
+    maxResults,
+    contextLines,
+    repoRoot,
+  };
+}
+
+function pinnedSourceBlobs(index, requestedFiles, repoRoot) {
+  const repository = resolveRepository(repoRoot);
+  if (repository.objectFormat !== index.repository.objectFormat) {
+    throw projectError('Project source repository object format does not match the index.', {
+      code: 'project-index/source-object-format-mismatch',
+    });
+  }
+  if (repositoryIdentity(repository.origin, repository.root)
+    !== repositoryIdentity(index.repository.origin, index.repository.root)) {
+    throw projectError('Project source repository origin does not match the index.', {
+      code: 'project-index/source-origin-mismatch',
+    });
+  }
+  const revision = resolveRevision(repository.root, index.repository.revision, repository.objectFormat);
+  if (revision !== index.repository.revision.toLowerCase()) {
+    throw projectError('Project source revision does not match the index.', {
+      code: 'project-index/source-revision-mismatch',
+    });
+  }
+  const revisionTree = treeEntries(repository.root, revision, repository.objectFormat);
+  const indexedTree = index.files.map(({ path: filePath, mode, blobOid, bytes }) => ({
+    path: filePath,
+    mode,
+    blobOid: blobOid.toLowerCase(),
+    bytes,
+  })).sort((left, right) => compareBinaryText(left.path, right.path));
+  if (JSON.stringify(revisionTree) !== JSON.stringify(indexedTree)) {
+    throw projectError('Project source revision tree does not match the index.', {
+      code: 'project-index/source-tree-mismatch',
+    });
+  }
+  const byPath = new Map(revisionTree.map((entry) => [entry.path, entry]));
+  const revisionEntries = [];
+  for (const file of requestedFiles) {
+    const entry = byPath.get(file.path);
+    if (!entry || entry.blobOid !== file.blobOid.toLowerCase() || entry.bytes !== file.bytes) {
+      throw projectError(`Project source blob for ${JSON.stringify(file.path)} does not match the index.`, {
+        code: 'project-index/source-blob-mismatch',
+      });
+    }
+    revisionEntries.push(entry);
+  }
+  return {
+    blobs: batchBlobs(repository.root, revisionEntries, repository.objectFormat),
+    repository,
+    revision,
+  };
+}
+
+function numberedSourceRange(content, line, endLine) {
+  const range = canonicalRange(content, line, endLine);
+  return {
+    sourceLines: range.split('\n').map((text, offset) => ({ line: line + offset, text })),
+    rangeSha256: createHash('sha256').update(range).digest('hex'),
+  };
+}
+
+/**
+ * Search literal source terms in blobs pinned by a validated ProjectIndex.
+ * Results are mechanical line windows only; no topology or causal summary is inferred.
+ */
+export function searchProjectSource(index, options = {}) {
+  validateProjectIndexForEvidence(index);
+  const query = sourceOptions(index, options);
+  const requestedFiles = index.files.filter((file) => (
+    file.mode.startsWith('100')
+    && (!query.paths.length || query.paths.some((prefix) => pathMatchesPrefix(file.path, prefix)))
+  )).sort((left, right) => compareBinaryText(left.path, right.path));
+  const pinned = pinnedSourceBlobs(index, requestedFiles, query.repoRoot);
+  const found = [];
+  for (const file of requestedFiles) {
+    const content = pinned.blobs.get(file.blobOid.toLowerCase());
+    if (content.includes('\0')) continue;
+    const lines = content.split(/\r\n|\n|\r/);
+    if (lines.at(-1) === '') lines.pop();
+    for (const [offset, text] of lines.entries()) {
+      const matchedTerms = query.terms.filter((term) => text.includes(term));
+      if (!matchedTerms.length) continue;
+      const matchLine = offset + 1;
+      const line = Math.max(1, matchLine - query.contextLines);
+      const endLine = Math.min(lines.length, matchLine + query.contextLines);
+      found.push({
+        path: file.path,
+        blobOid: file.blobOid.toLowerCase(),
+        line,
+        endLine,
+        matchedLines: [{ line: matchLine, terms: matchedTerms }],
+        ...numberedSourceRange(content, line, endLine),
+      });
+    }
+  }
+  const matches = found.slice(0, query.maxResults);
+  return {
+    schemaVersion: 1,
+    command: 'project-index-source-search',
+    indexDigest: index.digest.toLowerCase(),
+    repository: {
+      origin: repositoryIdentity(index.repository.origin, index.repository.root),
+      revision: pinned.revision,
+      objectFormat: pinned.repository.objectFormat,
+    },
+    query: {
+      terms: query.terms,
+      paths: query.paths,
+      contextLines: query.contextLines,
+      maxResults: query.maxResults,
+    },
+    filesSearched: requestedFiles.length,
+    matchesFound: found.length,
+    returned: matches.length,
+    truncated: matches.length < found.length,
+    matches,
+  };
+}
+
+/**
+ * Inspect exact source ranges from blobs pinned by a validated ProjectIndex.
+ * Input order never changes output order; ranges use stable binary path order.
+ */
+export function inspectProjectSource(index, {
+  ranges,
+  maxResults = 20,
+  repoRoot = index?.repository?.root,
+} = {}) {
+  validateProjectIndexForEvidence(index);
+  if (!Array.isArray(ranges) || !ranges.length) {
+    throw projectError('Project source inspect requires at least one exact range.', {
+      code: 'project-index/source-range-required',
+    });
+  }
+  if (ranges.length > MAX_SOURCE_INSPECT_RANGES) {
+    throw projectError(`Project source inspect accepts at most ${MAX_SOURCE_INSPECT_RANGES} ranges.`, {
+      code: 'project-index/source-query-limit',
+    });
+  }
+  if (!Number.isInteger(maxResults) || maxResults < 1 || maxResults > 200) {
+    throw projectError('maxResults must be an integer from 1 through 200.', {
+      code: 'project-index/source-limit',
+    });
+  }
+  const indexedFiles = new Map(index.files.map((file) => [file.path, file]));
+  const prepared = ranges.map((range, rangeIndex) => {
+    if (!range || typeof range !== 'object' || Array.isArray(range)
+      || !validRepositoryPath(range.path)
+      || !Number.isInteger(range.line) || range.line < 1
+      || !Number.isInteger(range.endLine) || range.endLine < range.line) {
+      throw projectError(`Project source range ${rangeIndex + 1} is invalid.`, {
+        code: 'project-index/source-range-invalid',
+      });
+    }
+    const file = indexedFiles.get(range.path);
+    if (!file || !file.mode.startsWith('100')) {
+      throw projectError(`Project source path ${JSON.stringify(range.path)} is not in the index.`, {
+        code: 'project-index/source-path-missing',
+      });
+    }
+    return { path: range.path, line: range.line, endLine: range.endLine, file };
+  }).sort((left, right) => compareBinaryText(left.path, right.path)
+    || left.line - right.line
+    || left.endLine - right.endLine);
+  const limited = prepared.slice(0, maxResults);
+  const requestedFiles = [...new Map(limited.map(({ file }) => [file.path, file])).values()];
+  const pinned = pinnedSourceBlobs(index, requestedFiles, repoRoot);
+  const inspectedRanges = limited.map(({ path: filePath, line, endLine, file }) => ({
+    path: filePath,
+    blobOid: file.blobOid.toLowerCase(),
+    line,
+    endLine,
+    ...numberedSourceRange(pinned.blobs.get(file.blobOid.toLowerCase()), line, endLine),
+  }));
+  return {
+    schemaVersion: 1,
+    command: 'project-index-source-inspect',
+    indexDigest: index.digest.toLowerCase(),
+    repository: {
+      origin: repositoryIdentity(index.repository.origin, index.repository.root),
+      revision: pinned.revision,
+      objectFormat: pinned.repository.objectFormat,
+    },
+    requested: prepared.length,
+    returned: inspectedRanges.length,
+    truncated: inspectedRanges.length < prepared.length,
+    ranges: inspectedRanges,
+  };
 }
 
 /**
