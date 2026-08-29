@@ -4,7 +4,7 @@ Read this reference only after the Fast authoring path calls for more detail. Th
 
 ## Schema lookup
 
-Load `authoring-kit <type> --json` once. Its byte-identical packet contains the mode schema, `schemas/common.schema.json`, and exactly one matching example; the mode schemas use `$ref`, so the common file is where shared enums live.
+Load `authoring-kit <type> --json` once. Its byte-identical file packets contain the mode schema, `schemas/common.schema.json`, and exactly one matching example; it also supplies the per-type first-screen `layoutBudget`, type-accurate commands, capabilities, workflow, and unchanged quality guards. Ordinary authoring should not reread this full reference unless the packet explicitly routes here for detailed geometry or evidence rules. The mode schemas use `$ref`, so the common file is where shared enums live.
 
 - `componentType`: `frontend`, `backend`, `database`, `cloud`, `security`, `messagebus`, `external`
 - `variant`: `default`, `emphasis`, `security`, `dashed`
@@ -158,7 +158,7 @@ Main phases use columns `0..4`; event and terminal bands use columns `0..2`. A r
 
 ## Repository evidence
 
-When the diagram must reflect real code, pin one full commit and run `project-index <repo-root> --revision <commit> --output <index.json>` once. Reuse that mechanical file/import/symbol/package index across every diagram for the same revision. Put semantic interpretations in an evidence ledger with selected source ranges, then run `evidence-ledger verify <ledger.json> --project-index <index.json> --repo-root <path>` immediately before handoff. Verification requires the original ProjectIndex receipt and checks its digest, origin, revision, selected file facts, Git blobs, and range hashes; a missing or changed receipt fails closed. Use `--repo-root <path>` when the chosen renderer supports evidence receipts. Never infer runtime causality from file proximity or naming alone.
+When the diagram must reflect real code, pin one full commit and run `project-index <repo-root> --revision <commit> --output <index.json>` once. Reuse that mechanical file/import/symbol/package index across every diagram for the same revision. Query compact candidate slices with `project-index query <index.json> --symbol ... --import ... --path ...`; the query returns mechanical matches and editable selection hints, never inferred topology. Confirm facts and summaries, then use `evidence-ledger hydrate <index.json> <selections.json>` to fill revision, blob, and range hashes in one batched read. Run `evidence-ledger verify <ledger.json> --project-index <index.json> --repo-root <path>` immediately before handoff. Verification requires the original ProjectIndex receipt and checks its digest, origin, revision, selected file facts, Git blobs, and range hashes; a missing or changed receipt fails closed. Use `--repo-root <path>` when the chosen renderer supports evidence receipts. Never infer runtime causality from file proximity or naming alone.
 
 ## Hand-placed fallback
 

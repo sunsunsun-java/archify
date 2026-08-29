@@ -17,8 +17,8 @@ Create a self-contained, interactive HTML diagram from a small typed JSON specif
 Use this bounded path for ordinary generation. Do not read the optional Viewer Runtime reference unless the user asks about those features.
 
 1. Choose `architecture`, `workflow`, `sequence`, `dataflow`, or `lifecycle` from the question.
-2. Load the complete authoring contract in one call: `node bin/archify.mjs authoring-kit <type> --json`. Use the packet's exact type schema, common schema, and single matching example; do not rediscover those files separately. Fresh authorship means new stable IDs, domain wording, and layout; use the example for field shape, not facts. When real product identity matters, query `node bin/archify.mjs brands "<name>" --json`; read `references/brand-marks.md` only for an unknown brand with a user-provided URL. When several diagrams must reflect one repository revision, build one shared mechanical index with `project-index`, use it for every diagram, and keep interpretations in revision-pinned evidence ledgers.
-3. Artifact first: the next tool action must write the candidate. Write the candidate before inspecting renderer internals. Do not plan exact coordinates in prose. Start with one clear main path, short side branches, sparse labels, and at most 12 primary nodes. Set `meta.quality_profile` to `"showcase"` unless the user explicitly requests a dense `standard` map. Start with automatic routes and labels. Do not add `via`, `channelX`, `channelY`, or `labelAt` before a diagnostic calls for one; apply at most one diagnosed geometry control per repair.
+2. Load the complete ordinary authoring packet in one call: `node bin/archify.mjs authoring-kit <type> --json`. Use its exact type schema, common schema, and single matching example, plus `layoutBudget`, type-accurate commands, workflow, and quality guards; do not rediscover those files or reread the full contracts for an ordinary diagram. Fresh authorship means new stable IDs, domain wording, and layout; use the example for field shape, not facts. When real product identity matters, query `node bin/archify.mjs brands "<name>" --json`; read `references/brand-marks.md` only for an unknown brand with a user-provided URL. When several diagrams must reflect one repository revision, build one shared mechanical index, query compact slices with `project-index query`, and hydrate revision-pinned evidence ledgers from confirmed selections.
+3. Artifact first: the next tool action must write the candidate. Write the candidate before inspecting renderer internals. Do not plan exact coordinates in prose. Stay within the packet's `layoutBudget`: start with one clear main path, short side branches, sparse labels, and the per-type primary limits. Set `meta.quality_profile` to `"showcase"` unless the user explicitly requests a dense `standard` map. Start with automatic routes and labels. Do not add `via`, `channelX`, `channelY`, or `labelAt` before a diagnostic calls for one; apply at most one diagnosed geometry control per repair.
 4. Validate after every candidate edit. On the first deterministic pass and immediately before handoff, add `--preflight` so all four desktop containment viewports pass before delivery:
 
    ```bash
@@ -26,14 +26,14 @@ Use this bounded path for ordinary generation. Do not read the optional Viewer R
    node bin/archify.mjs validate <type> <candidate.json> --quality showcase --preflight --json
    ```
 
-   A receipt with only 4 artifact checks is basic validation, never showcase acceptance. A showcase pass must report all 9 artifact checks with 0 composition errors and 0 warnings. If the candidate omits or misspells the exact `meta.quality_profile` field, fix it before geometry. A passing final validation freezes the candidate: never edit it afterward.
+   For several frozen candidates, use one shared pre-delivery browser session with `validate-batch <candidates.json>` instead of starting Chrome once per candidate. A receipt with only 4 artifact checks is basic validation, never showcase acceptance. A showcase pass must report all 9 artifact checks with 0 composition errors and 0 warnings. On failure, use the receipt's bounded `repairPlan`; its quality guards forbid semantic deletion, typography reduction, clipping, and overflow hiding. If the candidate omits or misspells the exact `meta.quality_profile` field, fix it before geometry. A passing final validation freezes the candidate: never edit it afterward.
 5. For a delivered HTML, `deliver` is the final acceptance command:
 
    ```bash
    node bin/archify.mjs deliver <type> <candidate.json> <output.html> --quality showcase --json
    ```
 
-   A non-zero exit can never be described as success. If validation fails, change only the diagnosed `subject`, verify `evidence`, choose from `supportedFixes`, and rerun. Continue focused correction while the objective error count reaches a new minimum. If two consecutive rounds do not improve that best count, stop and report the unresolved diagnostics truthfully.
+   A non-zero exit can never be described as success. If validation fails, change only the diagnosed `subject`, verify `evidence`, choose from `repairPlan.actions[].supportedFixes`, and rerun. Continue focused correction while the objective error count reaches a new minimum. If two consecutive rounds do not improve that best count, stop and report the unresolved diagnostics truthfully.
 
 Do not read `renderers/shared/geometry.mjs`, renderer source, validator source, tests, or benchmarks before the first candidate. Inspect implementation only for an unsupported internal diagnostic or after two focused repairs fail.
 
@@ -91,7 +91,7 @@ node bin/archify.mjs visual-check <output.html> --json
 node bin/archify.mjs visual-check <architecture.html> <workflow.html> <sequence.html> <dataflow.html> <lifecycle.html> --json
 ```
 
-For a repeatable multi-diagram run, use `run-suite` with a full pinned commit, an isolated output directory, and a manifest of typed `validate` → `deliver` → `visual-check` commands. The runner records append-only timing events and canonical per-stage/suite receipts; it never authors diagram semantics or calls a model.
+For a repeatable multi-diagram run, use `run-suite` with a full pinned commit, an isolated output directory, and a manifest of typed `validate` → `deliver` → `visual-check` commands. Set `sharedViewportPreflight: true` for already-frozen candidates so one reset Chrome session performs every pre-delivery viewport check; manifests with candidate-producing `exec` commands retain isolated preflight. The runner records append-only timing events, exact child-process spans, and canonical per-stage/suite receipts; it never authors diagram semantics or calls a model.
 
 `visual-check` measures containment at 1440×900, 1600×1000, 1920×1080, and 2048×1320; captures light/dark screenshots at the smallest and largest sizes; and writes a relative-path contact sheet plus JSON sidecars beside the artifact. Its automated receipt always reports `visualReview: "pending"`: screenshots are evidence for inspection, never an automatic polish claim. Exit 0 means containment and captures passed, 1 means overflow or capture failure, and 2 means Chrome/Chromium was unavailable and the receipt is `skipped`. The command never changes the delivered HTML.
 

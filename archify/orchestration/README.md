@@ -22,6 +22,7 @@ shell and its behaviour belongs to the manifest author.
   "qualityProfile": "showcase",
   "projectIndex": true,
   "viewportPreflight": true,
+  "sharedViewportPreflight": true,
   "diagrams": [
     {
       "id": "workflow",
@@ -37,14 +38,8 @@ shell and its behaviour belongs to the manifest author.
     {
       "id": "sequence",
       "type": "sequence",
-      "candidate": "{diagramOutput}/candidate.json",
+      "candidate": "./inputs/sequence.json",
       "commands": [
-        {
-          "id": "prepare",
-          "kind": "exec",
-          "argv": ["candidate-producer", "{candidate}"],
-          "cwd": "diagram"
-        },
         { "id": "validate", "kind": "validate" },
         { "id": "deliver", "kind": "deliver" },
         { "id": "visual", "kind": "visual-check" }
@@ -67,6 +62,16 @@ typed quality command must be `visual-check`.
 `--preflight` and fails closed unless all four light containment viewports
 pass. The final full visual check and its four light/dark screenshots remain
 mandatory either way.
+
+For manifests whose candidates are already frozen, `sharedViewportPreflight:
+true` moves the same pre-delivery gate into one `candidatePreflightBatch`
+stage. It renders and deterministically checks every candidate, reuses one
+reset Chrome session for all four-viewpoint checks, binds each candidate byte
+digest, and fails if any candidate changes before validate/deliver. Because an
+`exec` command can mutate a candidate, shared preflight rejects manifests that
+contain `exec`; those manifests keep the isolated per-diagram preflight path.
+The batch receipt separates input, renderer, deterministic-checker, and browser
+preflight time so reports do not mistake orchestration marker gaps for tool runtime.
 
 Before any diagram command, the suite runs exactly one batch capability gate:
 `archify visual-check --probe --json`. An unavailable or failed Chrome/CDP
@@ -101,5 +106,8 @@ Each diagram directory receives:
 The output root receives `suite-result.json` and a mechanically generated
 `README.md`, plus `suite-timing.events.jsonl` and `suite-timing.json` for
 batch-level capability, shared-index, diagram-run, and reporting timing.
+Production command receipts also include `processTiming` measured around the
+actual child process, so model/agent marker gaps are not misreported as CLI
+runtime.
 Deterministic validation and browser screenshots never promote the independent
 human review to `passed`.

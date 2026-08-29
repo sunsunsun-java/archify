@@ -14,6 +14,14 @@ Use final atomic delivery only after the candidate is frozen:
 node bin/archify.mjs deliver <type> <candidate.json> <output.html> --quality showcase --json
 ```
 
+For several already-frozen candidates, create a schemaVersion 1 manifest with `candidates[]` entries (`id`, `type`, `input`, and architecture-only `repoRoot`) and run:
+
+```bash
+node bin/archify.mjs validate-batch <candidates.json> --quality showcase --json
+```
+
+The batch renders and deterministically checks every candidate, then reuses one reset Chrome session for all temporary pre-delivery artifacts. Every child receipt binds the candidate SHA-256; suite delivery fails if a candidate changes afterward. Its receipt records monotonic total time plus per-candidate `inputMs`, `renderMs`, `checkMs`, and `preflightMs`; these are process/browser measurements, not agent-message marker gaps.
+
 Deliver reads the specification once, writes those exact bytes to a private same-directory candidate snapshot, renders that snapshot, runs the complete artifact checker, and only replaces the target after all artifact checks pass. The JSON receipt includes SHA-256 and byte counts for both `specification` and `artifact`. Renderer, checker, receipt, or commit failure exits non-zero, removes private state, preserves the previous trusted artifact, and never invokes an opener.
 
 The deterministic receipt proves byte identity and automated checks. Never claim that the deterministic receipt includes visual review.

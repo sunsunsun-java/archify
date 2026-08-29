@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { runSuite } from '../orchestration/suite-runner.mjs';
+import { runSuite, spawnCommandRunner } from '../orchestration/suite-runner.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(here, '..');
@@ -172,15 +172,44 @@ function fakeRunner({
   return runner;
 }
 
-function writeManifest(tmp, diagrams) {
+function writeManifest(tmp, diagrams, options = {}) {
   const manifestPath = path.join(tmp, 'suite.json');
   fs.writeFileSync(manifestPath, JSON.stringify({
     schemaVersion: 1,
     id: 'pi-five-diagrams',
     qualityProfile: 'showcase',
+    ...options,
     diagrams,
   }, null, 2));
   return manifestPath;
+}
+
+function sharedCandidatePreflightRunner(calls = []) {
+  return async ({ candidates, quality }) => {
+    calls.push({ candidates, quality });
+    return {
+      exitCode: 0,
+      receipt: {
+        schemaVersion: 1,
+        ok: true,
+        command: 'validate-batch',
+        status: 'pass',
+        quality,
+        session: { shared: true, candidates: candidates.length, expectedBrowserResets: candidates.length - 1 },
+        candidates: candidates.map((candidate) => {
+          const bytes = fs.readFileSync(candidate.input);
+          return {
+            ...validationReceipt(candidate.type, candidate.input),
+            id: candidate.id,
+            specification: {
+              bytes: bytes.byteLength,
+              sha256: createHash('sha256').update(bytes).digest('hex'),
+            },
+          };
+        }),
+      },
+    };
+  };
 }
 
 function staticCandidate(tmp, type) {
@@ -211,7 +240,23 @@ test('suite runner CLI: documents explicit repository, revision, output, and no-
   assert.match(result.stdout, /--revision <full-commit-id>/);
   assert.match(result.stdout, /--output <directory>/);
   assert.match(result.stdout, /does not call a model/);
+  assert.match(result.stdout, /sharedViewportPreflight/);
   assert.match(result.stdout, /manifest\.projectIndex/);
+});
+
+test('production command runner reports child-process time without agent marker gaps', async () => {
+  const result = await spawnCommandRunner({
+    executable: process.execPath,
+    args: ['-e', 'process.stdout.write("ok")'],
+    cwd: skillRoot,
+    env: {},
+  });
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.stdout, 'ok');
+  assert.equal(result.timing.source, 'child-process');
+  assert.ok(result.timing.durationMs >= 0);
+  assert.match(result.timing.startedAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.match(result.timing.endedAt, /^\d{4}-\d{2}-\d{2}T/);
 });
 
 test('suite runner: pins the repository once, isolates diagrams, and generates timing/report receipts', async (t) => {
@@ -294,6 +339,49 @@ test('suite runner: pins the repository once, isolates diagrams, and generates t
   assert.equal(suiteTiming.stages.find((stage) => stage.name === 'visualCheckBatch').status, 'passed');
   assert.equal(suiteTiming.finalReceipt.chromeCapability.receipt.status, 'pass');
   assert.equal(suiteTiming.finalReceipt.visualCheckBatch.artifacts.length, 2);
+});
+
+test('suite runner: frozen candidates share one pre-delivery browser session', async (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-suite-shared-preflight-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const repoRoot = path.join(tmp, 'repo');
+  const outputRoot = path.join(tmp, 'output');
+  fs.mkdirSync(repoRoot);
+  const manifestPath = writeManifest(tmp, [
+    { id: 'workflow', type: 'workflow', candidate: staticCandidate(tmp, 'workflow'), commands: qualityCommands() },
+    { id: 'sequence', type: 'sequence', candidate: staticCandidate(tmp, 'sequence'), commands: qualityCommands() },
+  ], { sharedViewportPreflight: true });
+  const commandRunner = fakeRunner();
+  const preflightCalls = [];
+
+  const summary = await runSuite({
+    manifestPath,
+    repoRoot,
+    revision,
+    outputRoot,
+    archifyCli,
+    concurrency: 2,
+    commandRunner,
+    candidatePreflightRunner: sharedCandidatePreflightRunner(preflightCalls),
+  });
+
+  assert.equal(summary.status, 'automated-pass-awaiting-human-review');
+  assert.equal(summary.sharedViewportPreflight, true);
+  assert.equal(preflightCalls.length, 1);
+  assert.equal(preflightCalls[0].candidates.length, 2);
+  assert.equal(commandRunner.requests.filter((request) => request.kind === 'validate').every((request) => !request.args.includes('--preflight')), true);
+  const timing = JSON.parse(fs.readFileSync(summary.timing, 'utf8'));
+  assert.equal(timing.stages.filter((stage) => stage.name === 'candidatePreflightBatch').length, 1);
+  assert.equal(timing.finalReceipt.candidatePreflightBatch.session.shared, true);
+  const report = fs.readFileSync(summary.report, 'utf8');
+  assert.match(report, /Shared candidate preflight: `enabled`/);
+  assert.match(report, /Shared pre-delivery candidate check: `pass` \(2 candidates, one browser process\)/);
+  for (const diagram of summary.diagrams) {
+    const diagramTiming = JSON.parse(fs.readFileSync(diagram.timing, 'utf8'));
+    const validate = diagramTiming.finalReceipt.commands.find((command) => command.kind === 'validate');
+    assert.equal(validate.receipt.preflight.status, 'pass');
+    assert.equal(diagramTiming.finalReceipt.quality.sharedViewportPreflight, true);
+  }
 });
 
 test('suite runner: one unavailable Chrome capability probe stops every diagram command fail-closed', async (t) => {
@@ -457,6 +545,30 @@ test('suite runner: manifest enforces validate-deliver-visual quality ordering',
     archifyCli,
     commandRunner: fakeRunner(),
   }), /requires a preceding validate/);
+});
+
+test('suite runner: shared candidate preflight rejects mutable exec candidates', async (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-suite-shared-mutable-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const repoRoot = path.join(tmp, 'repo');
+  fs.mkdirSync(repoRoot);
+  const manifestPath = writeManifest(tmp, [{
+    type: 'workflow',
+    candidate: staticCandidate(tmp, 'workflow'),
+    commands: [
+      { id: 'prepare', kind: 'exec', argv: ['prepare-candidate'] },
+      ...qualityCommands(),
+    ],
+  }], { sharedViewportPreflight: true });
+
+  await assert.rejects(runSuite({
+    manifestPath,
+    repoRoot,
+    revision,
+    outputRoot: path.join(tmp, 'output'),
+    archifyCli,
+    commandRunner: fakeRunner(),
+  }), /requires frozen candidates and does not permit exec commands/);
 });
 
 test('suite runner: rejects control-file and candidate/artifact aliases before execution', async (t) => {

@@ -20,7 +20,9 @@ Options:
 The runner executes typed manifest commands. It does not call a model or
 author diagram semantics. Deterministic/browser success leaves the independent
 human visual review in pending state. Set manifest.projectIndex to true to
-build one shared revision-pinned mechanical fact index.`;
+build one shared revision-pinned mechanical fact index. Set
+manifest.sharedViewportPreflight to true only for frozen candidates to check
+all candidates in one reset browser session before diagram execution.`;
 }
 
 function parseArguments(argv) {

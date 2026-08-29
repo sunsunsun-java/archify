@@ -31,6 +31,16 @@ test('authoring kit returns the exact schema, common schema, and one matching ex
     const kit = loadAuthoringKit(type);
     assert.equal(kit.schemaVersion, 1);
     assert.equal(kit.type, type);
+    assert.deepEqual(kit.layoutBudget.targetViewport, [1440, 900]);
+    assert.equal(kit.layoutBudget.qualityGuards.deterministicChecks, 9);
+    assert.equal(kit.layoutBudget.qualityGuards.desktopViewports.length, 4);
+    assert.equal(kit.layoutBudget.qualityGuards.semanticDeletionAllowed, false);
+    assert.match(kit.commands.validate, new RegExp(`validate ${type}`));
+    assert.match(kit.commands.preflight, /--preflight/);
+    assert.match(kit.commands.evidenceHydrate, /evidence-ledger hydrate/);
+    assert.equal(kit.capabilities.repositoryEvidence, type === 'architecture');
+    assert.equal(kit.capabilities.deterministicRepairPlan, true);
+    assert.ok(kit.workflow.length >= 5);
     assert.deepEqual(Object.keys(kit.files), ['schema', 'commonSchema', 'example']);
     assert.equal(kit.files.schema.path, `schemas/${type}.schema.json`);
     assert.equal(kit.files.commonSchema.path, 'schemas/common.schema.json');
@@ -64,4 +74,7 @@ test('authoring-kit CLI emits a complete machine packet without an extra discove
   assert.equal(packet.files.commonSchema.path, 'schemas/common.schema.json');
   assert.equal(packet.files.example.path, 'examples/agent-tool-call.workflow.json');
   assert.match(packet.files.example.content, /Agent Tool Call Workflow/);
+  assert.deepEqual(packet.layoutBudget.recommendedViewBox, [1000, 540]);
+  assert.match(packet.commands.deliver, /deliver workflow/);
+  assert.doesNotMatch(packet.commands.deliver, /--repo-root/);
 });

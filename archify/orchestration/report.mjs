@@ -83,12 +83,16 @@ export function renderSuiteReport({ suite, results, outputRoot }) {
     `- Pinned revision: \`${suite.repository.revision}\``,
     `- Quality profile: \`${suite.qualityProfile}\``,
     `- Validate viewport preflight: \`${suite.viewportPreflight ? 'enabled' : 'disabled'}\``,
+    `- Shared candidate preflight: \`${suite.sharedViewportPreflight ? 'enabled' : 'disabled'}\``,
     `- Chrome capability gate: \`${suite.chromeCapability?.receipt?.status || 'not-recorded'}\` (${seconds(suite.chromeCapability?.durationMs)})`,
     ...(suite.chromeCapability?.receipt?.error
       ? [`- Chrome capability error: ${markdownCell(suite.chromeCapability.receipt.error)}`]
       : []),
     ...(suite.visualCheckBatch
       ? [`- Shared final visual-check: \`${suite.visualCheckBatch.receipt?.status || 'invalid'}\` (${seconds(suite.visualCheckBatch.durationMs)}; ${suite.visualCheckBatch.artifacts.length} artifacts, one browser process)`]
+      : []),
+    ...(suite.sharedViewportPreflightReceipt
+      ? [`- Shared pre-delivery candidate check: \`${suite.sharedViewportPreflightReceipt.status || 'invalid'}\` (${suite.sharedViewportPreflightReceipt.candidates?.length || 0} candidates, one browser process)`]
       : []),
     ...(suite.projectIndexReceipt
       ? [`- Shared project index: ${relativeLink(outputRoot, suite.projectIndexReceipt.path)} (\`${suite.projectIndexReceipt.digest}\`; ${suite.projectIndexReceipt.files} files, ${suite.projectIndexReceipt.filesAnalyzed} analyzed)`]

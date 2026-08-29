@@ -2,6 +2,8 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { performance } from 'node:perf_hooks';
+import { runCandidatePreflightBatch } from '../authoring/candidate-preflight.mjs';
 import { buildProjectIndex } from '../evidence/project-index.mjs';
 import { RunRecorder, recoverRunTiming } from './run-recorder.mjs';
 import { renderSuiteReport } from './report.mjs';
@@ -132,6 +134,9 @@ function normalizeManifest(manifest, manifestPath, outputRoot) {
   if (manifest.viewportPreflight !== undefined && typeof manifest.viewportPreflight !== 'boolean') {
     throw new Error('manifest.viewportPreflight must be boolean when specified.');
   }
+  if (manifest.sharedViewportPreflight !== undefined && typeof manifest.sharedViewportPreflight !== 'boolean') {
+    throw new Error('manifest.sharedViewportPreflight must be boolean when specified.');
+  }
 
   const manifestDirectory = path.dirname(manifestPath);
   const seenDiagramIds = new Set();
@@ -220,11 +225,20 @@ function normalizeManifest(manifest, manifestPath, outputRoot) {
     };
   });
 
+  const sharedViewportPreflight = manifest.sharedViewportPreflight === true;
+  if (sharedViewportPreflight && manifest.viewportPreflight === false) {
+    throw new Error('manifest.sharedViewportPreflight requires viewportPreflight.');
+  }
+  if (sharedViewportPreflight && diagrams.some((diagram) => diagram.commands.some((command) => command.kind === 'exec'))) {
+    throw new Error('manifest.sharedViewportPreflight requires frozen candidates and does not permit exec commands.');
+  }
+
   return {
     id,
     qualityProfile,
     projectIndex: manifest.projectIndex === true,
     viewportPreflight: manifest.viewportPreflight !== false,
+    sharedViewportPreflight,
     diagrams,
     manifestPath,
     manifestDirectory,
@@ -280,7 +294,7 @@ function commandRequest({ command, diagram, suite, archifyCli }) {
         '--quality',
         suite.qualityProfile,
         ...(diagram.type === 'architecture' ? ['--repo-root', suite.repository.root] : []),
-        ...(suite.viewportPreflight ? ['--preflight'] : []),
+        ...(suite.viewportPreflight && !suite.sharedViewportPreflight ? ['--preflight'] : []),
         '--json',
       ],
       cwd: diagram.outputDirectory,
@@ -649,6 +663,18 @@ function verifyCandidateRevision(diagram, revision) {
   }
 }
 
+function verifySharedCandidateDigest(diagram, receipt) {
+  const expected = receipt?.specification;
+  if (!expected || !Number.isInteger(expected.bytes) || typeof expected.sha256 !== 'string') {
+    throw new Error(`Shared candidate preflight receipt has no specification digest for ${diagram.id}.`);
+  }
+  const bytes = fs.readFileSync(diagram.candidatePath);
+  const actualSha256 = createHash('sha256').update(bytes).digest('hex');
+  if (bytes.byteLength !== expected.bytes || actualSha256 !== expected.sha256) {
+    throw new Error(`Candidate ${diagram.id} changed after the shared viewport preflight.`);
+  }
+}
+
 function pendingVisualReview(diagram, artifactPath) {
   return {
     schemaVersion: 1,
@@ -671,6 +697,7 @@ function finalReceipt({ suite, diagram, commandReceipts, status, error = null })
     quality: {
       profile: suite.qualityProfile,
       viewportPreflight: suite.viewportPreflight,
+      sharedViewportPreflight: suite.sharedViewportPreflight,
     },
     ...(suite.projectIndexReceipt ? { projectIndex: suite.projectIndexReceipt } : {}),
     diagram: {
@@ -759,13 +786,25 @@ async function runDiagramUntilVisual({ suite, diagram, archifyCli, commandRunner
         await stage.attempt(command.kind, async (attempt) => {
           if (['validate', 'deliver'].includes(command.kind)) {
             await attempt.span('candidate-revision', async () => verifyCandidateRevision(diagram, suite.repository.revision));
+            if (suite.sharedViewportPreflight) {
+              await attempt.span('shared-preflight-specification', async () => verifySharedCandidateDigest(
+                diagram,
+                suite.sharedPreflightReceipts?.[diagram.id],
+              ));
+            }
           }
           const result = await attempt.span('command', async () => commandRunner(request));
-          const receipt = await attempt.span('receipt', async () => parseCommandReceipt(command, result));
+          let receipt = await attempt.span('receipt', async () => parseCommandReceipt(command, result));
+          if (command.kind === 'validate' && suite.sharedViewportPreflight) {
+            const shared = suite.sharedPreflightReceipts?.[diagram.id];
+            if (!shared) throw new Error(`Shared candidate preflight receipt is missing for ${diagram.id}.`);
+            receipt = { ...receipt, preflight: shared.preflight };
+          }
           commandReceipts.push({
             id: command.id,
             kind: command.kind,
             exitCode: result.exitCode,
+            ...(result.timing ? { processTiming: result.timing } : {}),
             receipt,
           });
           verifyQualityReceipt(
@@ -849,6 +888,8 @@ async function mapWithConcurrency(items, concurrency, worker) {
 /** Production adapter for the injected command-runner seam. */
 export function spawnCommandRunner(request) {
   return new Promise((resolve, reject) => {
+    const startedAt = new Date().toISOString();
+    const startedMonotonicMs = performance.now();
     const child = spawn(request.executable, request.args, {
       cwd: request.cwd,
       env: { ...process.env, ...request.env },
@@ -879,6 +920,12 @@ export function spawnCommandRunner(request) {
         signal,
         stdout: Buffer.concat(stdout).toString('utf8'),
         stderr: Buffer.concat(stderr).toString('utf8'),
+        timing: {
+          source: 'child-process',
+          startedAt,
+          endedAt: new Date().toISOString(),
+          durationMs: Math.round((performance.now() - startedMonotonicMs) * 1000) / 1000,
+        },
       });
     });
   });
@@ -940,6 +987,7 @@ export async function runSuite({
   archifyCli,
   concurrency = 1,
   commandRunner = spawnCommandRunner,
+  candidatePreflightRunner = runCandidatePreflightBatch,
 }) {
   const absoluteManifest = path.resolve(assertString(manifestPath, 'manifestPath'));
   const absoluteRepo = path.resolve(assertString(repoRoot, 'repoRoot'));
@@ -1007,6 +1055,44 @@ export async function runSuite({
           packages: index.packages.length,
         };
         stage.milestone('projectIndexReady', suite.projectIndexReceipt);
+      });
+    } catch (error) {
+      suiteError = error;
+    }
+  }
+
+  if (!suiteError && suite.sharedViewportPreflight) {
+    try {
+      await suiteRecorder.stage('candidatePreflightBatch', async (stage) => {
+        for (const diagram of suite.diagrams) verifyCandidateRevision(diagram, suite.repository.revision);
+        const result = await stage.span('shared-browser-session', async () => candidatePreflightRunner({
+          skillRoot: path.dirname(path.dirname(absoluteCli)),
+          quality: suite.qualityProfile,
+          candidates: suite.diagrams.map((diagram) => ({
+            id: diagram.id,
+            type: diagram.type,
+            input: diagram.candidatePath,
+            ...(diagram.type === 'architecture' ? { repoRoot: suite.repository.root } : {}),
+          })),
+        }));
+        suite.sharedViewportPreflightReceipt = result.receipt;
+        suite.sharedPreflightReceipts = Object.fromEntries(
+          (result.receipt?.candidates || []).map((receipt) => [receipt.id, receipt]),
+        );
+        stage.milestone('candidatePreflightBatchResult', {
+          status: result.receipt?.status,
+          candidates: result.receipt?.candidates?.length || 0,
+          sharedSession: result.receipt?.session?.shared === true,
+        });
+        if (result.exitCode !== 0 || result.receipt?.ok !== true) {
+          const error = new Error(`Shared candidate preflight ${result.receipt?.status || 'failed'} with exit code ${result.exitCode}.`);
+          error.code = 'ARCHIFY_SUITE_CANDIDATE_PREFLIGHT';
+          error.exitCode = result.exitCode;
+          throw error;
+        }
+        for (const diagram of suite.diagrams) {
+          verifySharedCandidateDigest(diagram, suite.sharedPreflightReceipts[diagram.id]);
+        }
       });
     } catch (error) {
       suiteError = error;
@@ -1086,8 +1172,12 @@ export async function runSuite({
     quality: {
       profile: suite.qualityProfile,
       viewportPreflight: suite.viewportPreflight,
+      sharedViewportPreflight: suite.sharedViewportPreflight,
     },
     chromeCapability: suite.chromeCapability,
+    ...(suite.sharedViewportPreflightReceipt
+      ? { candidatePreflightBatch: suite.sharedViewportPreflightReceipt }
+      : {}),
     ...(suite.visualCheckBatch ? { visualCheckBatch: suite.visualCheckBatch } : {}),
     ...(suite.projectIndexReceipt ? { projectIndex: suite.projectIndexReceipt } : {}),
     plannedDiagrams: suite.diagrams.map((diagram) => ({ id: diagram.id, type: diagram.type })),
@@ -1112,7 +1202,11 @@ export async function runSuite({
     repository: suite.repository,
     qualityProfile: suite.qualityProfile,
     viewportPreflight: suite.viewportPreflight,
+    sharedViewportPreflight: suite.sharedViewportPreflight,
     chromeCapability: suite.chromeCapability,
+    ...(suite.sharedViewportPreflightReceipt
+      ? { candidatePreflightBatch: suite.sharedViewportPreflightReceipt }
+      : {}),
     ...(suite.visualCheckBatch ? { visualCheckBatch: suite.visualCheckBatch } : {}),
     ...(suite.projectIndexReceipt ? { projectIndex: suite.projectIndexReceipt } : {}),
     report: path.join(absoluteOutput, 'README.md'),

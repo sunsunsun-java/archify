@@ -589,6 +589,133 @@ function validateProjectIndexForEvidence(index) {
   return index;
 }
 
+function queryTerms(values, label) {
+  if (values === undefined) return [];
+  if (!Array.isArray(values) || values.some((value) => typeof value !== 'string' || !value.trim())) {
+    throw projectError(`${label} must be an array of non-empty strings.`, {
+      code: 'project-index/query-invalid',
+    });
+  }
+  return [...new Set(values.map((value) => value.trim()))].sort(compareBinaryText);
+}
+
+function pathMatchesPrefix(filePath, prefix) {
+  const clean = prefix.replace(/\/+$/, '');
+  return filePath === clean || filePath.startsWith(`${clean}/`);
+}
+
+function suggestedClaimId(filePath, symbol) {
+  const stem = `${symbol.name}-${path.posix.basename(filePath, path.posix.extname(filePath))}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  return stem || 'source-symbol';
+}
+
+/**
+ * Query a ProjectIndex without loading its multi-megabyte receipt into an
+ * authoring context. Categories combine with AND; terms inside one category
+ * combine with OR. The result contains mechanical matches and selection hints,
+ * never inferred topology or causality.
+ */
+export function queryProjectIndex(index, {
+  symbols,
+  imports,
+  paths,
+  languages,
+  packages,
+  maxResults = 20,
+} = {}) {
+  validateProjectIndexForEvidence(index);
+  const query = {
+    symbols: queryTerms(symbols, 'symbols'),
+    imports: queryTerms(imports, 'imports'),
+    paths: queryTerms(paths, 'paths'),
+    languages: queryTerms(languages, 'languages'),
+    packages: queryTerms(packages, 'packages'),
+  };
+  if (!Object.values(query).some((terms) => terms.length)) {
+    throw projectError('ProjectIndex query requires at least one symbol, import, path, language, or package.', {
+      code: 'project-index/query-required',
+    });
+  }
+  if (!Number.isInteger(maxResults) || maxResults < 1 || maxResults > 200) {
+    throw projectError('maxResults must be an integer from 1 through 200.', {
+      code: 'project-index/query-limit',
+    });
+  }
+
+  const fileMatches = index.files.map((file) => {
+    const matchedSymbols = (file.symbols || []).filter((symbol) => query.symbols.includes(symbol.name));
+    const matchedImports = (file.imports || []).filter((specifier) => query.imports.includes(specifier));
+    const matchedPaths = query.paths.filter((prefix) => pathMatchesPrefix(file.path, prefix));
+    const matchedLanguages = query.languages.filter((language) => file.language === language);
+    if ((query.symbols.length && !matchedSymbols.length)
+      || (query.imports.length && !matchedImports.length)
+      || (query.paths.length && !matchedPaths.length)
+      || (query.languages.length && !matchedLanguages.length)) {
+      return null;
+    }
+    if (!query.symbols.length && !query.imports.length && !query.paths.length && !query.languages.length) {
+      return null;
+    }
+    return {
+      path: file.path,
+      blobOid: file.blobOid,
+      bytes: file.bytes,
+      ...(file.language ? { language: file.language } : {}),
+      matched: {
+        ...(matchedSymbols.length ? { symbols: matchedSymbols } : {}),
+        ...(matchedImports.length ? { imports: matchedImports } : {}),
+        ...(matchedPaths.length ? { pathPrefixes: matchedPaths } : {}),
+        ...(matchedLanguages.length ? { languages: matchedLanguages } : {}),
+      },
+      selectionHints: matchedSymbols.map((symbol) => ({
+        claimIdSuggested: suggestedClaimId(file.path, symbol),
+        path: file.path,
+        line: symbol.line,
+        endLine: symbol.line,
+        symbol: { kind: symbol.kind, name: symbol.name },
+        summary: '',
+      })),
+      score: matchedSymbols.length * 8
+        + matchedImports.length * 4
+        + matchedPaths.length * 2
+        + matchedLanguages.length,
+    };
+  }).filter(Boolean).sort((left, right) => right.score - left.score || compareBinaryText(left.path, right.path));
+
+  const packageMatches = index.packages.filter((entry) => query.packages.some((term) => (
+    entry.name === term || entry.dependencies.includes(term)
+  ))).map((entry) => ({
+    ...entry,
+    matched: query.packages.filter((term) => entry.name === term || entry.dependencies.includes(term)),
+  }));
+  const limitedFiles = fileMatches.slice(0, maxResults).map(({ score, ...file }) => file);
+  const remaining = Math.max(0, maxResults - limitedFiles.length);
+  const limitedPackages = packageMatches.slice(0, remaining);
+
+  return {
+    schemaVersion: 1,
+    command: 'project-index-query',
+    indexDigest: index.digest,
+    repository: {
+      origin: index.repository.origin,
+      revision: index.repository.revision,
+      objectFormat: index.repository.objectFormat,
+    },
+    query: { ...query, maxResults },
+    summary: {
+      filesMatched: fileMatches.length,
+      packagesMatched: packageMatches.length,
+      returned: limitedFiles.length + limitedPackages.length,
+      truncated: limitedFiles.length < fileMatches.length || limitedPackages.length < packageMatches.length,
+    },
+    files: limitedFiles,
+    packages: limitedPackages,
+  };
+}
+
 export function createEvidenceLedger(index, selections) {
   validateProjectIndexForEvidence(index);
   if (!Array.isArray(selections) || selections.length === 0) {

@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   buildProjectIndex,
   createEvidenceLedger,
+  queryProjectIndex,
   repositoryIdentity,
   verifyEvidenceLedger,
 } from '../evidence/project-index.mjs';
@@ -111,6 +112,87 @@ test('project index pins repository facts, imports, symbols, and package metadat
   const repeated = buildProjectIndex({ repoRoot: data.root, revision: data.revision });
   assert.equal(repeated.digest, index.digest);
   assert.deepEqual(repeated.files, index.files);
+});
+
+test('project index query returns a compact mechanical slice with editable evidence hints', () => {
+  const data = fixture();
+  const index = buildProjectIndex({ repoRoot: data.root, revision: data.revision });
+  const receipt = queryProjectIndex(index, {
+    symbols: ['run'],
+    imports: ['./util.js'],
+    paths: ['src'],
+    languages: ['typescript'],
+    maxResults: 5,
+  });
+
+  assert.equal(receipt.command, 'project-index-query');
+  assert.equal(receipt.indexDigest, index.digest);
+  assert.deepEqual(receipt.summary, {
+    filesMatched: 1,
+    packagesMatched: 0,
+    returned: 1,
+    truncated: false,
+  });
+  assert.equal(receipt.files[0].path, 'src/index.ts');
+  assert.deepEqual(receipt.files[0].matched.symbols, [{ kind: 'function', name: 'run', line: 2 }]);
+  assert.deepEqual(receipt.files[0].matched.imports, ['./util.js']);
+  assert.deepEqual(receipt.files[0].selectionHints[0], {
+    claimIdSuggested: 'run-index',
+    path: 'src/index.ts',
+    line: 2,
+    endLine: 2,
+    symbol: { kind: 'function', name: 'run' },
+    summary: '',
+  });
+
+  const packageReceipt = queryProjectIndex(index, { packages: ['zod'] });
+  assert.equal(packageReceipt.files.length, 0);
+  assert.equal(packageReceipt.packages[0].name, 'indexed-app');
+  assert.deepEqual(packageReceipt.packages[0].matched, ['zod']);
+  assert.throws(() => queryProjectIndex(index), /requires at least one/);
+  assert.throws(() => queryProjectIndex(index, { symbols: ['run'], maxResults: 0 }), /1 through 200/);
+});
+
+test('project-index query and evidence-ledger hydrate CLI avoid full-index rediscovery', () => {
+  const data = fixture();
+  const index = buildProjectIndex({ repoRoot: data.root, revision: data.revision });
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-project-query-'));
+  const indexPath = path.join(directory, 'index.json');
+  const selectionsPath = path.join(directory, 'selections.json');
+  fs.writeFileSync(indexPath, JSON.stringify(index));
+  fs.writeFileSync(selectionsPath, JSON.stringify([{
+    claimId: 'run-entry',
+    path: 'src/index.ts',
+    line: 2,
+    summary: 'run returns the imported answer',
+  }]));
+
+  const queried = spawnSync(process.execPath, [
+    cli,
+    'project-index',
+    'query',
+    indexPath,
+    '--symbols', 'run,missing',
+    '--max-results', '3',
+    '--json',
+  ], { cwd: skillRoot, encoding: 'utf8' });
+  assert.equal(queried.status, 0, queried.stderr);
+  const queryReceipt = JSON.parse(queried.stdout);
+  assert.equal(queryReceipt.files.length, 1);
+  assert.equal(queryReceipt.files[0].path, 'src/index.ts');
+
+  const hydrated = spawnSync(process.execPath, [
+    cli,
+    'evidence-ledger',
+    'hydrate',
+    indexPath,
+    selectionsPath,
+    '--json',
+  ], { cwd: skillRoot, encoding: 'utf8' });
+  assert.equal(hydrated.status, 0, hydrated.stderr);
+  const ledger = JSON.parse(hydrated.stdout);
+  assert.equal(ledger.facts[0].blobOid, index.files.find((file) => file.path === 'src/index.ts').blobOid);
+  assert.match(ledger.facts[0].rangeSha256, /^[a-f0-9]{64}$/);
 });
 
 test('evidence ledger records range hashes and revalidates every selected fact fail-closed', () => {
