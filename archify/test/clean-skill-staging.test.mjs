@@ -200,9 +200,11 @@ test('clean staging rejects a source ancestor swapped during preflight traversal
     fs.lstatSync = function swapSourceBetweenAncestorAndLeaf(target, ...args) {
       const metadata = originalLstatSync.call(fs, target, ...args);
       if (!swapped && path.resolve(target) === canonicalRuntime) {
+        // Guard before mutation: recursive removal can re-enter the patched
+        // lstatSync implementation on Linux.
+        swapped = true;
         fs.rmSync(runtime, { recursive: true });
         fs.symlinkSync(external, runtime, process.platform === 'win32' ? 'junction' : 'dir');
-        swapped = true;
       }
       return metadata;
     };
