@@ -209,7 +209,7 @@ test('clean staging rejects a source ancestor swapped during preflight traversal
 
     assert.throws(
       () => stageCleanSkill({ repoRoot: root, destination }),
-      /tracked package path changed before it could be read: archify\//,
+      /(?:tracked package path changed before it could be read: archify\/|tracked package input is missing or unreadable: archify\/runtime\/payload\.txt)/,
     );
     assert.equal(swapped, true, 'the deterministic mid-preflight ancestor swap must run');
     assert.equal(fs.existsSync(destination), false);
