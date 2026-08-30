@@ -483,3 +483,22 @@ test('generated public-page templates keep a development marker and version plac
     fs.rmSync(fixture, { recursive: true, force: true });
   }
 });
+
+test('stable public-page templates reject development labels on version-bearing fallbacks', () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-release-identity-'));
+  try {
+    writeValidStableFixture(fixture, {
+      'scripts/guide-template.html': [
+        '<span data-i18n="versionLabel">Scenario guide / development / v[[ARCHIFY_VERSION]]</span>',
+        "versionLabel:'Scenario guide / stable / v[[ARCHIFY_VERSION]]'",
+        "versionLabel:'场景指南 / 稳定版 / v[[ARCHIFY_VERSION]]'",
+      ].join('\n'),
+    });
+
+    const result = runCheck(fixture);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /scripts\/guide-template\.html must not label \[\[ARCHIFY_VERSION\]\] as development or 开发版/);
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
+});

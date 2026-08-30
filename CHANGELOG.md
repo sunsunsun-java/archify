@@ -4,7 +4,7 @@ All notable changes are documented here. Format loosely follows [Keep a Changelo
 
 ## [Unreleased]
 
-Development identity: `v2.16.0-dev.0`
+## [2.16.0] — 2026-08-30
 
 ### Added
 - **Constraint-driven Workflow Compiler (#126).** Workflow schema v2 adds the `readable-v2` contract: columns `0..5` remain logical ranks while one measured scene owns node placement, phase/group frames, routes, semantic labels, content bounds, diagnostics, and SVG serialization. Valid schema v1 workflows stay on byte-stable `fixed-v1` geometry, `validate workflow ... --layout-json` exposes a stable author-facing compiler receipt, and `migrate workflow <source> <destination> --to-schema 2 --json` maps absolute coordinates non-destructively before writing only a fully checked destination. Adjacent-column capacity failures now report one causal diagnosis instead of cascading through short-edge, endpoint-direction, and label-overlap symptoms.

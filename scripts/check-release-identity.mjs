@@ -154,6 +154,12 @@ function checkIdentityTemplate(relativePath, source, isDevelopment) {
   if (!source.includes('[[ARCHIFY_VERSION]]') || !hasIdentity || hasHardcodedVersion) {
     fail(`${relativePath} must use [[ARCHIFY_VERSION]] with ${identity} labels, never a hardcoded package version.`);
   }
+  const versionLines = source.split('\n').filter(line => line.includes('[[ARCHIFY_VERSION]]'));
+  const staleIdentity = isDevelopment ? /\bstable\b|稳定版/i : /\bdevelopment\b|开发版/i;
+  if (versionLines.some(line => staleIdentity.test(line))) {
+    const staleLabel = isDevelopment ? 'stable or 稳定版' : 'development or 开发版';
+    fail(`${relativePath} must not label [[ARCHIFY_VERSION]] as ${staleLabel}.`);
+  }
 }
 
 function checkRoadmap(relativePath, source, version, isDevelopment) {

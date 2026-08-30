@@ -36,6 +36,7 @@ function workflowJob(workflow, name) {
 
 test('release prevents manifest preannouncement and smokes the exact archive before upload', () => {
   const workflow = fs.readFileSync(path.join(repoRoot, '.github', 'workflows', 'release.yml'), 'utf8');
+  const tagFetch = workflowStep(workflow, 'Fetch exact tag object');
   const tagGate = workflowStep(workflow, 'Tag must match package.json version');
   const annotatedTagGate = workflowStep(workflow, 'Stable release tag must be annotated');
   const publicationOrder = workflowStep(workflow, 'Stable notifier manifest must remain on the previous release');
@@ -45,6 +46,7 @@ test('release prevents manifest preannouncement and smokes the exact archive bef
   const upload = workflowStep(workflow, 'Create GitHub Release with the zip attached');
   const followUp = workflowStep(workflow, 'Record stable notifier publication follow-up');
 
+  assert.ok(workflow.indexOf(tagFetch) < workflow.indexOf(tagGate), 'the real tag object must be fetched before release identity checks');
   assert.ok(workflow.indexOf(tagGate) < workflow.indexOf(publicationOrder), 'tag/version gate must precede the publication-order gate');
   assert.ok(workflow.indexOf(tagGate) < workflow.indexOf(annotatedTagGate), 'tag/version gate must precede the annotated-tag gate');
   assert.ok(workflow.indexOf(annotatedTagGate) < workflow.indexOf(publicationOrder), 'annotated-tag gate must precede the publication-order gate');
@@ -54,6 +56,8 @@ test('release prevents manifest preannouncement and smokes the exact archive bef
   assert.ok(workflow.indexOf(freshness) < workflow.indexOf(upload), 'freshness must pass before release upload');
   assert.ok(workflow.indexOf(upload) < workflow.indexOf(followUp), 'manifest follow-up must be recorded only after Release creation');
 
+  assert.match(tagFetch, /git fetch --force --no-tags origin/);
+  assert.match(tagFetch, /refs\/tags\/\$\{GITHUB_REF_NAME\}:refs\/tags\/\$\{GITHUB_REF_NAME\}/);
   assert.match(tagGate, /require\('\.\/archify\/package\.json'\)\.version/);
   assert.match(tagGate, /GITHUB_REF_NAME#v/);
   assert.match(annotatedTagGate, /steps\.release-kind\.outputs\.prerelease == 'false'/);
@@ -68,6 +72,43 @@ test('release prevents manifest preannouncement and smokes the exact archive bef
   assert.match(freshness, /cmp -s \/tmp\/archify-built\.zip archify\.zip/);
   assert.match(upload, /files: archify\.zip/);
   assert.match(followUp, /docs\/skill-updates\/archify\/stable\.json/);
+});
+
+test('an exact tag fetch restores an annotated object after a SHA-only checkout', () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-release-tag-fetch-'));
+  const source = path.join(fixture, 'source');
+  const checkout = path.join(fixture, 'checkout');
+  const runGit = (cwd, args) => spawnSync('git', args, { cwd, encoding: 'utf8' });
+
+  try {
+    fs.mkdirSync(source);
+    assert.equal(runGit(source, ['init', '--quiet']).status, 0);
+    assert.equal(runGit(source, ['config', 'user.name', 'Archify Test']).status, 0);
+    assert.equal(runGit(source, ['config', 'user.email', 'archify@example.invalid']).status, 0);
+    fs.writeFileSync(path.join(source, 'release.txt'), 'release\n');
+    assert.equal(runGit(source, ['add', 'release.txt']).status, 0);
+    assert.equal(runGit(source, ['commit', '--quiet', '-m', 'release fixture']).status, 0);
+    assert.equal(runGit(source, ['tag', '-a', 'v1.0.0', '-m', 'Release v1.0.0']).status, 0);
+    const commit = runGit(source, ['rev-parse', 'HEAD']).stdout.trim();
+
+    fs.mkdirSync(checkout);
+    assert.equal(runGit(checkout, ['init', '--quiet']).status, 0);
+    assert.equal(runGit(checkout, ['remote', 'add', 'origin', source]).status, 0);
+    assert.equal(runGit(checkout, [
+      'fetch', '--no-tags', '--depth=1', 'origin',
+      `+${commit}:refs/tags/v1.0.0`,
+    ]).status, 0);
+    assert.equal(runGit(checkout, ['cat-file', '-t', 'refs/tags/v1.0.0']).stdout.trim(), 'commit');
+
+    assert.equal(runGit(checkout, [
+      'fetch', '--force', '--no-tags', 'origin',
+      '+refs/tags/v1.0.0:refs/tags/v1.0.0',
+    ]).status, 0);
+    assert.equal(runGit(checkout, ['cat-file', '-t', 'refs/tags/v1.0.0']).stdout.trim(), 'tag');
+    assert.equal(runGit(checkout, ['rev-parse', 'refs/tags/v1.0.0^{}']).stdout.trim(), commit);
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
 });
 
 test('CI binds a public notifier manifest to the Release asset, tagged archive, and tag tree build', () => {
