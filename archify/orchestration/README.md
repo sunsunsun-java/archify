@@ -20,6 +20,7 @@ shell and its behaviour belongs to the manifest author.
   "schemaVersion": 1,
   "id": "pi-five-diagrams",
   "qualityProfile": "showcase",
+  "authoredLanguage": "zh-CN",
   "projectIndex": true,
   "viewportPreflight": true,
   "sharedViewportPreflight": true,
@@ -48,6 +49,11 @@ shell and its behaviour belongs to the manifest author.
   ]
 }
 ```
+
+`authoredLanguage` is required for every showcase suite and must be `"en"` or
+`"zh-CN"`. The runner passes this single suite value to every typed `validate`
+and `deliver` command, requires matching zero-violation command receipts, and
+records the same value in diagram and suite final receipts.
 
 Supported placeholders are `{manifestDirectory}`, `{diagramOutput}`,
 `{outputRoot}`, `{diagramType}`, `{candidate}`, `{artifact}`, `{repoRoot}`,
@@ -123,10 +129,19 @@ EvidenceLedger, and final validation receipt:
 import { AuthoringRun } from '../authoring/authoring-run.mjs';
 
 const authoring = AuthoringRun.open({
-  run: { id: 'repository/workflow', diagramType: 'workflow', repository },
+  run: {
+    id: 'repository/workflow',
+    diagramType: 'workflow',
+    repository,
+    scopeProfile: 'project-overview',
+    requiredLanguage: 'zh-CN',
+  },
   outputDirectory,
   repoRoot,
   projectIndexPath,
+  requirementsPath,
+  candidatePath,
+  expectContract,
 });
 await authoring.stage('candidate-authoring', authorCandidate);
 await authoring.stage('deterministic-validation', validateCandidate);
@@ -137,12 +152,20 @@ const result = authoring.finalize({ candidatePath, evidencePath, validationPath 
 digest-bound `handoff.json`, and receipt-derived `authoring-report.md`. The
 handoff is only ready when the validation receipt contains exactly 9/9 passing
 checks, 0 errors/warnings, a digest-bound four-viewport preflight, an unchanged
-candidate digest/type, and a reverified EvidenceLedger tied to the ProjectIndex
-and pinned Git revision. Unstaged time inside the measured authoring
+candidate digest/type, no example contamination or low-information placeholder repetition,
+complete semantic entity/relationship coverage, and a reverified EvidenceLedger tied to the ProjectIndex
+and pinned Git revision with every required claim present. Unstaged time inside the measured authoring
 envelope is explicitly reported as `agent-overhead`, never as child-process
 runtime. `normalizeAuthoringTiming()` remains the migration adapter for the
 five historical handwritten timing shapes; its duration fields are always
 re-derived from endpoint markers.
+
+The authoring boundary also binds the requested semantic scope, authored
+language, initially absent candidate path, quality contract, and enforcement
+runtime digest. A project overview cannot downgrade itself to `focused`, omit
+its language contract, switch candidate paths, or finalize after those runtime
+bytes drift. Schema-v1 semantic requirements remain available only through an
+explicit `focused` run.
 
 For model-assisted work that spans multiple processes, the CLI delegates to a
 durable envelope adapter in the same module:
@@ -151,18 +174,29 @@ durable envelope adapter in the same module:
 node bin/archify.mjs authoring-run start workflow \
   --run-id repository/workflow --output ./run \
   --repo-root /absolute/repository \
-  --project-index ./project-index.json --json
+  --project-index ./project-index.json \
+  --requirements ./workflow.requirements.json \
+  --candidate ./workflow.json \
+  --scope-profile project-overview \
+  --expect-contract "$ARCHIFY_CONTRACT_SHA256" \
+  --require-authored-language zh-CN --json
 
 node bin/archify.mjs authoring-run finalize ./run/authoring-run.json \
   --candidate ./workflow.json \
   --evidence ./workflow.evidence-ledger.json \
   --validation ./workflow.validation.json \
   --json
+
+node bin/archify.mjs authoring-run stop ./run/authoring-run.json \
+  --status blocked --reason quality-gate-exhausted --json
 ```
 
 `start` owns the wall-clock anchor plus the host monotonic start marker, binds
-the ProjectIndex bytes and pinned repository identity, and writes only
+the ProjectIndex, semantic-requirements bytes, scope, language, expected fresh
+candidate path, contract/runtime identity, and pinned repository identity, and writes only
 `authoring-run.json`. `finalize` owns the monotonic end marker, revalidates the
 bound index, EvidenceLedger, candidate, validation, and preflight receipts, and mechanically
 writes `timing.json`, `handoff.json`, and `authoring-report.md`. The CLI accepts
 no agent-supplied duration, stage timing, quality claim, or report prose.
+`stop` records the same monotonic envelope timing for `failed`, `blocked`, or
+`aborted` work and writes no ready handoff.

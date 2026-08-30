@@ -258,12 +258,33 @@ function validateDataflow() {
     }
   }
 
-  for (const flow of asArray(dataflow.flows)) {
+  for (const [flowIndex, flow] of asArray(dataflow.flows).entries()) {
     if (!nodes.has(flow.from)) problems.push(`Flow "${flow.label || flow.from}" references unknown source "${flow.from}".`);
     if (!nodes.has(flow.to)) problems.push(`Flow "${flow.label || flow.to}" references unknown target "${flow.to}".`);
     if (!flow.label) problems.push(`Flow "${flow.from}" -> "${flow.to}" must include a short data label.`);
     if (nodes.has(flow.from) && nodes.has(flow.to)) {
       const routed = pathFor(flow);
+      if (routed.points.length < 2 || routed.points.some((point) => !isFinitePoint(...point))) {
+        problems.push({
+          code: 'layout/degenerate-route',
+          message: `Flow "${flow.label || `${flow.from} -> ${flow.to}`}" collapses to fewer than two finite route points — repair the endpoint node geometry or provide a finite route/via channel.`,
+          subject: {
+            diagramType: 'dataflow',
+            collection: 'flows',
+            index: flowIndex,
+            path: `/flows/${flowIndex}`,
+            ...(flow.id ? { id: flow.id } : {}),
+            from: flow.from,
+            to: flow.to,
+          },
+          evidence: { points: routed.points },
+          supportedFixes: [
+            'repair non-finite stage, row, width, height, or yOffset values on the endpoint nodes',
+            'provide at least two finite points using fromSide/toSide, via, or a named channel route',
+          ],
+        });
+        continue;
+      }
       const [start, end] = [routed.points[0], routed.points[routed.points.length - 1]];
       const distance = Math.hypot(end[0] - start[0], end[1] - start[1]);
       if (distance < 34) problems.push(`Flow "${flow.label}" is too short (${Math.round(distance)}px; minimum 34px) — route it through a channel or spread its nodes.`);
@@ -346,7 +367,9 @@ function validateDataflow() {
   const labelRects = [];
   for (const [flowIndex, flow] of asArray(dataflow.flows).entries()) {
     if (!flow.label || !nodes.has(flow.from) || !nodes.has(flow.to)) continue;
-    const [lx, ly] = labelPoint(flow, pathFor(flow).points);
+    const points = pathFor(flow).points;
+    if (points.length < 2 || points.some((point) => !isFinitePoint(...point))) continue;
+    const [lx, ly] = labelPoint(flow, points);
     const { width, height } = flowLabelSize(flow);
     labelRects.push({ relation: flow, relationIndex: flowIndex, label: flow.label, x: lx - width / 2, y: ly - 11, width, height, lx, ly });
   }

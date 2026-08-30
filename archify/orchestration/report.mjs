@@ -147,8 +147,37 @@ export function renderAuthoringReport({ timing, outputRoot }) {
     throw new TypeError('authoring report requires a canonical timing receipt.');
   }
   const handoff = timing.finalReceipt;
+  if (handoff?.kind === 'archify.authoring-terminal') {
+    const root = path.resolve(outputRoot);
+    const stagedMs = timing.stages.reduce(
+      (sum, stage) => sum + (Number.isFinite(stage.durationMs) ? stage.durationMs : 0),
+      0,
+    );
+    const agentOverheadMs = timing.accounting?.agentOverheadMs
+      ?? Math.max(0, timing.durationMs - stagedMs);
+    return {
+      status: timing.status,
+      markdown: `${[
+        `# ${handoff.diagram.type} — ${handoff.diagram.id} authoring report`,
+        '',
+        '> Generated mechanically from canonical timing and terminal receipts. No duration is supplied by the authoring agent.',
+        '',
+        `- Status: \`${timing.status}\``,
+        `- Reason: \`${markdownCell(handoff.reason)}\``,
+        `- Total measured authoring envelope: ${seconds(timing.durationMs)}`,
+        `- Staged work: ${seconds(stagedMs)}`,
+        `- Agent overhead: ${seconds(agentOverheadMs)}`,
+        `- Quality contract: \`${handoff.contract?.quality?.sha256 || 'not-recorded'}\``,
+        `- Enforcement runtime: \`${handoff.contract?.runtime?.sha256 || 'not-recorded'}\``,
+        `- Contract drift at stop: \`${handoff.contractDrift?.detected ? 'detected' : 'not-detected'}\` (current runtime \`${handoff.contractDrift?.current?.runtime?.sha256 || 'not-recorded'}\`)`,
+        `- Terminal receipt digest: \`${handoff.digest}\``,
+        `- Timing receipt: ${relativeLink(root, path.join(root, 'timing.json'))}`,
+        '',
+      ].join('\n')}\n`,
+    };
+  }
   if (handoff?.kind !== 'archify.authoring-handoff') {
-    throw new TypeError('authoring timing finalReceipt must be a canonical authoring handoff.');
+    throw new TypeError('authoring timing finalReceipt must be a canonical authoring handoff or terminal receipt.');
   }
   const root = path.resolve(outputRoot);
   const stagedMs = timing.stages.reduce(
@@ -157,6 +186,10 @@ export function renderAuthoringReport({ timing, outputRoot }) {
   );
   const agentOverheadMs = timing.accounting?.agentOverheadMs
     ?? Math.max(0, timing.durationMs - stagedMs);
+  const semantics = handoff.semanticRequirements || {};
+  const density = semantics.density || {};
+  const evidenceBreadth = semantics.evidenceBreadth || {};
+  const language = handoff.validation?.authoredLanguage;
   const lines = [
     `# ${handoff.diagram.type} — ${handoff.diagram.id} authoring report`,
     '',
@@ -166,7 +199,14 @@ export function renderAuthoringReport({ timing, outputRoot }) {
     `- Total measured authoring envelope: ${seconds(timing.durationMs)}`,
     `- Staged work: ${seconds(stagedMs)}`,
     `- Agent overhead: ${seconds(agentOverheadMs)}`,
+    `- Semantic scope: \`${semantics.scopeProfile || 'not-recorded'}\``,
+    `- Semantic density: ${density.entities ?? 'not-recorded'} entities / ${density.relationships ?? 'not-recorded'} relationships`,
+    `- Evidence breadth: ${evidenceBreadth.distinctSourceFiles ?? 'not-recorded'} source files (minimum ${evidenceBreadth.minimumDistinctSourceFiles ?? 'not-recorded'})`,
+    `- Authored language: ${language ? `\`${language.required}\` / locale \`${language.locale}\` / ${language.violations} violations` : '`not-required`'}`,
+    `- Quality contract: \`${handoff.contract?.quality?.sha256 || 'not-recorded'}\``,
+    `- Enforcement runtime: \`${handoff.contract?.runtime?.sha256 || 'not-recorded'}\``,
     `- Candidate: ${relativeLink(root, handoff.candidate.path)} (\`${handoff.candidate.sha256}\`)`,
+    `- Candidate freshness binding: \`${handoff.candidate.freshness?.pathBoundAtStart ? 'bound-and-absent-at-start' : 'legacy-unbound'}\``,
     `- Evidence ledger: ${relativeLink(root, handoff.evidence.path)} (\`${handoff.evidence.sha256}\`; ${handoff.evidence.factCount} facts)`,
     `- Validation receipt: ${relativeLink(root, handoff.validation.path)} (\`${handoff.validation.sha256}\`; ${handoff.validation.checksPassed}/${handoff.validation.checksTotal}; ${handoff.validation.errors} errors; ${handoff.validation.warnings} warnings)`,
     `- Handoff digest: \`${handoff.digest}\``,

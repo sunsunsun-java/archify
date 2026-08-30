@@ -31,8 +31,9 @@ function usage() {
   archify visual-check <output.html>... [--preflight] [--json]
   archify visual-check --probe [--json]
   archify authoring-kit <type> [--json] [--context-json] [--expect-contract sha256]
-  archify authoring-run start <type> --run-id id --output directory --repo-root path --project-index file [--require-authored-language en|zh-CN] [--json]
+  archify authoring-run start <type> --run-id id --output directory --repo-root path --project-index file --requirements file --candidate file --scope-profile focused|project-overview --expect-contract sha256 [--require-authored-language en|zh-CN] [--json]
   archify authoring-run finalize <authoring-run.json> --candidate path --evidence path --validation path [--json]
+  archify authoring-run stop <authoring-run.json> --status failed|blocked|aborted --reason code [--json]
   archify project-index <repo-root> [--revision ref] [--output path] [--json]
   archify project-index query <index.json> [--symbol name] [--import specifier] [--path prefix] [--language name] [--package name] [--max-results n] [--output path] [--json]
   archify project-index source-search <index.json> --term text [--term text] [--path prefix] [--context n] [--max-results n] [--output path] [--json]
@@ -1522,16 +1523,19 @@ function writeJsonAtomic(targetInput, value) {
 }
 
 function utilityFailure(command, error, json) {
+  const diagnostics = Array.isArray(error?.archifyDiagnostics) && error.archifyDiagnostics.length
+    ? error.archifyDiagnostics
+    : [diagnostic({
+      code: error.code || `${command}/failed`,
+      message: error.message,
+      evidence: error.details || {},
+    })];
   const receipt = {
     schemaVersion: 1,
     ok: false,
     command,
     error: error.message,
-    diagnostics: [diagnostic({
-      code: error.code || `${command}/failed`,
-      message: error.message,
-      evidence: error.details || {},
-    })],
+    diagnostics,
   };
   if (json) console.log(JSON.stringify(receipt, null, 2));
   else console.error(`${command} failed: ${error.message}`);
@@ -1594,9 +1598,11 @@ async function commandAuthoringRun(args) {
   const values = {};
   let json = false;
   const allowed = action === 'start'
-    ? new Set(['--run-id', '--output', '--repo-root', '--project-index', '--require-authored-language'])
+    ? new Set(['--run-id', '--output', '--repo-root', '--project-index', '--requirements', '--candidate', '--scope-profile', '--expect-contract', '--require-authored-language'])
     : action === 'finalize'
       ? new Set(['--candidate', '--evidence', '--validation'])
+      : action === 'stop'
+        ? new Set(['--status', '--reason'])
       : null;
   if (!allowed) fail(usage());
   for (let index = 0; index < actionArgs.length; index += 1) {
@@ -1621,16 +1627,23 @@ async function commandAuthoringRun(args) {
     && !['en', 'zh-CN'].includes(values['--require-authored-language'])) {
     fail('Unknown --require-authored-language value. Expected one of: en, zh-CN.');
   }
+  if (action === 'start' && values['--scope-profile']
+    && !['focused', 'project-overview'].includes(values['--scope-profile'])) {
+    fail('Unknown --scope-profile value. Expected one of: focused, project-overview.');
+  }
   try {
     const module = await import('../authoring/authoring-run.mjs');
     if (action === 'start') {
       if (positional.length !== 1 || !TYPES.has(positional[0])
         || !values['--run-id'] || !values['--output']
-        || !values['--repo-root'] || !values['--project-index']) fail(usage());
+        || !values['--repo-root'] || !values['--project-index']
+        || !values['--requirements'] || !values['--candidate']
+        || !values['--scope-profile'] || !values['--expect-contract']) fail(usage());
       const started = module.startAuthoringRun({
         run: {
           id: values['--run-id'],
           diagramType: positional[0],
+          scopeProfile: values['--scope-profile'],
           ...(values['--require-authored-language']
             ? { requiredLanguage: values['--require-authored-language'] }
             : {}),
@@ -1638,6 +1651,9 @@ async function commandAuthoringRun(args) {
         outputDirectory: values['--output'],
         repoRoot: values['--repo-root'],
         projectIndexPath: values['--project-index'],
+        requirementsPath: values['--requirements'],
+        candidatePath: values['--candidate'],
+        expectContract: values['--expect-contract'],
       });
       const receipt = {
         schemaVersion: 1,
@@ -1649,6 +1665,30 @@ async function commandAuthoringRun(args) {
       };
       if (json) console.log(JSON.stringify(receipt, null, 2));
       else console.log(`Authoring run started: ${started.paths.envelopePath}`);
+      return;
+    }
+    if (action === 'stop') {
+      if (positional.length !== 1 || !values['--status'] || !values['--reason']
+        || !['failed', 'blocked', 'aborted'].includes(values['--status'])) fail(usage());
+      const stopped = module.terminalizeAuthoringRun({
+        envelopePath: positional[0],
+        status: values['--status'],
+        reason: values['--reason'],
+      });
+      const receipt = {
+        schemaVersion: 1,
+        ok: true,
+        command: 'authoring-run-stop',
+        status: stopped.timing.status,
+        timing: stopped.timing,
+        terminalReceipt: stopped.terminalReceipt,
+        paths: stopped.paths,
+      };
+      if (json) console.log(JSON.stringify(receipt, null, 2));
+      else {
+        console.log(`Authoring run ${stopped.timing.status}: ${stopped.paths.timingPath}`);
+        console.log(`Report: ${stopped.paths.reportPath}`);
+      }
       return;
     }
     if (positional.length !== 1 || !values['--candidate']

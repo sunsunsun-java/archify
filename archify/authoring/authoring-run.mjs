@@ -10,13 +10,25 @@ import {
 import { renderAuthoringReport } from '../orchestration/report.mjs';
 import {
   QUALITY_CONTRACT,
+  assertExpectedQualityContract,
   qualityContractIdentity,
 } from './quality-contract.mjs';
 import { successfulPreflightReceiptProblems } from './candidate-preflight.mjs';
+import {
+  exampleContaminationAssessment,
+  lowInformationRepetitionAssessment,
+  titleTypeConsistencyAssessment,
+} from './content-quality.mjs';
+import {
+  normalizeSemanticRequirements,
+  verifySemanticRequirements,
+} from './semantic-requirements.mjs';
 import { verifyEvidenceLedger } from '../evidence/project-index.mjs';
 
 const HANDOFF_SCHEMA_VERSION = 1;
 const HANDOFF_KIND = 'archify.authoring-handoff';
+const TERMINAL_SCHEMA_VERSION = 1;
+const TERMINAL_KIND = 'archify.authoring-terminal';
 const ENVELOPE_SCHEMA_VERSION = 1;
 const ENVELOPE_KIND = 'archify.authoring-run-envelope';
 const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -43,6 +55,52 @@ function steadyNow(clock) {
 
 function digestBytes(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
+}
+
+function authoringError(code, message, {
+  subject = {},
+  evidence = {},
+  supportedFixes = [],
+} = {}) {
+  const error = new Error(message);
+  error.code = code;
+  error.details = evidence;
+  error.archifyDiagnostics = [{
+    code,
+    severity: 'error',
+    message,
+    subject,
+    evidence,
+    supportedFixes,
+  }];
+  return error;
+}
+
+function currentContractIdentity() {
+  return qualityContractIdentity({ skillRoot: moduleRoot });
+}
+
+function assertContractIdentity(expected) {
+  const current = currentContractIdentity();
+  if (!expected || JSON.stringify(expected) !== JSON.stringify(current)) {
+    throw authoringError(
+      'authoring-run/contract-drift',
+      'Authoring contract identity changed after the run started.',
+      {
+        evidence: { expected: expected || null, current },
+        supportedFixes: ['restart authoring from a new envelope using one unchanged Archify runtime'],
+      },
+    );
+  }
+  return current;
+}
+
+function contractDriftAssessment(expected) {
+  const current = currentContractIdentity();
+  return {
+    detected: !expected || JSON.stringify(expected) !== JSON.stringify(current),
+    current,
+  };
 }
 
 function readJsonReceipt(file, label) {
@@ -121,7 +179,89 @@ function assertRun(run) {
   if (run.requiredLanguage !== undefined && !['en', 'zh-CN'].includes(run.requiredLanguage)) {
     throw new TypeError('run.requiredLanguage must be en or zh-CN.');
   }
+  if (run.scopeProfile !== undefined && !['focused', 'project-overview'].includes(run.scopeProfile)) {
+    throw new TypeError('run.scopeProfile must be focused or project-overview.');
+  }
   return JSON.parse(JSON.stringify(run));
+}
+
+function createCandidateBinding(candidatePath) {
+  if (typeof candidatePath !== 'string' || !candidatePath.trim()) {
+    throw new TypeError('authoring run requires an expected candidatePath.');
+  }
+  const target = path.resolve(candidatePath);
+  try {
+    fs.lstatSync(target);
+    throw authoringError(
+      'authoring-run/candidate-not-fresh',
+      `Expected candidate path already exists when authoring starts: ${target}`,
+      {
+        subject: { path: target },
+        supportedFixes: ['choose a new candidate path and restart the authoring run'],
+      },
+    );
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
+  return { path: target, requiredAbsentAtStart: true };
+}
+
+function assertCandidateBinding(binding, candidatePath) {
+  if (!binding || typeof binding.path !== 'string') {
+    throw authoringError(
+      'authoring-run/candidate-binding-missing',
+      'Authoring run is missing its expected candidate-path binding.',
+    );
+  }
+  const actual = path.resolve(candidatePath);
+  if (actual !== binding.path) {
+    throw authoringError(
+      'authoring-run/candidate-path-mismatch',
+      'Final candidate path does not match the path bound when authoring started.',
+      {
+        subject: { path: actual },
+        evidence: { expected: binding.path, actual },
+        supportedFixes: [`finalize with the bound candidate path ${binding.path}`],
+      },
+    );
+  }
+  const stat = fs.lstatSync(actual);
+  if (!stat.isFile() || stat.isSymbolicLink()) {
+    throw authoringError(
+      'authoring-run/candidate-not-regular-file',
+      'Final candidate must be a regular file at the path bound when authoring started.',
+      {
+        subject: { path: actual },
+        evidence: { isFile: stat.isFile(), isSymbolicLink: stat.isSymbolicLink() },
+        supportedFixes: ['write a new regular candidate file at the bound path'],
+      },
+    );
+  }
+}
+
+function normalizeAuthoringDiagnostic(entry, { diagramType, candidatePath }) {
+  const code = typeof entry?.code === 'string' && entry.code
+    ? entry.code
+    : 'content/quality-failed';
+  const message = typeof entry?.message === 'string' && entry.message
+    ? entry.message
+    : 'Candidate content failed an authoring quality gate.';
+  return {
+    code,
+    severity: typeof entry?.severity === 'string' ? entry.severity : 'error',
+    message,
+    subject: {
+      diagramType,
+      path: path.resolve(candidatePath),
+      ...(entry?.subject && typeof entry.subject === 'object' ? entry.subject : {}),
+    },
+    evidence: {
+      ...(entry?.evidence && typeof entry.evidence === 'object' ? entry.evidence : {}),
+    },
+    supportedFixes: Array.isArray(entry?.supportedFixes) && entry.supportedFixes.length > 0
+      ? entry.supportedFixes
+      : ['replace placeholder or exemplar-derived content with repository-specific semantics'],
+  };
 }
 
 function createEvidenceBinding({ repoRoot, projectIndexPath, run }) {
@@ -166,7 +306,74 @@ function readBoundProjectIndex(binding) {
   return projectIndex;
 }
 
-function buildHandoff({ run, evidenceBinding, candidatePath, evidencePath, validationPath, createdAt }) {
+function createSemanticRequirementsBinding({ requirementsPath, run }) {
+  if (!requirementsPath) {
+    throw new TypeError('authoring run requires requirementsPath.');
+  }
+  const requirements = readJsonReceipt(requirementsPath, 'semantic requirements');
+  const normalized = normalizeSemanticRequirements(requirements.document, run.diagramType);
+  if (run.scopeProfile && run.scopeProfile !== normalized.scopeProfile) {
+    throw authoringError(
+      'semantic/scope-mismatch',
+      `Semantic requirements scope ${normalized.scopeProfile} does not match the authoring run scope ${run.scopeProfile}.`,
+      {
+        subject: { path: requirements.path, diagramType: run.diagramType },
+        evidence: { required: run.scopeProfile, actual: normalized.scopeProfile },
+        supportedFixes: [`author requirements with scopeProfile ${run.scopeProfile}`],
+      },
+    );
+  }
+  if (!run.scopeProfile && normalized.scopeProfile === 'project-overview') {
+    throw authoringError(
+      'semantic/scope-required',
+      'Project-overview authoring requires an explicit run.scopeProfile binding.',
+      {
+        subject: { path: requirements.path, diagramType: run.diagramType },
+        supportedFixes: ['start the run with scopeProfile project-overview'],
+      },
+    );
+  }
+  if (normalized.scopeProfile === 'project-overview' && !run.requiredLanguage) {
+    throw authoringError(
+      'content/authored-language-required',
+      'Project-overview authoring requires an explicit requiredLanguage binding.',
+      {
+        subject: { path: requirements.path, diagramType: run.diagramType },
+        supportedFixes: ['start the run with requiredLanguage en or zh-CN'],
+      },
+    );
+  }
+  return {
+    ...digestDescriptor(requirements),
+    schemaVersion: normalized.schemaVersion,
+    scopeProfile: normalized.scopeProfile,
+  };
+}
+
+function readBoundSemanticRequirements(binding, run) {
+  if (!binding) {
+    throw new Error('authoring run is missing its semantic requirements binding.');
+  }
+  const requirements = readJsonReceipt(binding.path, 'semantic requirements');
+  if (requirements.bytes !== binding.bytes || requirements.sha256 !== binding.sha256) {
+    throw new Error('semantic requirements no longer match the authoring run binding.');
+  }
+  normalizeSemanticRequirements(requirements.document, run.diagramType);
+  return requirements;
+}
+
+function buildHandoff({
+  run,
+  contractIdentity,
+  evidenceBinding,
+  requirementsBinding,
+  candidateBinding,
+  candidatePath,
+  evidencePath,
+  validationPath,
+  createdAt,
+}) {
+  if (candidateBinding) assertCandidateBinding(candidateBinding, candidatePath);
   const candidate = readJsonReceipt(candidatePath, 'candidate');
   const evidence = readJsonReceipt(evidencePath, 'evidence ledger');
   const validation = readJsonReceipt(validationPath, 'validation receipt');
@@ -192,6 +399,25 @@ function buildHandoff({ run, evidenceBinding, candidatePath, evidencePath, valid
   if (candidateType !== run.diagramType || validation.document.type !== run.diagramType
     || validation.document.specification?.type !== run.diagramType) {
     throw new Error('validation diagram type does not match the authoring run and candidate.');
+  }
+  const contentQuality = exampleContaminationAssessment(candidate.document, run.diagramType, {
+    skillRoot: moduleRoot,
+  });
+  const lowInformation = lowInformationRepetitionAssessment(candidate.document);
+  const titleType = titleTypeConsistencyAssessment(candidate.document, run.diagramType);
+  const contentDiagnostics = [
+    ...contentQuality.diagnostics,
+    ...lowInformation.diagnostics,
+    ...titleType.diagnostics,
+  ].map((entry) => normalizeAuthoringDiagnostic(entry, {
+    diagramType: run.diagramType,
+    candidatePath,
+  }));
+  if (contentDiagnostics.length > 0) {
+    const error = new Error(contentDiagnostics.map((entry) => entry.message).join('; '));
+    error.code = contentDiagnostics[0].code;
+    error.archifyDiagnostics = contentDiagnostics;
+    throw error;
   }
   if (validation.document.specification?.bytes !== candidate.bytes
     || validation.document.specification?.sha256 !== candidate.sha256) {
@@ -220,9 +446,25 @@ function buildHandoff({ run, evidenceBinding, candidatePath, evidencePath, valid
     repoRoot: evidenceBinding.repoRoot,
     projectIndex: projectIndex.document,
   });
+  const requirements = readBoundSemanticRequirements(requirementsBinding, run);
+  let semanticRequirements;
+  try {
+    semanticRequirements = verifySemanticRequirements({
+      requirements: requirements.document,
+      candidate: candidate.document,
+      evidenceFacts: facts,
+    });
+  } catch (error) {
+    const code = /^\[([^\]]+)\]/u.exec(error.message)?.[1] || error.code || 'semantic/verification-failed';
+    throw authoringError(code, error.message, {
+      subject: { diagramType: run.diagramType, scopeProfile: requirementsBinding.scopeProfile },
+      evidence: { reason: error.message },
+      supportedFixes: ['repair the candidate or semantic requirements, then validate and finalize again'],
+    });
+  }
   const evidenceRepository = evidence.document.repository;
   if (run.repository?.revision && evidenceRepository?.revision
-    && run.repository.revision !== evidenceRepository.revision) {
+    && run.repository.revision.toLowerCase() !== evidenceRepository.revision.toLowerCase()) {
     throw new Error('authoring run repository revision does not match the evidence ledger.');
   }
   const repository = evidenceRepository && typeof evidenceRepository === 'object'
@@ -237,9 +479,23 @@ function buildHandoff({ run, evidenceBinding, candidatePath, evidencePath, valid
       id: run.id,
       type: run.diagramType,
     },
-    contract: qualityContractIdentity({ skillRoot: moduleRoot }),
+    contract: contractIdentity,
     ...(repository ? { repository } : {}),
-    candidate: digestDescriptor(candidate),
+    candidate: {
+      ...digestDescriptor(candidate),
+      freshness: candidateBinding
+        ? { pathBoundAtStart: true, requiredAbsentAtStart: true }
+        : { pathBoundAtStart: false, requiredAbsentAtStart: false },
+    },
+    contentQuality: {
+      exampleContamination: contentQuality.receipt,
+      lowInformationRepetition: lowInformation.receipt,
+      diagramTypeTitle: titleType.receipt,
+    },
+    semanticRequirements: {
+      ...semanticRequirements,
+      source: digestDescriptor(requirements),
+    },
     evidence: {
       ...digestDescriptor(evidence),
       ledgerDigest: evidence.document.ledgerDigest || null,
@@ -281,12 +537,30 @@ export function startAuthoringRun({
   outputDirectory,
   repoRoot,
   projectIndexPath,
+  requirementsPath,
+  candidatePath,
+  expectContract,
   clock = productionClock(),
 }) {
+  if (expectContract !== undefined) assertExpectedQualityContract(expectContract);
   const safeRun = assertRun(run);
   const evidenceBinding = createEvidenceBinding({ repoRoot, projectIndexPath, run: safeRun });
+  const requirementsBinding = createSemanticRequirementsBinding({ requirementsPath, run: safeRun });
+  safeRun.scopeProfile = requirementsBinding.scopeProfile;
   safeRun.repository = evidenceBinding.repository;
+  const candidateBinding = createCandidateBinding(candidatePath);
+  const contract = currentContractIdentity();
   const paths = authoringPaths(outputDirectory);
+  if (Object.values(paths).includes(candidateBinding.path)) {
+    throw authoringError(
+      'authoring-run/candidate-path-conflict',
+      'Expected candidate path must not overlap an authoring receipt path.',
+      {
+        subject: { path: candidateBinding.path },
+        supportedFixes: ['choose a candidate path outside the authoring run receipt paths'],
+      },
+    );
+  }
   for (const target of Object.values(paths)) {
     if (fs.existsSync(target)) {
       const error = new Error(`Authoring output already exists: ${target}`);
@@ -305,7 +579,10 @@ export function startAuthoringRun({
     startedAtMs,
     startedSteadyMs,
     run: { ...safeRun, measurementDomain: 'agent-authoring' },
+    contract,
     evidenceBinding,
+    requirementsBinding,
+    candidateBinding,
   };
   const envelope = {
     ...body,
@@ -337,6 +614,7 @@ export function finalizeAuthoringRun({
     || digest !== digestBytes(Buffer.from(JSON.stringify(body), 'utf8'))) {
     throw new Error('authoring run envelope is invalid or has been modified.');
   }
+  const contractIdentity = assertContractIdentity(envelope.contract);
   const run = assertRun(envelope.run);
   if (!Number.isFinite(envelope.startedAtMs)
     || !Number.isFinite(envelope.startedSteadyMs)
@@ -359,7 +637,10 @@ export function finalizeAuthoringRun({
   }
   const handoff = buildHandoff({
     run,
+    contractIdentity,
     evidenceBinding: envelope.evidenceBinding,
+    requirementsBinding: envelope.requirementsBinding,
+    candidateBinding: envelope.candidateBinding,
     candidatePath,
     evidencePath,
     validationPath,
@@ -394,16 +675,122 @@ export function finalizeAuthoringRun({
 }
 
 /**
+ * End a durable authoring envelope without a ready handoff. This preserves
+ * real elapsed time for failed, blocked, and deliberately aborted work.
+ */
+export function terminalizeAuthoringRun({
+  envelopePath,
+  status,
+  reason,
+  clock = productionClock(),
+}) {
+  if (!['failed', 'blocked', 'aborted'].includes(status)) {
+    throw new TypeError('terminal authoring status must be failed, blocked, or aborted.');
+  }
+  if (typeof reason !== 'string' || !reason.trim()) {
+    throw new TypeError('terminal authoring reason must be a non-empty string.');
+  }
+  const envelopeReceipt = readJsonReceipt(envelopePath, 'authoring run envelope');
+  const envelope = envelopeReceipt.document;
+  const { digest, ...body } = envelope;
+  if (envelope.schemaVersion !== ENVELOPE_SCHEMA_VERSION
+    || envelope.kind !== ENVELOPE_KIND
+    || envelope.status !== 'started'
+    || typeof digest !== 'string'
+    || digest !== digestBytes(Buffer.from(JSON.stringify(body), 'utf8'))) {
+    throw new Error('authoring run envelope is invalid or has been modified.');
+  }
+  const contractDrift = contractDriftAssessment(envelope.contract);
+  const contractIdentity = envelope.contract;
+  const run = assertRun(envelope.run);
+  if (!Number.isFinite(envelope.startedAtMs)
+    || !Number.isFinite(envelope.startedSteadyMs)
+    || new Date(envelope.startedAtMs).toISOString() !== envelope.startedAt) {
+    throw new Error('authoring run envelope has invalid start markers.');
+  }
+  const endedSteadyMs = steadyNow(clock);
+  if (endedSteadyMs < envelope.startedSteadyMs) {
+    throw new Error('authoring run steady end marker precedes its start marker.');
+  }
+  const durationMs = Math.round(endedSteadyMs - envelope.startedSteadyMs);
+  const endedAtMs = envelope.startedAtMs + durationMs;
+  const paths = authoringPaths(path.dirname(envelopeReceipt.path));
+  for (const target of [paths.timingPath, paths.handoffPath, paths.reportPath]) {
+    if (fs.existsSync(target)) {
+      const error = new Error(`Authoring output already exists: ${target}`);
+      error.code = 'EEXIST';
+      throw error;
+    }
+  }
+  const terminalBody = {
+    schemaVersion: TERMINAL_SCHEMA_VERSION,
+    kind: TERMINAL_KIND,
+    status,
+    reason: reason.trim(),
+    createdAt: new Date(endedAtMs).toISOString(),
+    diagram: { id: run.id, type: run.diagramType },
+    contract: contractIdentity,
+    contractDrift,
+    ...(run.repository ? { repository: run.repository } : {}),
+  };
+  const terminalReceipt = {
+    ...terminalBody,
+    digest: digestBytes(Buffer.from(JSON.stringify(terminalBody), 'utf8')),
+  };
+  const timing = normalizeAuthoringTiming({
+    runId: run.id,
+    diagramType: run.diagramType,
+    agentStartMs: envelope.startedAtMs,
+    agentEndMs: endedAtMs,
+    status,
+    stages: [],
+    ...(run.repository ? { repository: run.repository } : {}),
+  });
+  timing.finalReceipt = terminalReceipt;
+  timing.accounting.durationSource = 'monotonic-envelope-endpoints';
+  timing.eventLog = {
+    path: envelopeReceipt.path,
+    eventCount: 1,
+    durableAppend: false,
+    truncatedTail: false,
+    migratedFrom: 'authoring-run-envelope',
+  };
+  const report = renderAuthoringReport({ timing, outputRoot: path.dirname(envelopeReceipt.path) });
+  writeNewFile(paths.reportPath, report.markdown);
+  writeNewFile(paths.timingPath, `${JSON.stringify(timing, null, 2)}\n`);
+  return { timing, terminalReceipt, report, paths };
+}
+
+/**
  * Deep authoring-run module. Callers only execute named stages and provide the
  * three final receipt paths; timing, digests, handoff, and report are owned by
  * this module and cannot be hand-filled by an agent.
  */
 export class AuthoringRun {
-  static open({ run, outputDirectory, repoRoot, projectIndexPath, clock = productionClock() }) {
-    return new AuthoringRun({ run, outputDirectory, repoRoot, projectIndexPath, clock });
+  static open({
+    run,
+    outputDirectory,
+    repoRoot,
+    projectIndexPath,
+    requirementsPath,
+    candidatePath,
+    expectContract,
+    clock = productionClock(),
+  }) {
+    return new AuthoringRun({
+      run,
+      outputDirectory,
+      repoRoot,
+      projectIndexPath,
+      requirementsPath,
+      candidatePath,
+      expectContract,
+      clock,
+    });
   }
 
-  constructor({ run, outputDirectory, repoRoot, projectIndexPath, clock }) {
+  constructor({ run, outputDirectory, repoRoot, projectIndexPath, requirementsPath, candidatePath, expectContract, clock }) {
+    if (expectContract !== undefined) assertExpectedQualityContract(expectContract);
     this.run = assertRun(run);
     this.evidenceBinding = createEvidenceBinding({
       repoRoot,
@@ -411,6 +798,23 @@ export class AuthoringRun {
       run: this.run,
     });
     this.run.repository = this.evidenceBinding.repository;
+    this.requirementsBinding = createSemanticRequirementsBinding({
+      requirementsPath,
+      run: this.run,
+    });
+    this.run.scopeProfile = this.requirementsBinding.scopeProfile;
+    if (this.run.scopeProfile === 'project-overview' && !candidatePath) {
+      throw authoringError(
+        'authoring-run/candidate-binding-required',
+        'Project-overview authoring requires a fresh candidate-path binding.',
+        {
+          subject: { diagramType: this.run.diagramType, scopeProfile: this.run.scopeProfile },
+          supportedFixes: ['pass candidatePath when opening the authoring run'],
+        },
+      );
+    }
+    this.candidateBinding = candidatePath ? createCandidateBinding(candidatePath) : null;
+    this.contractIdentity = currentContractIdentity();
     this.clock = clock;
     this.startedMonoMs = clock.monotonicMs();
     this.startedWallMs = clock.wallMs();
@@ -443,10 +847,14 @@ export class AuthoringRun {
 
   finalize({ candidatePath, evidencePath, validationPath }) {
     if (this.finalized) throw new Error('AuthoringRun is already finalized.');
+    assertContractIdentity(this.contractIdentity);
     const elapsedMs = this.clock.monotonicMs() - this.startedMonoMs;
     const handoff = buildHandoff({
       run: this.run,
+      contractIdentity: this.contractIdentity,
       evidenceBinding: this.evidenceBinding,
+      requirementsBinding: this.requirementsBinding,
+      candidateBinding: this.candidateBinding,
       candidatePath,
       evidencePath,
       validationPath,
@@ -466,6 +874,36 @@ export class AuthoringRun {
       report,
       paths: { ...this.paths },
     };
+  }
+
+  terminate({ status, reason }) {
+    if (this.finalized) throw new Error('AuthoringRun is already finalized.');
+    if (!['failed', 'blocked', 'aborted'].includes(status)) {
+      throw new TypeError('terminal authoring status must be failed, blocked, or aborted.');
+    }
+    if (typeof reason !== 'string' || !reason.trim()) {
+      throw new TypeError('terminal authoring reason must be a non-empty string.');
+    }
+    const terminalBody = {
+      schemaVersion: TERMINAL_SCHEMA_VERSION,
+      kind: TERMINAL_KIND,
+      status,
+      reason: reason.trim(),
+      createdAt: new Date(this.startedWallMs + (this.clock.monotonicMs() - this.startedMonoMs)).toISOString(),
+      diagram: { id: this.run.id, type: this.run.diagramType },
+      contract: this.contractIdentity,
+      contractDrift: contractDriftAssessment(this.contractIdentity),
+      ...(this.run.repository ? { repository: this.run.repository } : {}),
+    };
+    const terminalReceipt = {
+      ...terminalBody,
+      digest: digestBytes(Buffer.from(JSON.stringify(terminalBody), 'utf8')),
+    };
+    const timing = this.recorder.finalize({ status, finalReceipt: terminalReceipt });
+    const report = renderAuthoringReport({ timing, outputRoot: this.outputDirectory });
+    writeNewFile(this.paths.reportPath, report.markdown);
+    this.finalized = true;
+    return { timing, terminalReceipt, report, paths: { ...this.paths } };
   }
 }
 

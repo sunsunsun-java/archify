@@ -224,6 +224,8 @@ test('package smoke fails closed when a shipped authoring runtime is omitted', (
   const requiredRuntimes = [
     path.join('authoring', 'quality-contract.mjs'),
     path.join('authoring', 'authoring-run.mjs'),
+    path.join('authoring', 'content-quality.mjs'),
+    path.join('authoring', 'semantic-requirements.mjs'),
     path.join('authoring', 'candidate-preflight.mjs'),
     path.join('authoring', 'repair-plan.mjs'),
   ];
@@ -264,6 +266,8 @@ test('package smoke requires one unambiguous quality-contract digest in packaged
     fs.writeFileSync(path.join(fixture, 'package.json'), '{"name":"archify-fixture"}\n');
     fs.writeFileSync(path.join(fixture, 'authoring', 'quality-contract.mjs'), 'export const fixture = true;\n');
     fs.writeFileSync(path.join(fixture, 'authoring', 'authoring-run.mjs'), 'export const fixture = true;\n');
+    fs.writeFileSync(path.join(fixture, 'authoring', 'content-quality.mjs'), 'export const fixture = true;\n');
+    fs.writeFileSync(path.join(fixture, 'authoring', 'semantic-requirements.mjs'), 'export const fixture = true;\n');
     fs.writeFileSync(path.join(fixture, 'authoring', 'candidate-preflight.mjs'), 'export const fixture = true;\n');
     fs.writeFileSync(path.join(fixture, 'authoring', 'repair-plan.mjs'), 'export const fixture = true;\n');
     fs.writeFileSync(

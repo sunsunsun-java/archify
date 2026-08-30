@@ -100,6 +100,24 @@ test('authoring timing normalization: rejects non-monotonic and overlapping stag
   }), /ends before it starts/);
 });
 
+test('authoring timing normalization: preserves every supported terminal status and rejects unknown statuses', () => {
+  const base = {
+    diagramType: 'workflow',
+    agentStartMs: 1_000,
+    agentEndMs: 1_100,
+    stages: [],
+  };
+
+  for (const status of ['completed', 'failed', 'blocked', 'aborted', 'cancelled']) {
+    assert.equal(normalizeAuthoringTiming({ ...base, status }).status, status);
+  }
+  assert.equal(normalizeAuthoringTiming(base).status, 'completed');
+  assert.throws(
+    () => normalizeAuthoringTiming({ ...base, status: 'unexpected' }),
+    /unsupported authoring timing status/i,
+  );
+});
+
 test('run recorder: durable events compile into canonical timing v1 with nested spans and attempts', async (t) => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-run-recorder-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));

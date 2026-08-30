@@ -51,6 +51,38 @@ const EVIDENCE_SELECTION_TEMPLATE = Object.freeze({
   }]),
 });
 
+function semanticRequirementsTemplate(type) {
+  const scopePolicy = QUALITY_CONTRACT.semanticScope.profiles['project-overview'][type];
+  const entities = Array.from(
+    { length: scopePolicy.minimumRequiredEntities },
+    (_, index) => ({
+      key: `sourceEntity${index + 1}`,
+      labels: [`accepted source label ${index + 1}`],
+      roles: [scopePolicy.requiredRoles[index % scopePolicy.requiredRoles.length]],
+      claimIds: [`claim-for-entity-${index + 1}`],
+    }),
+  );
+  const relationships = Array.from(
+    { length: scopePolicy.minimumRequiredRelationships },
+    (_, index) => ({
+      from: entities[index % entities.length].key,
+      to: entities[(index + 1) % entities.length].key,
+      labels: [`accepted source relationship ${index + 1}`],
+      claimIds: [`claim-for-relationship-${index + 1}`],
+    }),
+  );
+  return freezeDocument({
+    instructions: 'Create this requirements document before authoring the candidate. Use project-overview for a repository or multi-diagram project overview; change to focused only when the user explicitly narrows the scope. Replace every key, label, role binding, relationship, and claim with source-specific semantics. Every entity and relationship must reference claimIds in the verified EvidenceLedger, and project-overview must satisfy the supplied type-specific density, semantic-role, and source-breadth policy.',
+    document: {
+      schemaVersion: QUALITY_CONTRACT.semanticScope.currentRequirementsSchemaVersion,
+      diagramType: type,
+      scopeProfile: QUALITY_CONTRACT.semanticScope.defaultProfile,
+      entities,
+      relationships,
+    },
+  });
+}
+
 const LAYOUT_BUDGETS = Object.freeze({
   architecture: Object.freeze({
     recommendedViewBox: Object.freeze([1080, 600]),
@@ -94,6 +126,63 @@ const LAYOUT_BUDGETS = Object.freeze({
   }),
 });
 
+const SHAPE_EXAMPLES = freezeDocument({
+  architecture: {
+    schema_version: 1,
+    diagram_type: 'architecture',
+    meta: { title: 'Replace with source-specific architecture', quality_profile: 'showcase', viewBox: [1080, 600] },
+    components: [
+      { id: 'sourceEntityA', type: 'frontend', label: 'Source entity A', pos: [80, 180], size: [140, 60] },
+      { id: 'sourceEntityB', type: 'backend', label: 'Source entity B', pos: [340, 180], size: [140, 60] },
+    ],
+    connections: [{ id: 'sourceRelation', from: 'sourceEntityA', to: 'sourceEntityB', label: 'Source-derived relation' }],
+  },
+  workflow: {
+    schema_version: 2,
+    diagram_type: 'workflow',
+    meta: { title: 'Replace with source-specific workflow', quality_profile: 'showcase', viewBox: [960, 540] },
+    lanes: [{ id: 'sourceLane', label: 'Source-derived lane' }],
+    mainPath: ['sourceStepA', 'sourceStepB'],
+    nodes: [
+      { id: 'sourceStepA', lane: 'sourceLane', col: 0, type: 'frontend', label: 'Source step A' },
+      { id: 'sourceStepB', lane: 'sourceLane', col: 1, type: 'backend', label: 'Source step B' },
+    ],
+    edges: [{ id: 'sourceTransition', from: 'sourceStepA', to: 'sourceStepB', label: 'Source-derived transition' }],
+  },
+  sequence: {
+    schema_version: 1,
+    diagram_type: 'sequence',
+    meta: { title: 'Replace with source-specific sequence', quality_profile: 'showcase', viewBox: [1080, 620] },
+    participants: [
+      { id: 'sourceActorA', type: 'frontend', label: 'Actor A' },
+      { id: 'sourceActorB', type: 'backend', label: 'Actor B' },
+    ],
+    messages: [{ id: 'sourceMessage', from: 'sourceActorA', to: 'sourceActorB', y: 220, label: 'Source-derived message' }],
+  },
+  dataflow: {
+    schema_version: 1,
+    diagram_type: 'dataflow',
+    meta: { title: 'Replace with source-specific data flow', quality_profile: 'showcase', viewBox: [1080, 600] },
+    stages: [{ label: 'Source stage' }, { label: 'Destination stage' }],
+    nodes: [
+      { id: 'sourceDataA', type: 'frontend', label: 'Source data A', stage: 0, row: 0 },
+      { id: 'sourceDataB', type: 'database', label: 'Source data B', stage: 1, row: 0 },
+    ],
+    flows: [{ id: 'sourceFlow', from: 'sourceDataA', to: 'sourceDataB', label: 'Source-derived data' }],
+  },
+  lifecycle: {
+    schema_version: 1,
+    diagram_type: 'lifecycle',
+    meta: { title: 'Replace with source-specific lifecycle', quality_profile: 'showcase', viewBox: [1080, 630] },
+    lanes: [{ id: 'main', label: 'Source lifecycle' }],
+    states: [
+      { id: 'sourceStateA', type: 'start', label: 'State A', lane: 'main', col: 0 },
+      { id: 'sourceStateB', type: 'success', label: 'State B', lane: 'main', col: 2 },
+    ],
+    transitions: [{ id: 'sourceStateChange', from: 'sourceStateA', to: 'sourceStateB', label: 'transition' }],
+  },
+});
+
 function authoringCommands(type) {
   const repositoryOption = type === 'architecture' ? ' [--repo-root <path>]' : '';
   const languageOption = ' --require-authored-language <en|zh-CN>';
@@ -110,7 +199,7 @@ function authoringCommands(type) {
     sourceInspect: 'node bin/archify.mjs project-index inspect <index.json> --range <path:start-end> --json',
     evidenceHydrate: 'node bin/archify.mjs evidence-ledger hydrate <index.json> <selections.json> --output <ledger.json> --json',
     evidenceVerify: 'node bin/archify.mjs evidence-ledger verify <ledger.json> --project-index <index.json> --repo-root <path> --json',
-    authoringRunStart: `node bin/archify.mjs authoring-run start ${type} --run-id <id> --output <run-directory> --repo-root <path> --project-index <index.json>${languageOption} --json`,
+    authoringRunStart: `node bin/archify.mjs authoring-run start ${type} --run-id <id> --output <run-directory> --repo-root <path> --project-index <index.json> --requirements <requirements.json> --candidate <candidate.json> --scope-profile <focused|project-overview> --expect-contract <quality-contract-sha256>${languageOption} --json`,
     authoringRunFinalize: 'node bin/archify.mjs authoring-run finalize <authoring-run.json> --candidate <candidate.json> --evidence <ledger.json> --validation <validation.json> --json',
   });
 }
@@ -121,7 +210,7 @@ function freezeDocument(value) {
   return Object.freeze(value);
 }
 
-function filePacket(skillRoot, relativePath, { contextJson = false } = {}) {
+function filePacket(skillRoot, relativePath, { contextJson = false, omitFromContext = false } = {}) {
   const absolutePath = path.join(skillRoot, ...relativePath.split('/'));
   const content = fs.readFileSync(absolutePath, 'utf8');
   return Object.freeze({
@@ -129,7 +218,9 @@ function filePacket(skillRoot, relativePath, { contextJson = false } = {}) {
     bytes: Buffer.byteLength(content),
     sha256: createHash('sha256').update(content).digest('hex'),
     ...(contextJson
-      ? { document: freezeDocument(JSON.parse(content)) }
+      ? omitFromContext
+        ? { omittedFromContext: true }
+        : { document: freezeDocument(JSON.parse(content)) }
       : { content }),
   });
 }
@@ -156,24 +247,37 @@ export function loadAuthoringKit(type, {
     layoutBudget: Object.freeze({
       targetViewport: Object.freeze([1440, 900]),
       ...LAYOUT_BUDGETS[type],
+      targetPrimaryRange: QUALITY_CONTRACT.semanticScope
+        .profiles['project-overview'][type].targetPrimaryRange,
       qualityGuards: QUALITY_CONTRACT.guards,
     }),
     commands: authoringCommands(type),
     evidenceSelectionTemplate: EVIDENCE_SELECTION_TEMPLATE,
+    semanticRequirementsTemplate: semanticRequirementsTemplate(type),
+    semanticScope: QUALITY_CONTRACT.semanticScope,
     repairPolicy: QUALITY_CONTRACT.repairPolicy,
+    ...(contextJson ? {
+      shapeExample: Object.freeze({
+        policy: 'shape-only',
+        instruction: 'Replace every ID, label, relationship, and topology choice with source-specific content. This exemplar demonstrates field shape only and is intentionally below project-overview density; use layoutBudget.targetPrimaryRange and semanticScope instead of copying its item count.',
+        document: SHAPE_EXAMPLES[type],
+      }),
+    } : {}),
     capabilities: Object.freeze({
       repositoryEvidence: true,
       projectIndexQuery: true,
       projectSourceSearch: true,
       evidenceLedgerHydrate: true,
       evidenceLedgerVerify: true,
+      semanticRequirements: true,
       deterministicRepairPlan: true,
       machineAuthoringReport: true,
       sharedVisualCheckSession: true,
       atomicDelivery: true,
     }),
     workflow: Object.freeze([
-      'author a fresh candidate within layoutBudget',
+      'create a revision-pinned EvidenceLedger, then write semanticRequirementsTemplate before authoring the candidate',
+      'author a fresh candidate within layoutBudget and cover every required entity and directed relationship using accepted source-specific labels',
       'validate after every candidate edit',
       'reuse one repair-history file and follow repairPlan; validate a requested reflow with --repair-mode structural-reflow, without deleting semantics or reducing typography',
       'run preflight on the first deterministic pass and before freezing',
@@ -183,7 +287,7 @@ export function loadAuthoringKit(type, {
     files: Object.freeze({
       schema: filePacket(resolvedRoot, `schemas/${type}.schema.json`, { contextJson }),
       commonSchema: filePacket(resolvedRoot, 'schemas/common.schema.json', { contextJson }),
-      example: filePacket(resolvedRoot, EXAMPLES[type], { contextJson }),
+      example: filePacket(resolvedRoot, EXAMPLES[type], { contextJson, omitFromContext: contextJson }),
     }),
   });
 }

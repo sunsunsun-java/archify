@@ -26,6 +26,14 @@ function fixture(name, mutate) {
   return file;
 }
 
+function dataflowFixture(name, mutate) {
+  const source = JSON.parse(fs.readFileSync(path.join(skillRoot, 'examples/product-analytics.dataflow.json'), 'utf8'));
+  mutate(source);
+  const file = path.join(tmp, name);
+  fs.writeFileSync(file, JSON.stringify(source, null, 2));
+  return file;
+}
+
 function localizeReaderFacing(source) {
   const localize = (value) => {
     if (Array.isArray(value)) {
@@ -34,7 +42,7 @@ function localizeReaderFacing(source) {
     }
     if (!value || typeof value !== 'object') return;
     for (const [key, entry] of Object.entries(value)) {
-      if (['label', 'sublabel', 'tag', 'note', 'title', 'subtitle'].includes(key)
+      if (['label', 'sublabel', 'tag', 'note', 'title', 'subtitle', 'classification'].includes(key)
         && typeof entry === 'string') {
         value[key] = key === 'title' && value === source.meta ? source.meta.title : '中文说明';
       } else if (key === 'items' && Array.isArray(entry)) {
@@ -158,6 +166,87 @@ test('validate still rejects ordinary lower-case English prose', () => {
   const receipt = JSON.parse(result.stdout);
   assert.equal(receipt.stage, 'language');
   assert.ok(receipt.diagnostics[0].evidence.violations.some((entry) => entry.text === 'prompt input'));
+});
+
+test('validate rejects English prose hidden behind a short Chinese explanation prefix', () => {
+  const input = fixture('chinese-prefix-english-prose.workflow.json', (source) => {
+    source.meta.title = 'Agent 工具调用工作流';
+    source.meta.locale = 'zh-CN';
+    localizeReaderFacing(source);
+    source.cards[0].items = [
+      '说明：prompt input and retry policy',
+      '备注: query profile and metrics',
+      '描述：Web App sends request',
+    ];
+  });
+  const result = run(['validate', 'workflow', input, '--require-authored-language', 'zh-CN', '--json']);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  const receipt = JSON.parse(result.stdout);
+  assert.equal(receipt.stage, 'language');
+  assert.deepEqual(
+    receipt.diagnostics[0].evidence.violations.map(({ text }) => text),
+    [
+      '说明：prompt input and retry policy',
+      '备注: query profile and metrics',
+      '描述：Web App sends request',
+    ],
+  );
+});
+
+test('validate preserves technical identifiers after a Chinese explanation prefix', () => {
+  const input = fixture('chinese-prefix-technical-identifiers.workflow.json', (source) => {
+    source.meta.title = 'Agent 工具调用工作流';
+    source.meta.locale = 'zh-CN';
+    localizeReaderFacing(source);
+    source.cards[0].items = [
+      '说明：GET /refresh',
+      '备注：DtpExecutor',
+    ];
+  });
+  const result = run(['validate', 'workflow', input, '--require-authored-language', 'zh-CN', '--json']);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const receipt = JSON.parse(result.stdout);
+  assert.equal(receipt.authoredLanguage.violations, 0);
+  assert.ok(receipt.authoredLanguage.technicalIdentifiersPreserved >= 2);
+});
+
+test('validate rejects English prose that uses one Chinese character as a language bypass', () => {
+  const input = fixture('single-chinese-character-english-prose.workflow.json', (source) => {
+    source.meta.title = 'Agent 工具调用工作流';
+    source.meta.locale = 'zh-CN';
+    localizeReaderFacing(source);
+    source.cards[0].items = [
+      'X data pipeline 图',
+      '图 complete English description',
+    ];
+  });
+  const result = run(['validate', 'workflow', input, '--require-authored-language', 'zh-CN', '--json']);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  const receipt = JSON.parse(result.stdout);
+  assert.deepEqual(
+    receipt.diagnostics[0].evidence.violations.map(({ text }) => text),
+    ['X data pipeline 图', '图 complete English description'],
+  );
+});
+
+test('validate inspects reader-facing dataflow classification text', () => {
+  const input = dataflowFixture('english-classification.dataflow.json', (source) => {
+    source.meta.title = '产品分析数据流';
+    source.meta.locale = 'zh-CN';
+    localizeReaderFacing(source);
+    source.flows[0].classification = 'complete English description';
+  });
+  const result = run(['validate', 'dataflow', input, '--require-authored-language', 'zh-CN', '--json']);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  const receipt = JSON.parse(result.stdout);
+  assert.ok(receipt.diagnostics[0].evidence.violations.some((entry) => (
+    entry.path === '/flows/0/classification'
+      && entry.text === 'complete English description'
+  )));
 });
 
 test('validate rejects ordinary English hidden behind operators or a technical-looking prefix', () => {

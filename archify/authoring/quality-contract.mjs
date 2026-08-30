@@ -28,8 +28,96 @@ const CAPTURE_VIEWPORTS = [
   { width: 2048, height: 1320 },
 ];
 
+const ENFORCEMENT_RUNTIME_PATHS = Object.freeze([
+  'authoring/authored-language.mjs',
+  'authoring/authoring-run.mjs',
+  'authoring/candidate-preflight.mjs',
+  'authoring/content-quality.mjs',
+  'authoring/quality-contract.mjs',
+  'authoring/semantic-requirements.mjs',
+  'bin/archify.mjs',
+  'orchestration/report.mjs',
+  'orchestration/run-recorder.mjs',
+  'orchestration/suite-runner.mjs',
+  'scripts/check-render-output.mjs',
+  'schemas/architecture.schema.json',
+  'schemas/common.schema.json',
+  'schemas/dataflow.schema.json',
+  'schemas/lifecycle.schema.json',
+  'schemas/sequence.schema.json',
+  'schemas/workflow.schema.json',
+]);
+
+function recursiveModulePaths(root, relativeDirectory) {
+  const directory = path.join(root, ...relativeDirectory.split('/'));
+  return fs.readdirSync(directory, { withFileTypes: true })
+    .flatMap((entry) => {
+      const relativePath = `${relativeDirectory}/${entry.name}`;
+      if (entry.isDirectory()) return recursiveModulePaths(root, relativePath);
+      return entry.isFile() && entry.name.endsWith('.mjs') ? [relativePath] : [];
+    })
+    .sort();
+}
+
 export const QUALITY_CONTRACT = deepFreeze({
   schemaVersion: 1,
+  semanticScope: {
+    schemaVersion: 1,
+    currentRequirementsSchemaVersion: 2,
+    legacyRequirementsProfile: 'focused',
+    defaultProfile: 'project-overview',
+    profiles: {
+      focused: {
+        minimumRequiredEntities: 2,
+        minimumRequiredRelationships: 1,
+        minimumUniqueRequiredClaimIds: 3,
+        minimumDistinctSourceFiles: 1,
+        requiredRoles: [],
+      },
+      'project-overview': {
+        architecture: {
+          targetPrimaryRange: { components: [6, 10] },
+          minimumRequiredEntities: 6,
+          minimumRequiredRelationships: 5,
+          minimumUniqueRequiredClaimIds: 6,
+          minimumDistinctSourceFiles: 5,
+          requiredRoles: ['entry', 'configuration', 'control', 'runtime', 'observability', 'integration'],
+        },
+        workflow: {
+          targetPrimaryRange: { nodes: [7, 10] },
+          minimumRequiredEntities: 7,
+          minimumRequiredRelationships: 6,
+          minimumUniqueRequiredClaimIds: 7,
+          minimumDistinctSourceFiles: 4,
+          requiredRoles: ['trigger', 'parse', 'validate', 'apply', 'observe', 'failure', 'outcome'],
+        },
+        sequence: {
+          targetPrimaryRange: { participants: [5, 7], messages: [9, 13] },
+          minimumRequiredEntities: 5,
+          minimumRequiredRelationships: 9,
+          minimumUniqueRequiredClaimIds: 6,
+          minimumDistinctSourceFiles: 3,
+          requiredRoles: ['caller', 'ingress', 'coordinator', 'runtime', 'observer'],
+        },
+        dataflow: {
+          targetPrimaryRange: { nodes: [7, 10] },
+          minimumRequiredEntities: 7,
+          minimumRequiredRelationships: 6,
+          minimumUniqueRequiredClaimIds: 7,
+          minimumDistinctSourceFiles: 4,
+          requiredRoles: ['source', 'transform', 'control-store', 'runtime-sink', 'observability-consumer'],
+        },
+        lifecycle: {
+          targetPrimaryRange: { states: [7, 9] },
+          minimumRequiredEntities: 7,
+          minimumRequiredRelationships: 6,
+          minimumUniqueRequiredClaimIds: 6,
+          minimumDistinctSourceFiles: 3,
+          requiredRoles: ['initial', 'registered', 'active', 'changing', 'recovery', 'terminal'],
+        },
+      },
+    },
+  },
   guards: {
     qualityProfile: 'showcase',
     deterministicChecks: 9,
@@ -53,6 +141,17 @@ export const QUALITY_CONTRACT = deepFreeze({
     captureViewports: CAPTURE_VIEWPORTS,
     captureThemes: ['light', 'dark'],
     minimumProjectedNodeTextPx: 6,
+    completeExampleInAuthoringContextAllowed: false,
+    maximumExampleStructuralOverlapRatio: 0.7,
+    maximumLowInformationExactRepeats: 2,
+    diagramTypeTitleConsistencyRequired: true,
+    repositorySemanticRequirementsRequired: true,
+    minimumRequiredEntities: 2,
+    minimumRequiredRelationships: 1,
+    minimumUniqueRequiredClaimIds: 3,
+    requiredClaimCoverageRatio: 1,
+    shapeExampleBudgetConformanceRequired: true,
+    authoringTerminalStatuses: ['failed', 'blocked', 'aborted'],
     semanticDeletionAllowed: false,
     typographyReductionAllowed: false,
     overflowHidingAllowed: false,
@@ -93,9 +192,27 @@ export function qualityContractIdentity({ skillRoot } = {}) {
     throw new Error('Quality contract identity requires a skillRoot.');
   }
   const skillPath = path.join(fs.realpathSync(path.resolve(skillRoot)), 'SKILL.md');
+  const resolvedRoot = path.dirname(skillPath);
   const skill = fs.readFileSync(skillPath, 'utf8');
   const version = skill.match(/^metadata:\s*\n(?:^[ \t]+.*\n)*?^[ \t]+version:\s*["']?([^"'\s]+)["']?\s*$/m)?.[1];
   if (!version) throw new Error(`SKILL.md metadata.version is missing: ${skillPath}`);
+  const runtimePaths = [...new Set([
+    ...ENFORCEMENT_RUNTIME_PATHS,
+    ...recursiveModulePaths(resolvedRoot, 'renderers'),
+  ])].sort();
+  const runtimeFiles = runtimePaths.map((relativePath) => {
+    const bytes = fs.readFileSync(path.join(resolvedRoot, ...relativePath.split('/')));
+    return Object.freeze({
+      path: relativePath,
+      bytes: bytes.byteLength,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+    });
+  });
+  const runtimeBody = runtimeFiles.map(({ path: relativePath, bytes, sha256 }) => ({
+    path: relativePath,
+    bytes,
+    sha256,
+  }));
   return Object.freeze({
     quality: Object.freeze({
       schemaVersion: QUALITY_CONTRACT.schemaVersion,
@@ -104,6 +221,10 @@ export function qualityContractIdentity({ skillRoot } = {}) {
     skill: Object.freeze({
       version,
       sha256: createHash('sha256').update(skill).digest('hex'),
+    }),
+    runtime: Object.freeze({
+      sha256: createHash('sha256').update(canonicalJson(runtimeBody)).digest('hex'),
+      files: Object.freeze(runtimeFiles),
     }),
   });
 }

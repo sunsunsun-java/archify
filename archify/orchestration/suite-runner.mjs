@@ -237,9 +237,9 @@ function normalizeManifest(manifest, manifestPath, outputRoot) {
   if (!Array.isArray(manifest.diagrams) || manifest.diagrams.length === 0) {
     throw new Error('manifest.diagrams must contain at least one diagram.');
   }
-  const authoredLanguage = manifest.authoredLanguage ?? null;
-  if (authoredLanguage !== null && !['en', 'zh-CN'].includes(authoredLanguage)) {
-    throw new Error('manifest.authoredLanguage must be "en" or "zh-CN" when specified.');
+  const authoredLanguage = manifest.authoredLanguage;
+  if (!['en', 'zh-CN'].includes(authoredLanguage)) {
+    throw new Error('manifest.authoredLanguage is required and must be "en" or "zh-CN".');
   }
   if (manifest.projectIndex !== undefined && typeof manifest.projectIndex !== 'boolean') {
     throw new Error('manifest.projectIndex must be boolean when specified.');
@@ -484,7 +484,8 @@ function commandRequest({ command, diagram, suite, archifyCli }) {
         suite.qualityProfile,
         ...(diagram.type === 'architecture' ? ['--repo-root', suite.repository.root] : []),
         ...(suite.viewportPreflight && !suite.sharedViewportPreflight ? ['--preflight'] : []),
-        ...(suite.authoredLanguage ? ['--require-authored-language', suite.authoredLanguage] : []),
+        '--require-authored-language',
+        suite.authoredLanguage,
         '--json',
       ],
       cwd: diagram.outputDirectory,
@@ -506,7 +507,8 @@ function commandRequest({ command, diagram, suite, archifyCli }) {
         '--quality',
         suite.qualityProfile,
         ...(diagram.type === 'architecture' ? ['--repo-root', suite.repository.root] : []),
-        ...(suite.authoredLanguage ? ['--require-authored-language', suite.authoredLanguage] : []),
+        '--require-authored-language',
+        suite.authoredLanguage,
         '--json',
       ],
       cwd: diagram.outputDirectory,
@@ -840,7 +842,7 @@ function verifyQualityReceipt(
   authoredLanguage,
 ) {
   if (!receipt?.ok || command.kind === 'exec') return;
-  if (authoredLanguage && ['validate', 'deliver'].includes(command.kind)) {
+  if (['validate', 'deliver'].includes(command.kind)) {
     if (receipt.authoredLanguage?.required !== authoredLanguage
       || receipt.authoredLanguage?.violations !== 0) {
       throw new Error(`${command.kind} success receipt does not preserve the required authored language ${authoredLanguage}.`);
@@ -1264,7 +1266,7 @@ function sanitizeProjectIndexEvidence(suite, contexts) {
   }
 }
 
-function verifySharedCandidateDigest(diagram, receipt) {
+function verifySharedCandidateDigest(diagram, receipt, authoredLanguage) {
   const expected = receipt?.specification;
   if (!expected || !Number.isInteger(expected.bytes) || typeof expected.sha256 !== 'string') {
     throw new Error(`Shared candidate preflight receipt has no specification digest for ${diagram.id}.`);
@@ -1273,6 +1275,10 @@ function verifySharedCandidateDigest(diagram, receipt) {
   const actualSha256 = createHash('sha256').update(bytes).digest('hex');
   if (bytes.byteLength !== expected.bytes || actualSha256 !== expected.sha256) {
     throw new Error(`Candidate ${diagram.id} changed after the shared viewport preflight.`);
+  }
+  if (receipt.authoredLanguage?.required !== authoredLanguage
+    || receipt.authoredLanguage?.violations !== 0) {
+    throw new Error(`Shared candidate preflight receipt does not preserve the required authored language ${authoredLanguage} for ${diagram.id}.`);
   }
 }
 
@@ -1430,6 +1436,7 @@ async function runDiagramUntilVisual({ suite, diagram, archifyCli, commandRunner
               await attempt.span('shared-preflight-specification', async () => verifySharedCandidateDigest(
                 diagram,
                 suite.sharedPreflightReceipts?.[diagram.id],
+                suite.authoredLanguage,
               ));
             }
             if (command.kind === 'deliver' && diagram.evidenceLedgerPath) {
@@ -1873,6 +1880,7 @@ export async function runSuite({
             id: diagram.id,
             type: diagram.type,
             input: diagram.candidatePath,
+            requiredLanguage: suite.authoredLanguage,
             ...(diagram.type === 'architecture' ? { repoRoot: suite.repository.root } : {}),
           })),
         }));
@@ -1892,7 +1900,11 @@ export async function runSuite({
           throw error;
         }
         for (const diagram of suite.diagrams) {
-          verifySharedCandidateDigest(diagram, suite.sharedPreflightReceipts[diagram.id]);
+          verifySharedCandidateDigest(
+            diagram,
+            suite.sharedPreflightReceipts[diagram.id],
+            suite.authoredLanguage,
+          );
         }
       });
     } catch (error) {

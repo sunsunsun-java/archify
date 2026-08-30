@@ -279,6 +279,10 @@ export function normalizeAuthoringTiming(source) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new TypeError('authoring timing must be an object.');
   }
+  const status = input.status === undefined ? 'completed' : input.status;
+  if (!['completed', 'failed', 'blocked', 'aborted', 'cancelled'].includes(status)) {
+    throw new TypeError(`Unsupported authoring timing status ${JSON.stringify(status)}.`);
+  }
   const startedMs = input.agentStartMs;
   const endedMs = input.agentEndMs;
   if (!Number.isFinite(startedMs) || !Number.isFinite(endedMs)) {
@@ -329,7 +333,7 @@ export function normalizeAuthoringTiming(source) {
         ? { repository: input.repository }
         : {}),
     },
-    status: input.status === 'failed' ? 'failed' : 'completed',
+    status,
     startedAt: new Date(startedMs).toISOString(),
     endedAt: new Date(endedMs).toISOString(),
     durationMs,
@@ -572,7 +576,7 @@ export class RunRecorder {
     if (this.activeStageId || this.openScopes.size) {
       throw new Error(`Cannot finalize while scope ${this.activeStageId || [...this.openScopes][0]} is active.`);
     }
-    if (!['completed', 'failed', 'cancelled'].includes(status)) {
+    if (!['completed', 'failed', 'blocked', 'aborted', 'cancelled'].includes(status)) {
       throw new TypeError(`Unsupported run status ${JSON.stringify(status)}.`);
     }
     this._append('receipt.recorded', {

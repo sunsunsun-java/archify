@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -21,6 +21,26 @@ function renderDiagram(mode, doc) {
       output,
     ], { stdio: ['ignore', 'ignore', 'pipe'] });
     return fs.readFileSync(output, 'utf8');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+function validateDataflow(doc) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-dataflow-degenerate-'));
+  const input = path.join(tmp, 'input.json');
+  fs.writeFileSync(input, JSON.stringify(doc));
+  try {
+    const result = spawnSync(process.execPath, [
+      path.join(skillRoot, 'bin/archify.mjs'),
+      'validate',
+      'dataflow',
+      input,
+      '--quality',
+      'showcase',
+      '--json',
+    ], { cwd: skillRoot, encoding: 'utf8' });
+    return { status: result.status, receipt: JSON.parse(result.stdout) };
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -137,6 +157,26 @@ test('dataflow: aligned automatic flow emits one canonical segment without dupli
 
   assert.deepEqual(relationshipPoints(html, 'tool-calls'), [[100, 186], [100, 356]]);
   assert.equal(relationshipPath(html, 'tool-calls'), 'M 100 186 L 100 352.85');
+});
+
+test('dataflow: a route collapsed by non-finite endpoint geometry returns a structured diagnostic', () => {
+  const result = validateDataflow({
+    schema_version: 1,
+    diagram_type: 'dataflow',
+    meta: { title: 'Degenerate route diagnostic', quality_profile: 'showcase' },
+    stages: [{ label: 'Input' }, { label: 'Output' }],
+    nodes: [
+      { id: 'source', type: 'backend', label: 'Source', stage: 0, row: 0 },
+      { id: 'target', type: 'database', label: 'Target', stage: 1, row: 5 },
+    ],
+    flows: [{ id: 'broken-route', from: 'source', to: 'target', label: 'payload', route: 'straight' }],
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.receipt.stage, 'render');
+  assert.ok(result.receipt.diagnostics.some((entry) => entry.code === 'layout/degenerate-route'));
+  assert.equal(result.receipt.diagnostics.some((entry) => entry.code === 'internal/unclassified'), false);
+  assert.doesNotMatch(result.receipt.error, /Cannot read properties of undefined/);
 });
 
 test('dataflow: vertical-channel uses side ports facing its vertical corridor', () => {

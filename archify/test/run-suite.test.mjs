@@ -349,6 +349,7 @@ function writeManifest(tmp, diagrams, options = {}) {
     schemaVersion: 1,
     id: 'pi-five-diagrams',
     qualityProfile: 'showcase',
+    authoredLanguage: 'en',
     ...options,
     diagrams,
   }, null, 2));
@@ -373,6 +374,14 @@ function sharedCandidatePreflightRunner(calls = []) {
           return {
             ...validationReceipt(candidate.type, candidate.input),
             id: candidate.id,
+            authoredLanguage: {
+              required: candidate.requiredLanguage,
+              locale: candidate.requiredLanguage,
+              inspected: 1,
+              proseInspected: 1,
+              technicalIdentifiersPreserved: 0,
+              violations: 0,
+            },
             specification: {
               bytes: bytes.byteLength,
               sha256: createHash('sha256').update(bytes).digest('hex'),
@@ -569,6 +578,9 @@ test('suite runner integration: real packaged validate and deliver CLIs complete
   const pinned = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
   const candidate = path.join(tmp, 'workflow.json');
   fs.copyFileSync(path.join(skillRoot, 'examples', 'agent-tool-call.workflow.json'), candidate);
+  const candidateDocument = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+  candidateDocument.meta.locale = 'en';
+  fs.writeFileSync(candidate, `${JSON.stringify(candidateDocument, null, 2)}\n`);
   const manifestPath = writeManifest(tmp, [{ type: 'workflow', candidate, commands: qualityCommands() }], {
     sharedViewportPreflight: true,
   });
@@ -742,9 +754,34 @@ test('suite runner: propagates and verifies one authored-language contract acros
   });
 
   assert.equal(summary.finalReceipt.quality.authoredLanguage, 'zh-CN');
+  assert.equal(summary.authoredLanguage, 'zh-CN');
+  const diagramTiming = JSON.parse(fs.readFileSync(summary.diagrams[0].timing, 'utf8'));
+  assert.equal(diagramTiming.finalReceipt.quality.authoredLanguage, 'zh-CN');
   for (const request of commandRunner.requests.filter((entry) => ['validate', 'deliver'].includes(entry.kind))) {
     assert.deepEqual(request.args.slice(-3), ['--require-authored-language', 'zh-CN', '--json']);
   }
+});
+
+test('suite runner: showcase manifests fail closed without one authored language', async (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-suite-language-required-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const repoRoot = path.join(tmp, 'repo');
+  fs.mkdirSync(repoRoot);
+  const manifestPath = writeManifest(tmp, [{
+    id: 'workflow',
+    type: 'workflow',
+    candidate: staticCandidate(tmp, 'workflow'),
+    commands: qualityCommands(),
+  }], { authoredLanguage: undefined });
+
+  await assert.rejects(runSuite({
+    manifestPath,
+    repoRoot,
+    revision,
+    outputRoot: path.join(tmp, 'output'),
+    archifyCli,
+    commandRunner: fakeRunner(),
+  }), /authoredLanguage is required and must be "en" or "zh-CN"/);
 });
 
 test('suite runner: frozen candidates share one pre-delivery browser session', async (t) => {
@@ -775,6 +812,7 @@ test('suite runner: frozen candidates share one pre-delivery browser session', a
   assert.equal(summary.sharedViewportPreflight, true);
   assert.equal(preflightCalls.length, 1);
   assert.equal(preflightCalls[0].candidates.length, 2);
+  assert.equal(preflightCalls[0].candidates.every((candidate) => candidate.requiredLanguage === 'en'), true);
   assert.equal(commandRunner.requests.filter((request) => request.kind === 'validate').every((request) => !request.args.includes('--preflight')), true);
   const timing = JSON.parse(fs.readFileSync(summary.timing, 'utf8'));
   assert.equal(timing.stages.filter((stage) => stage.name === 'candidatePreflightBatch').length, 1);
@@ -1548,6 +1586,7 @@ test('suite runner: optionally builds one revision-pinned project index shared b
   fs.writeFileSync(manifestPath, JSON.stringify({
     schemaVersion: 1,
     id: 'indexed-suite',
+    authoredLanguage: 'en',
     projectIndex: true,
     diagrams: [{ type: 'workflow', candidate, commands: qualityCommands() }],
   }));

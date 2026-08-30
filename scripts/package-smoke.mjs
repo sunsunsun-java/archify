@@ -20,6 +20,8 @@ const authoringTypes = ['architecture', 'workflow', 'sequence', 'dataflow', 'lif
 const requiredAuthoringRuntimes = [
   path.join('authoring', 'quality-contract.mjs'),
   path.join('authoring', 'authoring-run.mjs'),
+  path.join('authoring', 'content-quality.mjs'),
+  path.join('authoring', 'semantic-requirements.mjs'),
   path.join('authoring', 'candidate-preflight.mjs'),
   path.join('authoring', 'repair-plan.mjs'),
 ];
@@ -252,13 +254,30 @@ try {
       '--expect-contract',
       expectedContract,
     ]));
-    const contextFiles = ['schema', 'commonSchema', 'example'];
+    const contextFiles = ['schema', 'commonSchema'];
+    const projectOverview = packet.semanticScope?.profiles?.['project-overview']?.[type];
     if (packet.type !== type || packet.contract?.quality?.sha256 !== expectedContract
       || !contextFiles.every((name) => (
         packet.files?.[name]?.document
         && typeof packet.files[name].document === 'object'
         && !Array.isArray(packet.files[name].document)
-      ))) {
+      ))
+      || packet.files?.example?.omittedFromContext !== true
+      || packet.files?.example?.document !== undefined
+      || packet.shapeExample?.policy !== 'shape-only'
+      || packet.shapeExample?.document?.diagram_type !== type
+      || !/below project-overview density/i.test(packet.shapeExample?.instruction || '')
+      || packet.semanticScope?.defaultProfile !== 'project-overview'
+      || packet.semanticRequirementsTemplate?.document?.schemaVersion !== 2
+      || packet.semanticRequirementsTemplate?.document?.diagramType !== type
+      || packet.semanticRequirementsTemplate?.document?.scopeProfile !== 'project-overview'
+      || !projectOverview
+      || packet.semanticRequirementsTemplate.document.entities?.length
+        !== projectOverview.minimumRequiredEntities
+      || packet.semanticRequirementsTemplate.document.relationships?.length
+        !== projectOverview.minimumRequiredRelationships
+      || JSON.stringify(packet.layoutBudget?.targetPrimaryRange)
+        !== JSON.stringify(projectOverview.targetPrimaryRange)) {
       throw new Error(`packaged ${type} authoring-kit did not return its complete pinned context`);
     }
   }

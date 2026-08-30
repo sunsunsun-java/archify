@@ -846,10 +846,10 @@ test('packaged skill puts a bounded ordinary-model path before progressive featu
   assert.ok(skill.trimEnd().split('\n').length <= 160, 'ordinary authors must not ingest the viewer catalogue');
   for (const required of [
     'authoring-kit <type> --json',
-    'exact type schema, common schema, and single matching example',
-    'the next tool action must write the candidate',
+    'parsed type schema, common schema, bounded shape-only exemplar',
+    'after freezing repository requirements, the next tool action must write the candidate',
     'Do not plan exact coordinates in prose',
-    'Fresh authorship means new stable IDs, domain wording, and layout',
+    'Fresh authorship means new stable IDs, domain wording, topology, and layout',
     'Write the candidate before inspecting renderer internals',
     'Start with automatic routes and labels',
     'Do not add `via`, `channelX`, `channelY`, or `labelAt` before a diagnostic',
