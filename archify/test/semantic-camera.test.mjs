@@ -39,9 +39,22 @@ test('all typed renderers ship the same geometry-neutral semantic camera', () =>
     assert.match(html, /function semanticIds\(ids, includeNeighbors\)/, mode);
     assert.match(html, /if \(seeds\[from\] \|\| seeds\[to\]\) \{ wanted\[from\] = true; wanted\[to\] = true; \}/, mode);
     assert.match(html, /contentScale = Math\.min\(svgWidth \/ viewBox\.width, svgHeight \/ viewBox\.height\)/, mode);
-    assert.match(html, /targetScale = Math\.max\(1, Math\.min\(maxScale, targetScale\)\)/, mode);
+    assert.match(html, /minimumScale = compactExploration \? 0\.58 : 1/, mode);
+    assert.match(html, /var fitScale = Math\.min\(\(right - left\) \/ bounds\.width, \(bottom - top\) \/ bounds\.height\) \* 0\.9/, mode);
+    assert.match(html, /options\.fitAll === true[\s\S]+Math\.max\(0\.01, targetScale\)[\s\S]+Math\.max\(minimumScale, targetScale\)/, mode);
+    assert.doesNotMatch(html, /explorationReason/, mode);
+    assert.match(html, /function ensureFitAllContainerVisibility\(options, minimumVisibleHeight\)/, mode);
+    assert.match(html, /var minimumVisibleHeight = window\.innerWidth > 720 \? 240 : 220/, mode);
+    assert.match(html, /if \(ensureFitAllContainerVisibility\(options, minimumVisibleHeight\)\)/, mode);
     assert.match(html, /visibleTop = Math\.max\(0, -containerRect\.top\)/, mode);
-    assert.match(html, /visibleBottom - visibleTop >= 240/, mode);
+    assert.match(html, /top = Math\.max\(top, visibleTop \+ padding\)/, mode);
+    assert.match(html, /var semanticViewport = null/, mode);
+    assert.match(html, /clampAxis\(state\.x, semanticViewport\.left, semanticViewport\.right, width \* state\.scale\)/, mode);
+    assert.match(html, /semanticViewport = \{ left: left, right: right, top: top, bottom: bottom \}/, mode);
+    assert.match(html, /function frameMobile\(ids, options\)/, mode);
+    assert.match(html, /semanticViewport = \{ left: 0, right: width, top: top, bottom: bottom \}/, mode);
+    assert.match(html, /availableWidth = Math\.max\(1, Math\.min\(width, container\.clientWidth \|\| width\) - padding \* 2\)/, mode);
+    assert.match(html, /availableWidth \/ bounds\.width/, mode);
     assert.match(html, /data-camera-mode/, mode);
     assert.match(html, /data-camera-indicator/, mode);
     assert.match(html, /var resolvedLevel = semantic \? viewerText\('viewer\.nav\.level\.auto'\) : levelLabel/, mode);
@@ -60,11 +73,20 @@ test('semantic camera follows reader intent but yields to manual navigation', ()
   assert.match(html, /function interruptCamera\(reason\)/);
   assert.match(html, /Archify\.guidedViews\.pause\(\)/);
   assert.match(html, /container\.addEventListener\('pointerdown',[\s\S]+interruptCamera\(\)/);
+  assert.match(html, /function semanticCanPan\(\)/);
+  assert.match(html, /if \(!semanticCanPan\(\) \|\| event\.button !== 0/);
   assert.match(html, /\.overview-map, \.route-probe, \.semantic-lens/);
   assert.match(html, /window\.innerWidth <= 720 && container\.hasAttribute\('data-wide-diagram'\) && Date\.now\(\) > autoScrollUntil/);
   assert.match(html, /reset\(\{ automatic: true \}\)/);
   assert.match(html, /routeReceipt\.hasAttribute\('data-route-journey'\)/);
   assert.match(html, /receiptBottom \+ 24/);
+  assert.match(html, /reason: 'relationship-preview'/);
+  assert.match(html, /fitAll: true,[\s\S]+minimumScale: window\.innerWidth <= 900 \? 0\.35 : 0\.58,[\s\S]+reason: 'relationship-preview'/);
+  assert.match(html, /reason: 'relationship-preview-clear'/);
+  assert.match(html, /reason: 'relationship-sync'/);
+  assert.match(html, /reason: 'reachability-sync'/);
+  assert.ok(html.indexOf("reason: 'relationship-sync'") < html.indexOf("reason: 'focus-sync'"));
+  assert.ok(html.indexOf("reason: 'reachability-sync'") < html.indexOf("reason: 'focus-sync'"));
 });
 
 test('semantic camera keeps mobile on its contained scroll model and respects reduced motion', () => {

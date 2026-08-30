@@ -85,6 +85,9 @@ test('reachability stays explicit, deep-linkable, keyboard reachable, and export
   assert.match(template, /applyReachability\(reach, \{ updateUrl: false, toggle: false, reveal: false \}\)/);
   assert.match(template, /upstreamBtn\.addEventListener\('click'/);
   assert.match(template, /downstreamBtn\.addEventListener\('click'/);
+  assert.match(template, /setExplorationMode\('reach', true\)/);
+  assert.match(template, /data-exploration-compact="true"/);
+  assert.match(template, /activeReachability !== result \|\| reachabilityMode !== direction/);
   assert.match(template, /clone\.removeAttribute\('data-reach-active'\)/);
   assert.match(template, /clone\.querySelectorAll\('\[data-reach-match\], \[data-reach-origin\], \[data-reach-depth\]'/);
   assert.match(template, /!clone\.hasAttribute\('data-reach-active'\)/);

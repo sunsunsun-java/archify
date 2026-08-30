@@ -53,6 +53,124 @@ function renderWithoutLegend() {
   return output;
 }
 
+function renderRelationshipExplorationStress() {
+  const source = {
+    schema_version: 1,
+    diagram_type: 'architecture',
+    meta: {
+      title: 'Relationship exploration stress',
+      quality_profile: 'showcase',
+      viewBox: [1220, 640],
+    },
+    components: [
+      { id: 'hub', type: 'backend', label: 'Hub', pos: [1044, 278], size: [142, 68] },
+      { id: 'in-left', type: 'external', label: 'Incoming left', pos: [34, 18], size: [142, 68] },
+      { id: 'in-right', type: 'external', label: 'Incoming middle', pos: [540, 92], size: [142, 68] },
+      { id: 'out-left', type: 'cloud', label: 'Outgoing left', pos: [34, 554], size: [142, 68] },
+      { id: 'out-right', type: 'cloud', label: 'Outgoing middle', pos: [540, 470], size: [142, 68] },
+    ],
+    boundaries: [],
+    connections: [
+      { id: 'in-left-hub', from: 'in-left', to: 'hub', label: 'left input' },
+      { id: 'in-right-hub', from: 'in-right', to: 'hub', label: 'right input' },
+      { id: 'hub-out-left', from: 'hub', to: 'out-left', label: 'left output' },
+      { id: 'hub-out-right', from: 'hub', to: 'out-right', label: 'right output' },
+    ],
+    cards: [],
+  };
+  const input = path.join(tmp, 'relationship-exploration-stress.json');
+  const output = path.join(tmp, 'relationship-exploration-stress.html');
+  fs.writeFileSync(input, `${JSON.stringify(source, null, 2)}\n`);
+  execFileSync(process.execPath, [
+    path.join(skillRoot, 'bin', 'archify.mjs'),
+    'render',
+    'architecture',
+    input,
+    output,
+  ]);
+  return output;
+}
+
+function renderRelationshipOverflowStress() {
+  const repeatedConnections = (direction, count) => Array.from({ length: count }, (_, index) => ({
+    id: `${direction}-${index + 1}`,
+    from: direction === 'incoming' ? 'incoming' : 'hub',
+    to: direction === 'incoming' ? 'hub' : 'outgoing',
+    label: `${direction} relationship ${index + 1}`,
+  }));
+  const source = {
+    schema_version: 1,
+    diagram_type: 'architecture',
+    meta: {
+      title: 'Relationship overflow stress',
+      quality_profile: 'standard',
+      viewBox: [960, 520],
+    },
+    components: [
+      { id: 'incoming', type: 'external', label: 'Incoming', pos: [30, 226], size: [150, 68] },
+      { id: 'hub', type: 'backend', label: 'High-degree hub', pos: [405, 226], size: [150, 68] },
+      { id: 'outgoing', type: 'cloud', label: 'Outgoing', pos: [780, 226], size: [150, 68] },
+    ],
+    boundaries: [],
+    connections: [
+      ...repeatedConnections('incoming', 12),
+      ...repeatedConnections('outgoing', 12),
+    ],
+    cards: [],
+  };
+  const input = path.join(tmp, 'relationship-overflow-stress.json');
+  const output = path.join(tmp, 'relationship-overflow-stress.html');
+  fs.writeFileSync(input, `${JSON.stringify(source, null, 2)}\n`);
+  execFileSync(process.execPath, [
+    path.join(skillRoot, 'bin', 'archify.mjs'),
+    'render',
+    'architecture',
+    input,
+    output,
+  ]);
+  return output;
+}
+
+function renderLargeReachabilityStress() {
+  const count = 30;
+  const source = {
+    schema_version: 1,
+    diagram_type: 'architecture',
+    meta: {
+      title: 'Many reach nodes',
+      quality_profile: 'standard',
+      viewBox: [960, 3600],
+    },
+    components: Array.from({ length: count }, (_, index) => ({
+      id: `n${index}`,
+      type: index === 0 ? 'backend' : 'cloud',
+      label: `Node ${index}`,
+      pos: [405, 30 + index * 120],
+      size: [150, 68],
+    })),
+    boundaries: [],
+    connections: Array.from({ length: count - 1 }, (_, index) => ({
+      id: `e${index}`,
+      from: `n${index}`,
+      to: `n${index + 1}`,
+      label: `step ${index}`,
+      labelDy: 24,
+    })),
+    cards: [],
+  };
+  const input = path.join(tmp, 'large-reachability-stress.json');
+  const output = path.join(tmp, 'large-reachability-stress.html');
+  fs.writeFileSync(input, `${JSON.stringify(source, null, 2)}\n`);
+  execFileSync(process.execPath, [
+    path.join(skillRoot, 'bin', 'archify.mjs'),
+    'render',
+    'architecture',
+    input,
+    output,
+  ]);
+  return output;
+}
+
 function canonicalSvg(html) {
   return html.match(/<svg\b[\s\S]*?<\/svg>/)?.[0] || '';
 }
@@ -98,6 +216,8 @@ async function waitForLayout(browser, sessionId) {
             rect(document.querySelector('[data-legend]')),
             rect(document.getElementById('semantic-lens')),
             rect(document.getElementById('overview-map')),
+            rect(document.getElementById('focus-chip')),
+            container ? container.getAttribute('data-camera-transaction') || 'settled' : '',
             container ? getComputedStyle(container).getPropertyValue('--archify-nav-reserve') : ''
           ].join('|');
           if (current === previous) stableFrames += 1;
@@ -228,6 +348,58 @@ async function edgePaintHitsUnderDock(browser, sessionId, selector) {
   })()`);
 }
 
+async function highlightedGeometry(browser, sessionId, selector) {
+  return evaluate(browser, sessionId, `(function () {
+    var passport = document.getElementById('focus-chip');
+    var passportRect = passport.getBoundingClientRect();
+    var containerRect = document.querySelector('.diagram-container').getBoundingClientRect();
+    var visible = {
+      left: Math.max(0, containerRect.left),
+      top: Math.max(0, containerRect.top),
+      right: Math.min(window.innerWidth, containerRect.right),
+      bottom: Math.min(window.innerHeight, containerRect.bottom)
+    };
+    var matches = Array.from(document.querySelectorAll(${JSON.stringify(selector)}));
+    function area(first, second) {
+      return Math.max(0, Math.min(first.right + 12, second.right) - Math.max(first.left - 12, second.left)) *
+        Math.max(0, Math.min(first.bottom + 12, second.bottom) - Math.max(first.top - 12, second.top));
+    }
+    return {
+      compact: passport.getAttribute('data-exploration-compact'),
+      expanded: passport.getAttribute('data-exploration-expanded'),
+      camera: Archify.view.state(),
+      passport: {
+        left: passportRect.left, top: passportRect.top,
+        right: passportRect.right, bottom: passportRect.bottom
+      },
+      ids: matches.map(function (node) { return node.getAttribute('data-node-id'); }).sort(),
+      overlaps: matches.map(function (node) { return area(passportRect, node.getBoundingClientRect()); }),
+      nodeRects: matches.map(function (node) {
+        var rect = node.getBoundingClientRect();
+        return {
+          id: node.getAttribute('data-node-id'),
+          left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom
+        };
+      }),
+      fullyVisible: matches.map(function (node) {
+        var rect = node.getBoundingClientRect();
+        return rect.left >= visible.left - 0.5 && rect.top >= visible.top - 0.5 &&
+          rect.right <= visible.right + 0.5 && rect.bottom <= visible.bottom + 0.5;
+      })
+    };
+  })()`);
+}
+
+async function focusSelector(browser, sessionId, selector) {
+  const document = await browser.cdp.send('DOM.getDocument', { depth: 1 }, sessionId);
+  const match = await browser.cdp.send('DOM.querySelector', {
+    nodeId: document.root.nodeId,
+    selector,
+  }, sessionId);
+  assert.ok(match.nodeId, `Expected focus target: ${selector}`);
+  await browser.cdp.send('DOM.focus', { nodeId: match.nodeId }, sessionId);
+}
+
 async function load(browser, artifactPath, { width = 1440, height = 900, query = '' } = {}) {
   const sessionId = await browser.sessionPromise;
   await browser.cdp.send('Emulation.setDeviceMetricsOverride', {
@@ -271,6 +443,470 @@ test('Viewer chrome remains outside the canonical SVG export boundary', () => {
   const svg = canonicalSvg(html);
   assert.match(svg, /data-legend/);
   assert.doesNotMatch(svg, /diagram-nav|data-nav-stage-rail|viewerChromeLayout/);
+});
+
+test('high-degree relationship list stays inside the visible Passport', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  try {
+    const artifact = renderRelationshipOverflowStress();
+    const sessionId = await load(browser, artifact, {
+      width: 721,
+      height: 300,
+    });
+    await evaluate(browser, sessionId, `(function () {
+      var container = document.querySelector('.diagram-container');
+      window.scrollTo(0, Math.max(0, container.offsetTop));
+      Archify.focus.set('hub', { toggle: false, updateUrl: false });
+    })()`);
+    await waitForLayout(browser, sessionId);
+
+    const initial = await evaluate(browser, sessionId, `(function () {
+      var container = document.querySelector('.diagram-container');
+      var chip = document.getElementById('focus-chip');
+      var body = chip.querySelector('.relationship-lens-body');
+      var header = chip.querySelector('.relationship-lens-head');
+      var containerRect = container.getBoundingClientRect();
+      var chipRect = chip.getBoundingClientRect();
+      return {
+        visibleTop: Math.max(0, containerRect.top),
+        visibleBottom: Math.min(window.innerHeight, containerRect.bottom),
+        chip: { top: chipRect.top, bottom: chipRect.bottom },
+        chipScrollHeight: chip.scrollHeight,
+        chipClientHeight: chip.clientHeight,
+        bodyExists: !!body,
+        bodyOverflowY: body ? getComputedStyle(body).overflowY : '',
+        bodyScrollHeight: body ? body.scrollHeight : 0,
+        bodyClientHeight: body ? body.clientHeight : 0,
+        scrollingDescendants: Array.from(chip.querySelectorAll('*')).filter(function (element) {
+          var style = getComputedStyle(element);
+          return (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+            element.scrollHeight > element.clientHeight + 1;
+        }).map(function (element) { return element.id || element.className; }),
+        headerTop: header.getBoundingClientRect().top,
+        outgoingRows: chip.querySelectorAll('.relationship-lens-row[data-direction="out"]').length,
+        incomingRows: chip.querySelectorAll('.relationship-lens-row[data-direction="in"]').length,
+        groups: Array.from(chip.querySelectorAll('[data-relationship-group-toggle]')).map(function (toggle) {
+          return {
+            direction: toggle.getAttribute('data-relationship-group-toggle'),
+            expanded: toggle.getAttribute('aria-expanded'),
+            hidden: document.getElementById(toggle.getAttribute('aria-controls')).hidden
+          };
+        }),
+        scrollMore: chip.getAttribute('data-relationship-scroll-more')
+      };
+    })()`);
+    const initialMessage = JSON.stringify(initial);
+    assert.equal(initial.outgoingRows, 12, initialMessage);
+    assert.equal(initial.incomingRows, 12, initialMessage);
+    assert.equal(initial.bodyExists, true, initialMessage);
+    assert.ok(['auto', 'scroll'].includes(initial.bodyOverflowY), initialMessage);
+    assert.ok(initial.bodyScrollHeight > initial.bodyClientHeight, initialMessage);
+    assert.deepEqual(initial.scrollingDescendants, ['relationship-lens-body'], initialMessage);
+    assert.ok(initial.chip.top >= initial.visibleTop - 0.5, initialMessage);
+    assert.ok(initial.chip.bottom <= initial.visibleBottom + 0.5, initialMessage);
+    assert.ok(initial.chipScrollHeight <= initial.chipClientHeight + 1, initialMessage);
+    assert.equal(initial.scrollMore, 'true', initialMessage);
+    assert.deepEqual(initial.groups.slice(0, 2), [
+      { direction: 'out', expanded: 'true', hidden: false },
+      { direction: 'in', expanded: 'false', hidden: true },
+    ], initialMessage);
+
+    const focusClearance = await evaluate(browser, sessionId, `(function () {
+      var chip = document.getElementById('focus-chip');
+      var body = document.getElementById('relationship-lens-body');
+      var rows = Array.from(chip.querySelectorAll('.relationship-lens-row[data-direction="out"]'));
+      body.scrollTop = 0;
+      rows[5].focus();
+      rows[5].dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      return new Promise(function (resolve) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            var bodyRect = body.getBoundingClientRect();
+            var rowRect = rows[5].getBoundingClientRect();
+            var fadeHeight = parseFloat(getComputedStyle(chip, '::after').height) || 0;
+            resolve({
+              scrollMore: chip.getAttribute('data-relationship-scroll-more'),
+              rowBottom: rowRect.bottom,
+              safeBottom: bodyRect.bottom - fadeHeight,
+              focused: document.activeElement === rows[5]
+            });
+          });
+        });
+      });
+    })()`, true);
+    const focusClearanceMessage = JSON.stringify(focusClearance);
+    assert.equal(focusClearance.scrollMore, 'true', focusClearanceMessage);
+    assert.equal(focusClearance.focused, true, focusClearanceMessage);
+    assert.ok(focusClearance.rowBottom <= focusClearance.safeBottom + 1, focusClearanceMessage);
+
+    await evaluate(browser, sessionId, `(function () {
+      var toggle = document.querySelector('[data-relationship-group-toggle="in"]');
+      toggle.focus();
+      toggle.click();
+    })()`);
+    await waitForLayout(browser, sessionId);
+    const accordion = await evaluate(browser, sessionId, `(function () {
+      var active = document.activeElement;
+      return {
+        activeDirection: active && active.getAttribute('data-relationship-group-toggle'),
+        groups: Array.from(document.querySelectorAll('[data-relationship-group-toggle]')).slice(0, 2).map(function (toggle) {
+          return {
+            direction: toggle.getAttribute('data-relationship-group-toggle'),
+            expanded: toggle.getAttribute('aria-expanded'),
+            hidden: document.getElementById(toggle.getAttribute('aria-controls')).hidden
+          };
+        })
+      };
+    })()`);
+    assert.deepEqual(accordion.groups, [
+      { direction: 'out', expanded: 'false', hidden: true },
+      { direction: 'in', expanded: 'true', hidden: false },
+    ], JSON.stringify(accordion));
+    assert.equal(accordion.activeDirection, 'in', JSON.stringify(accordion));
+
+    const scrolled = await evaluate(browser, sessionId, `(function () {
+      var chip = document.getElementById('focus-chip');
+      var body = chip.querySelector('.relationship-lens-body');
+      var header = chip.querySelector('.relationship-lens-head');
+      body.scrollTop = body.scrollHeight;
+      body.dispatchEvent(new Event('scroll'));
+      return new Promise(function (resolve) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            var bodyRect = body.getBoundingClientRect();
+            var visibleRows = Array.from(chip.querySelectorAll('.relationship-lens-row')).filter(function (row) {
+              return row.offsetParent !== null;
+            });
+            var lastRow = visibleRows[visibleRows.length - 1];
+            lastRow.focus();
+            lastRow.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+            var lastRect = lastRow.getBoundingClientRect();
+            resolve({
+              headerTop: header.getBoundingClientRect().top,
+              bodyTop: bodyRect.top,
+              bodyBottom: bodyRect.bottom,
+              lastTop: lastRect.top,
+              lastBottom: lastRect.bottom,
+              lastHeight: lastRect.height,
+              lastFocused: document.activeElement === lastRow,
+              previewKey: document.querySelector('svg').getAttribute('data-relationship-preview-active'),
+              rowKey: lastRow.getAttribute('data-relationship-key'),
+              scrollMore: chip.getAttribute('data-relationship-scroll-more')
+            });
+          });
+        });
+      });
+    })()`, true);
+    const scrolledMessage = JSON.stringify({ initial, scrolled });
+    assert.ok(Math.abs(scrolled.headerTop - initial.headerTop) <= 0.5, scrolledMessage);
+    assert.ok(scrolled.lastTop >= scrolled.bodyTop - 0.5, scrolledMessage);
+    assert.ok(scrolled.lastBottom <= scrolled.bodyBottom + 0.5, scrolledMessage);
+    assert.ok(scrolled.lastHeight > 0, scrolledMessage);
+    assert.equal(scrolled.lastFocused, true, scrolledMessage);
+    assert.equal(scrolled.previewKey, scrolled.rowKey, scrolledMessage);
+    assert.equal(scrolled.scrollMore, null, scrolledMessage);
+
+    await evaluate(browser, sessionId, `(function () {
+      var container = document.querySelector('.diagram-container');
+      window.scrollTo(0, Math.max(0, container.offsetTop + 80));
+      window.dispatchEvent(new Event('scroll'));
+    })()`);
+    await waitForLayout(browser, sessionId);
+    const clippedContainer = await evaluate(browser, sessionId, `(function () {
+      var container = document.querySelector('.diagram-container');
+      var chip = document.getElementById('focus-chip');
+      var containerRect = container.getBoundingClientRect();
+      var chipRect = chip.getBoundingClientRect();
+      return {
+        containerTop: containerRect.top,
+        visibleTop: Math.max(0, containerRect.top),
+        visibleBottom: Math.min(window.innerHeight, containerRect.bottom),
+        chipTop: chipRect.top,
+        chipBottom: chipRect.bottom
+      };
+    })()`);
+    const clippedMessage = JSON.stringify(clippedContainer);
+    assert.ok(clippedContainer.containerTop < 0, clippedMessage);
+    assert.ok(clippedContainer.chipTop >= clippedContainer.visibleTop - 0.5, clippedMessage);
+    assert.ok(clippedContainer.chipBottom <= clippedContainer.visibleBottom + 0.5, clippedMessage);
+
+    const mobileSessionId = await load(browser, artifact, { width: 390, height: 500 });
+    await evaluate(browser, mobileSessionId, `(function () {
+      var container = document.querySelector('.diagram-container');
+      window.scrollTo(0, Math.max(0, container.offsetTop));
+      Archify.focus.set('hub', { toggle: false, updateUrl: false });
+      document.getElementById('btn-focus-relations').click();
+    })()`);
+    await waitForLayout(browser, mobileSessionId);
+    const mobile = await evaluate(browser, mobileSessionId, `(function () {
+      var container = document.querySelector('.diagram-container');
+      var chip = document.getElementById('focus-chip');
+      var body = document.getElementById('relationship-lens-body');
+      var containerRect = container.getBoundingClientRect();
+      var chipRect = chip.getBoundingClientRect();
+      return {
+        visibleTop: Math.max(0, containerRect.top),
+        visibleBottom: Math.min(window.innerHeight, containerRect.bottom),
+        chipTop: chipRect.top,
+        chipBottom: chipRect.bottom,
+        bodyOverflowY: getComputedStyle(body).overflowY,
+        bodyScrollHeight: body.scrollHeight,
+        bodyClientHeight: body.clientHeight,
+        scrollingDescendants: Array.from(chip.querySelectorAll('*')).filter(function (element) {
+          var style = getComputedStyle(element);
+          return (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+            element.scrollHeight > element.clientHeight + 1;
+        }).map(function (element) { return element.id || element.className; }),
+        headerTop: chip.querySelector('.relationship-lens-head').getBoundingClientRect().top,
+        outgoingRows: chip.querySelectorAll('.relationship-lens-row[data-direction="out"]').length,
+        incomingRows: chip.querySelectorAll('.relationship-lens-row[data-direction="in"]').length,
+        groups: Array.from(chip.querySelectorAll('[data-relationship-group-toggle]')).slice(0, 2).map(function (toggle) {
+          return {
+            direction: toggle.getAttribute('data-relationship-group-toggle'),
+            expanded: toggle.getAttribute('aria-expanded'),
+            hidden: document.getElementById(toggle.getAttribute('aria-controls')).hidden
+          };
+        }),
+        scrollMore: chip.getAttribute('data-relationship-scroll-more')
+      };
+    })()`);
+    const mobileMessage = JSON.stringify(mobile);
+    assert.equal(mobile.outgoingRows, 12, mobileMessage);
+    assert.equal(mobile.incomingRows, 12, mobileMessage);
+    assert.ok(['auto', 'scroll'].includes(mobile.bodyOverflowY), mobileMessage);
+    assert.ok(mobile.bodyScrollHeight > mobile.bodyClientHeight, mobileMessage);
+    assert.deepEqual(mobile.scrollingDescendants, ['relationship-lens-body'], mobileMessage);
+    assert.ok(mobile.chipTop >= mobile.visibleTop - 0.5, mobileMessage);
+    assert.ok(mobile.chipBottom <= mobile.visibleBottom + 0.5, mobileMessage);
+    assert.equal(mobile.scrollMore, 'true', mobileMessage);
+    assert.deepEqual(mobile.groups, [
+      { direction: 'out', expanded: 'true', hidden: false },
+      { direction: 'in', expanded: 'false', hidden: true },
+    ], mobileMessage);
+
+    const mobileScrolled = await evaluate(browser, mobileSessionId, `(function () {
+      var chip = document.getElementById('focus-chip');
+      var body = document.getElementById('relationship-lens-body');
+      document.querySelector('[data-relationship-group-toggle="in"]').click();
+      body.scrollTop = body.scrollHeight;
+      body.dispatchEvent(new Event('scroll'));
+      return new Promise(function (resolve) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            var header = chip.querySelector('.relationship-lens-head');
+            var bodyRect = body.getBoundingClientRect();
+            var rows = Array.from(chip.querySelectorAll('.relationship-lens-row')).filter(function (row) {
+              return row.offsetParent !== null;
+            });
+            var lastRow = rows[rows.length - 1];
+            lastRow.focus();
+            var lastRect = lastRow.getBoundingClientRect();
+            resolve({
+              headerTop: header.getBoundingClientRect().top,
+              bodyTop: bodyRect.top,
+              bodyBottom: bodyRect.bottom,
+              lastTop: lastRect.top,
+              lastBottom: lastRect.bottom,
+              lastHeight: lastRect.height,
+              lastFocused: document.activeElement === lastRow,
+              scrollMore: chip.getAttribute('data-relationship-scroll-more'),
+              groups: Array.from(chip.querySelectorAll('[data-relationship-group-toggle]')).slice(0, 2).map(function (toggle) {
+                return {
+                  direction: toggle.getAttribute('data-relationship-group-toggle'),
+                  expanded: toggle.getAttribute('aria-expanded'),
+                  hidden: document.getElementById(toggle.getAttribute('aria-controls')).hidden
+                };
+              })
+            });
+          });
+        });
+      });
+    })()`, true);
+    const mobileScrolledMessage = JSON.stringify({ mobile, mobileScrolled });
+    assert.ok(Math.abs(mobileScrolled.headerTop - mobile.headerTop) <= 0.5, mobileScrolledMessage);
+    assert.ok(mobileScrolled.lastTop >= mobileScrolled.bodyTop - 0.5, mobileScrolledMessage);
+    assert.ok(mobileScrolled.lastBottom <= mobileScrolled.bodyBottom + 0.5, mobileScrolledMessage);
+    assert.ok(mobileScrolled.lastHeight > 0, mobileScrolledMessage);
+    assert.equal(mobileScrolled.lastFocused, true, mobileScrolledMessage);
+    assert.equal(mobileScrolled.scrollMore, null, mobileScrolledMessage);
+    assert.deepEqual(mobileScrolled.groups, [
+      { direction: 'out', expanded: 'false', hidden: true },
+      { direction: 'in', expanded: 'true', hidden: false },
+    ], mobileScrolledMessage);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('large reachability exploration fits every highlighted node outside the Passport', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  try {
+    const artifact = renderLargeReachabilityStress();
+    for (const viewport of [
+      { width: 721, height: 500, label: 'narrow desktop' },
+      { width: 390, height: 500, label: 'mobile compact' },
+    ]) {
+      const sessionId = await load(browser, artifact, viewport);
+      await evaluate(browser, sessionId, `(function () {
+        var container = document.querySelector('.diagram-container');
+        window.scrollTo(0, Math.max(0, container.offsetTop));
+        Archify.focus.set('n0', { toggle: false, updateUrl: false });
+        document.getElementById('btn-reach-downstream').click();
+      })()`);
+      await waitForLayout(browser, sessionId);
+      const receipt = await highlightedGeometry(browser, sessionId, '[data-node-id][data-reach-match]');
+      const message = `${viewport.label}: ${JSON.stringify(receipt)}`;
+      assert.equal(receipt.ids.length, 30, message);
+      assert.ok(receipt.overlaps.every((area) => area === 0), message);
+      assert.ok(receipt.fullyVisible.every(Boolean), message);
+      assert.equal(receipt.camera.mode, 'semantic', message);
+    }
+
+    const expandedSessionId = await load(browser, artifact, { width: 390, height: 500 });
+    await evaluate(browser, expandedSessionId, `(function () {
+      var container = document.querySelector('.diagram-container');
+      window.scrollTo(0, Math.max(0, container.offsetTop));
+      Archify.focus.set('n0', { toggle: false, updateUrl: false });
+      document.getElementById('btn-reach-downstream').click();
+      document.getElementById('btn-focus-details').click();
+    })()`);
+    await waitForLayout(browser, expandedSessionId);
+    const expanded = await highlightedGeometry(browser, expandedSessionId, '[data-node-id][data-reach-match]');
+    const expandedMessage = JSON.stringify(expanded);
+    assert.equal(expanded.expanded, 'true', expandedMessage);
+    assert.equal(expanded.ids.length, 30, expandedMessage);
+    assert.ok(expanded.overlaps.every((area) => area === 0), expandedMessage);
+    assert.ok(expanded.fullyVisible.every(Boolean), expandedMessage);
+
+    for (const viewport of [
+      { width: 721, height: 500, label: 'partially visible narrow desktop' },
+      { width: 390, height: 500, label: 'partially visible mobile' },
+    ]) {
+      const sessionId = await load(browser, artifact, viewport);
+      const before = await evaluate(browser, sessionId, `(function () {
+        var spacer = document.createElement('div');
+        spacer.style.height = '1000px';
+        document.body.appendChild(spacer);
+        var container = document.querySelector('.diagram-container');
+        window.scrollTo(0, container.offsetTop + container.offsetHeight - 200);
+        Archify.focus.set('n0', { toggle: false, updateUrl: false });
+        document.getElementById('btn-reach-downstream').click();
+        return { scrollY: window.scrollY, containerTop: container.getBoundingClientRect().top };
+      })()`);
+      await waitForLayout(browser, sessionId);
+      const receipt = await highlightedGeometry(browser, sessionId, '[data-node-id][data-reach-match]');
+      const after = await evaluate(browser, sessionId, `(function () {
+        var container = document.querySelector('.diagram-container');
+        return { scrollY: window.scrollY, containerTop: container.getBoundingClientRect().top };
+      })()`);
+      const message = `${viewport.label}: ${JSON.stringify({ before, after, receipt })}`;
+      assert.ok(before.containerTop < 0, message);
+      assert.ok(Math.abs(after.containerTop) <= 1, message);
+      assert.equal(receipt.ids.length, 30, message);
+      assert.ok(receipt.overlaps.every((area) => area === 0), message);
+      assert.ok(receipt.fullyVisible.every(Boolean), message);
+    }
+  } finally {
+    await browser.close();
+  }
+});
+
+test('extremely short viewports collapse the Passport before its fixed header is clipped', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  try {
+    const artifact = renderRelationshipOverflowStress();
+    for (const height of [120, 160]) {
+      const sessionId = await load(browser, artifact, { width: 390, height });
+      await evaluate(browser, sessionId, `(function () {
+        var container = document.querySelector('.diagram-container');
+        window.scrollTo(0, Math.max(0, container.offsetTop));
+        Archify.focus.set('hub', { toggle: false, updateUrl: false });
+        document.getElementById('btn-focus-relations').click();
+      })()`);
+      await waitForLayout(browser, sessionId);
+      const receipt = await evaluate(browser, sessionId, `(function () {
+        var chip = document.getElementById('focus-chip');
+        var head = chip.querySelector('.relationship-lens-head');
+        var body = document.getElementById('relationship-lens-body');
+        var chipRect = chip.getBoundingClientRect();
+        var headRect = head.getBoundingClientRect();
+        return {
+          viewportCompact: chip.getAttribute('data-viewport-compact'),
+          chipTop: chipRect.top,
+          chipBottom: chipRect.bottom,
+          headTop: headRect.top,
+          headBottom: headRect.bottom,
+          bodyDisplay: getComputedStyle(body).display
+        };
+      })()`);
+      const message = `${height}px: ${JSON.stringify(receipt)}`;
+      assert.equal(receipt.viewportCompact, 'true', message);
+      assert.ok(receipt.headTop >= receipt.chipTop - 0.5, message);
+      assert.ok(receipt.headBottom <= receipt.chipBottom + 0.5, message);
+      assert.equal(receipt.bodyDisplay, 'none', message);
+    }
+
+    const resizeSessionId = await load(browser, artifact, { width: 390, height: 300 });
+    await evaluate(browser, resizeSessionId, `(function () {
+      var container = document.querySelector('.diagram-container');
+      window.scrollTo(0, Math.max(0, container.offsetTop));
+      Archify.focus.set('hub', { toggle: false, updateUrl: false });
+      document.getElementById('btn-focus-relations').click();
+      document.querySelector('.relationship-lens-row[data-direction="out"]').focus();
+    })()`);
+    await browser.cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 120,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, resizeSessionId);
+    await evaluate(browser, resizeSessionId, `window.dispatchEvent(new Event('resize'))`);
+    await waitForLayout(browser, resizeSessionId);
+    const resized = await evaluate(browser, resizeSessionId, `(function () {
+      return {
+        viewportCompact: document.getElementById('focus-chip').getAttribute('data-viewport-compact'),
+        activeId: document.activeElement && document.activeElement.id,
+        bodyDisplay: getComputedStyle(document.getElementById('relationship-lens-body')).display
+      };
+    })()`);
+    assert.deepEqual(resized, {
+      viewportCompact: 'true',
+      activeId: 'btn-focus-clear',
+      bodyDisplay: 'none',
+    }, JSON.stringify(resized));
+
+    const reachSessionId = await load(browser, artifact, { width: 390, height: 120 });
+    await evaluate(browser, reachSessionId, `(function () {
+      var container = document.querySelector('.diagram-container');
+      window.scrollTo(0, Math.max(0, container.offsetTop));
+      Archify.focus.set('hub', { toggle: false, updateUrl: false });
+      document.getElementById('btn-reach-downstream').click();
+    })()`);
+    await waitForLayout(browser, reachSessionId);
+    const reachCompact = await evaluate(browser, reachSessionId, `(function () {
+      var details = document.getElementById('btn-focus-details');
+      return {
+        viewportCompact: document.getElementById('focus-chip').getAttribute('data-viewport-compact'),
+        detailsDisplay: getComputedStyle(details).display,
+        detailsExpanded: details.getAttribute('aria-expanded'),
+        bodyDisplay: getComputedStyle(document.getElementById('relationship-lens-body')).display
+      };
+    })()`);
+    assert.deepEqual(reachCompact, {
+      viewportCompact: 'true',
+      detailsDisplay: 'none',
+      detailsExpanded: 'false',
+      bodyDisplay: 'none',
+    }, JSON.stringify(reachCompact));
+  } finally {
+    await browser.close();
+  }
 });
 
 test('Dock Safe Rail keeps typed renderers clear across themes, Presentation, and low-height desktops', {
@@ -831,6 +1467,518 @@ test('Radar, Passport, Legend, and Dock remain mutually clear on desktop and nar
       assert.equal(receipt.navRadarIntersectionArea, 0, message);
       assert.equal(receipt.radarPassportIntersectionArea, 0, message);
     }
+  } finally {
+    await browser.close();
+  }
+});
+
+test('direct and reachable relationship exploration keeps highlighted nodes outside the Passport', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  const artifact = renderRelationshipExplorationStress();
+  const scenarios = [
+    { label: 'outgoing', trigger: 'relationship', direction: 'out', match: '[data-node-id][data-relationship-preview-node]', expectedIds: ['hub', 'out-left'] },
+    { label: 'incoming', trigger: 'relationship', direction: 'in', match: '[data-node-id][data-relationship-preview-node]', expectedIds: ['hub', 'in-left'] },
+    { label: 'upstream', trigger: 'reach', direction: 'upstream', match: '[data-node-id][data-reach-match]', expectedIds: ['hub', 'in-left', 'in-right'] },
+    { label: 'downstream', trigger: 'reach', direction: 'downstream', match: '[data-node-id][data-reach-match]', expectedIds: ['hub', 'out-left', 'out-right'] },
+  ];
+  try {
+    for (const scenario of scenarios) {
+      const sessionId = await load(browser, artifact, { width: 1440, height: 900 });
+      await evaluate(browser, sessionId, `(function () {
+        var container = document.querySelector('.diagram-container');
+        window.scrollTo(0, Math.max(0, container.offsetTop));
+        Archify.focus.set('hub', { toggle: false, updateUrl: false });
+        Archify.view.reveal(['hub'], {
+          includeNeighbors: true,
+          reason: 'focus',
+          instant: true
+        });
+      })()`);
+      await waitForLayout(browser, sessionId);
+      if (scenario.trigger === 'reach') {
+        await evaluate(browser, sessionId, `document.getElementById('btn-reach-${scenario.direction}').click()`);
+      } else {
+        await evaluate(browser, sessionId, `(function () {
+          var row = document.querySelector('#relationship-lens-list .relationship-lens-row[data-direction="${scenario.direction}"]');
+          if (row && row.offsetParent === null) {
+            row.closest('.relationship-lens-group').querySelector('[data-relationship-group-toggle]').click();
+          }
+        })()`);
+        await waitForLayout(browser, sessionId);
+        const point = await evaluate(browser, sessionId, `(function () {
+          var row = document.querySelector('#relationship-lens-list .relationship-lens-row[data-direction="${scenario.direction}"]');
+          var rect = row.getBoundingClientRect();
+          return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        })()`);
+        await browser.cdp.send('Input.dispatchMouseEvent', {
+          type: 'mouseMoved',
+          x: point.x,
+          y: point.y,
+          button: 'none',
+          buttons: 0,
+        }, sessionId);
+      }
+      const receipt = await evaluate(browser, sessionId, `(function () {
+        var scenario = ${JSON.stringify(scenario)};
+        var container = document.querySelector('.diagram-container');
+        return new Promise(function (resolve, reject) {
+          var stableFrames = 0;
+          var sampledFrames = 0;
+          var previous = '';
+          function intersectionArea(first, second, gap) {
+            return Math.max(0, Math.min(first.right + gap, second.right) - Math.max(first.left - gap, second.left)) *
+              Math.max(0, Math.min(first.bottom + gap, second.bottom) - Math.max(first.top - gap, second.top));
+          }
+          function rectSnapshot(rect) {
+            return [rect.left, rect.top, rect.right, rect.bottom].map(function (value) {
+              return Math.round(value * 100) / 100;
+            }).join(',');
+          }
+          function sample() {
+            sampledFrames += 1;
+            var passport = document.getElementById('focus-chip');
+            var matches = Array.from(document.querySelectorAll(scenario.match));
+            var current = [
+              container.hasAttribute('data-camera-transaction') ? 'moving' : 'settled',
+              rectSnapshot(passport.getBoundingClientRect())
+            ].concat(matches.map(function (node) {
+              return node.getAttribute('data-node-id') + ':' + rectSnapshot(node.getBoundingClientRect());
+            })).join('|');
+            if (current === previous && !container.hasAttribute('data-camera-transaction')) stableFrames += 1;
+            else stableFrames = 0;
+            previous = current;
+            if (stableFrames >= 6) {
+              var passportRect = passport.getBoundingClientRect();
+              var containerRect = container.getBoundingClientRect();
+              var visible = {
+                left: Math.max(0, containerRect.left),
+                top: Math.max(0, containerRect.top),
+                right: Math.min(window.innerWidth, containerRect.right),
+                bottom: Math.min(window.innerHeight, containerRect.bottom)
+              };
+              var overlaps = matches.map(function (node) {
+                var nodeRect = node.getBoundingClientRect();
+                return {
+                  id: node.getAttribute('data-node-id'),
+                  area: intersectionArea(passportRect, nodeRect, 12),
+                  fullyVisible: nodeRect.left >= visible.left - 0.5 &&
+                    nodeRect.top >= visible.top - 0.5 &&
+                    nodeRect.right <= visible.right + 0.5 &&
+                    nodeRect.bottom <= visible.bottom + 0.5
+                };
+              });
+              resolve({
+                compact: passport.getAttribute('data-exploration-compact'),
+                hidden: passport.hidden,
+                matchCount: matches.length,
+                overlaps: overlaps,
+                camera: Archify.view.state()
+              });
+              return;
+            }
+            if (sampledFrames >= 180) {
+              reject(new Error('Relationship exploration camera did not settle.'));
+              return;
+            }
+            requestAnimationFrame(sample);
+          }
+          requestAnimationFrame(sample);
+        });
+      })()`, true);
+      const message = `${scenario.label}: ${JSON.stringify(receipt)}`;
+      assert.equal(receipt.hidden, false, message);
+      assert.deepEqual(receipt.overlaps.map((entry) => entry.id).sort(), scenario.expectedIds.slice().sort(), message);
+      assert.equal(receipt.matchCount, scenario.expectedIds.length, message);
+      assert.ok(receipt.overlaps.every((entry) => entry.fullyVisible), message);
+      assert.equal(Math.max(...receipt.overlaps.map((entry) => entry.area)), 0, message);
+      if (scenario.trigger === 'relationship') assert.ok(receipt.camera.scale < 1, message);
+      if (scenario.trigger === 'reach') assert.equal(receipt.compact, 'true', message);
+
+      if (scenario.label === 'outgoing') {
+        await browser.cdp.send('Input.dispatchMouseEvent', {
+          type: 'mouseMoved',
+          x: 1420,
+          y: 20,
+          button: 'none',
+          buttons: 0,
+        }, sessionId);
+        await waitForLayout(browser, sessionId);
+        const restored = await evaluate(browser, sessionId, `(function () {
+          var passport = document.getElementById('focus-chip');
+          return {
+            camera: Archify.view.state(),
+            compact: passport.getAttribute('data-exploration-compact'),
+            mode: passport.getAttribute('data-exploration-mode'),
+            previewCount: document.querySelectorAll('[data-relationship-preview-node]').length,
+            reachVisible: !document.getElementById('focus-reach').hidden &&
+              getComputedStyle(document.getElementById('focus-reach')).display !== 'none',
+            detailsHidden: document.getElementById('btn-focus-details').hidden
+          };
+        })()`);
+        assert.equal(restored.previewCount, 0, JSON.stringify(restored));
+        assert.equal(restored.compact, null, JSON.stringify(restored));
+        assert.equal(restored.mode, null, JSON.stringify(restored));
+        assert.equal(restored.reachVisible, true, JSON.stringify(restored));
+        assert.equal(restored.detailsHidden, true, JSON.stringify(restored));
+        assert.equal(restored.camera.mode, 'semantic', JSON.stringify(restored));
+        assert.ok(restored.camera.scale >= 1, JSON.stringify(restored));
+      }
+
+      if (scenario.label === 'downstream') {
+        await evaluate(browser, sessionId, `document.getElementById('btn-reach-downstream').click()`);
+        await waitForLayout(browser, sessionId);
+        const restored = await evaluate(browser, sessionId, `(function () {
+          var passport = document.getElementById('focus-chip');
+          return {
+            camera: Archify.view.state(),
+            compact: passport.getAttribute('data-exploration-compact'),
+            reach: document.querySelector('.diagram-container > svg').getAttribute('data-reach-active')
+          };
+        })()`);
+        assert.equal(restored.compact, null, JSON.stringify(restored));
+        assert.equal(restored.reach, null, JSON.stringify(restored));
+        assert.equal(restored.camera.mode, 'semantic', JSON.stringify(restored));
+        assert.ok(restored.camera.scale >= 1, JSON.stringify(restored));
+      }
+    }
+  } finally {
+    await browser.close();
+  }
+});
+
+test('relationship exploration deep links and translated 1x framing yield to manual pan', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  const artifact = renderRelationshipExplorationStress();
+  try {
+    const sessionId = await load(browser, artifact, { width: 1440, height: 900, query: '#relation=hub-out-left' });
+    await waitForLayout(browser, sessionId);
+    const linked = await evaluate(browser, sessionId, `(function () {
+      var passport = document.getElementById('focus-chip');
+      var passportRect = passport.getBoundingClientRect();
+      var matches = Array.from(document.querySelectorAll('[data-node-id][data-relationship-preview-node]'));
+      var containerRect = document.querySelector('.diagram-container').getBoundingClientRect();
+      var visible = {
+        left: Math.max(0, containerRect.left),
+        top: Math.max(0, containerRect.top),
+        right: Math.min(window.innerWidth, containerRect.right),
+        bottom: Math.min(window.innerHeight, containerRect.bottom)
+      };
+      function area(first, second) {
+        return Math.max(0, Math.min(first.right + 12, second.right) - Math.max(first.left - 12, second.left)) *
+          Math.max(0, Math.min(first.bottom + 12, second.bottom) - Math.max(first.top - 12, second.top));
+      }
+      return {
+        hash: location.hash,
+        compact: passport.getAttribute('data-exploration-compact'),
+        pinned: document.querySelector('.diagram-container > svg').hasAttribute('data-relationship-pin-active'),
+        camera: Archify.view.state(),
+        ids: matches.map(function (node) { return node.getAttribute('data-node-id'); }).sort(),
+        overlaps: matches.map(function (node) { return area(passportRect, node.getBoundingClientRect()); }),
+        fullyVisible: matches.map(function (node) {
+          var rect = node.getBoundingClientRect();
+          return rect.left >= visible.left - 0.5 && rect.top >= visible.top - 0.5 &&
+            rect.right <= visible.right + 0.5 && rect.bottom <= visible.bottom + 0.5;
+        })
+      };
+    })()`);
+    assert.equal(linked.hash, '#relation=hub-out-left');
+    assert.equal(linked.compact, 'true');
+    assert.equal(linked.pinned, true);
+    assert.equal(linked.camera.mode, 'semantic', JSON.stringify(linked));
+    assert.deepEqual(linked.ids, ['hub', 'out-left']);
+    assert.ok(linked.overlaps.every((area) => area === 0), JSON.stringify(linked));
+    assert.ok(linked.fullyVisible.every(Boolean), JSON.stringify(linked));
+
+    await evaluate(browser, sessionId, `(function () {
+      Archify.focus.set('hub', { toggle: false, updateUrl: false });
+      Archify.view.reveal(['hub'], {
+        includeNeighbors: false,
+        maxScale: 1,
+        minimumScale: 1,
+        instant: true,
+        reason: 'manual-pan-regression'
+      });
+    })()`);
+    await waitForLayout(browser, sessionId);
+    const panned = await evaluate(browser, sessionId, `(function () {
+      var container = document.querySelector('.diagram-container');
+      var before = Archify.view.state();
+      var pannable = container.classList.contains('is-pannable');
+      container.dispatchEvent(new PointerEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        buttons: 1,
+        pointerId: 17,
+        clientX: 720,
+        clientY: 520
+      }));
+      container.dispatchEvent(new PointerEvent('pointermove', {
+        bubbles: true,
+        button: 0,
+        buttons: 1,
+        pointerId: 17,
+        clientX: 756,
+        clientY: 536
+      }));
+      container.dispatchEvent(new PointerEvent('pointerup', {
+        bubbles: true,
+        button: 0,
+        pointerId: 17,
+        clientX: 756,
+        clientY: 536
+      }));
+      return { before: before, after: Archify.view.state(), pannable: pannable };
+    })()`);
+    assert.equal(panned.before.scale, 1, JSON.stringify(panned));
+    assert.equal(panned.pannable, true, JSON.stringify(panned));
+    assert.equal(panned.after.mode, 'manual', JSON.stringify(panned));
+    assert.ok(Math.abs(panned.after.x - panned.before.x) + Math.abs(panned.after.y - panned.before.y) > 3, JSON.stringify(panned));
+  } finally {
+    await browser.close();
+  }
+});
+
+test('relationship exploration stays clear at the narrow desktop breakpoint with Details expanded', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  const artifact = renderRelationshipExplorationStress();
+  try {
+    for (const scenario of [
+      { direction: 'out', expectedIds: ['hub', 'out-left'] },
+      { direction: 'in', expectedIds: ['hub', 'in-left'] },
+    ]) {
+      const sessionId = await load(browser, artifact, {
+        width: 721,
+        height: 700,
+        query: `?case=${scenario.direction}`,
+      });
+      await evaluate(browser, sessionId, `(function () {
+        var container = document.querySelector('.diagram-container');
+        window.scrollTo(0, Math.max(0, container.offsetTop));
+        Archify.focus.set('hub', { toggle: false, updateUrl: false });
+      })()`);
+      await waitForLayout(browser, sessionId);
+      await evaluate(browser, sessionId, `(function () {
+        var row = document.querySelector('#relationship-lens-list .relationship-lens-row[data-direction="${scenario.direction}"]');
+        if (row && row.offsetParent === null) {
+          row.closest('.relationship-lens-group').querySelector('[data-relationship-group-toggle]').click();
+        }
+      })()`);
+      await waitForLayout(browser, sessionId);
+      await focusSelector(
+        browser,
+        sessionId,
+        `#relationship-lens-list .relationship-lens-row[data-direction="${scenario.direction}"]`,
+      );
+      await evaluate(browser, sessionId, `document.activeElement.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))`);
+      const activated = await evaluate(browser, sessionId, `(function () {
+        return {
+          activeDirection: document.activeElement.getAttribute('data-direction'),
+          previewCount: document.querySelectorAll('[data-relationship-preview-node]').length,
+          mode: document.getElementById('focus-chip').getAttribute('data-exploration-mode')
+        };
+      })()`);
+      assert.deepEqual(activated, {
+        activeDirection: scenario.direction,
+        previewCount: 2,
+        mode: 'relationship',
+      }, JSON.stringify({ scenario, activated }));
+      await waitForLayout(browser, sessionId);
+      const receipt = await highlightedGeometry(browser, sessionId, '[data-node-id][data-relationship-preview-node]');
+      assert.deepEqual(receipt.ids, scenario.expectedIds.slice().sort(), JSON.stringify({ scenario, receipt }));
+      assert.ok(receipt.overlaps.every((area) => area === 0), JSON.stringify({ scenario, receipt }));
+      assert.ok(receipt.fullyVisible.every(Boolean), JSON.stringify({ scenario, receipt }));
+      assert.equal(receipt.camera.mode, 'semantic', JSON.stringify({ scenario, receipt }));
+    }
+
+    const sessionId = await load(browser, artifact, {
+      width: 721,
+      height: 700,
+      query: '?case=details#focus=hub&reach=downstream',
+    });
+    await evaluate(browser, sessionId, `document.getElementById('btn-focus-details').click()`);
+    await waitForLayout(browser, sessionId);
+    const expanded = await highlightedGeometry(browser, sessionId, '[data-node-id][data-reach-match]');
+    assert.equal(expanded.expanded, 'true', JSON.stringify(expanded));
+    assert.deepEqual(expanded.ids, ['hub', 'out-left', 'out-right']);
+    assert.ok(expanded.overlaps.every((area) => area === 0), JSON.stringify(expanded));
+    assert.ok(expanded.fullyVisible.every(Boolean), JSON.stringify(expanded));
+    assert.equal(expanded.camera.mode, 'semantic', JSON.stringify(expanded));
+  } finally {
+    await browser.close();
+  }
+});
+
+test('mobile relationship exploration keeps every result outside compact and expanded Passports', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  const artifact = renderRelationshipExplorationStress();
+  function mobileReceiptExpression(matchSelector) {
+    return `(function () {
+      var passport = document.getElementById('focus-chip');
+      var passportRect = passport.getBoundingClientRect();
+      var matches = Array.from(document.querySelectorAll(${JSON.stringify(matchSelector)}));
+      var containerRect = document.querySelector('.diagram-container').getBoundingClientRect();
+      var visible = {
+        left: Math.max(0, containerRect.left),
+        right: Math.min(window.innerWidth, containerRect.right),
+        top: Math.max(0, containerRect.top),
+        bottom: Math.min(window.innerHeight, containerRect.bottom)
+      };
+      function intersectionArea(first, second, gap) {
+        return Math.max(0, Math.min(first.right + gap, second.right) - Math.max(first.left - gap, second.left)) *
+          Math.max(0, Math.min(first.bottom + gap, second.bottom) - Math.max(first.top - gap, second.top));
+      }
+      return {
+        compact: passport.getAttribute('data-exploration-compact'),
+        expanded: passport.getAttribute('data-exploration-expanded'),
+        pinActive: document.querySelector('.diagram-container > svg').hasAttribute('data-relationship-pin-active'),
+        camera: Archify.view.state(),
+        passport: {
+          left: passportRect.left, top: passportRect.top,
+          right: passportRect.right, bottom: passportRect.bottom
+        },
+        ids: matches.map(function (node) { return node.getAttribute('data-node-id'); }).sort(),
+        nodeRects: matches.map(function (node) {
+          var rect = node.getBoundingClientRect();
+          return {
+            id: node.getAttribute('data-node-id'),
+            left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom
+          };
+        }),
+        verticalClear: matches.every(function (node) {
+          var rect = node.getBoundingClientRect();
+          return rect.bottom <= passportRect.top - 12 || rect.top >= passportRect.bottom + 12;
+        }),
+        overlaps: matches.map(function (node) {
+          return intersectionArea(passportRect, node.getBoundingClientRect(), 12);
+        }),
+        visibleMatches: matches.filter(function (node) {
+          var rect = node.getBoundingClientRect();
+          return rect.right > visible.left && rect.left < visible.right && rect.bottom > visible.top && rect.top < visible.bottom;
+        }).map(function (node) { return node.getAttribute('data-node-id'); }).sort(),
+        fullyVisibleMatches: matches.filter(function (node) {
+          var rect = node.getBoundingClientRect();
+          return rect.left >= visible.left - 0.5 && rect.top >= visible.top - 0.5 &&
+            rect.right <= visible.right + 0.5 && rect.bottom <= visible.bottom + 0.5;
+        }).map(function (node) { return node.getAttribute('data-node-id'); }).sort()
+      };
+    })()`;
+  }
+  try {
+    let sessionId = await load(browser, artifact, { width: 390, height: 700, query: '#focus=hub&reach=upstream' });
+    await waitForLayout(browser, sessionId);
+    const reach = await evaluate(browser, sessionId, mobileReceiptExpression('[data-node-id][data-reach-match]'));
+    assert.equal(reach.compact, 'true', JSON.stringify(reach));
+    assert.equal(reach.expanded, null, JSON.stringify(reach));
+    assert.deepEqual(reach.ids, ['hub', 'in-left', 'in-right']);
+    assert.equal(reach.verticalClear, true, JSON.stringify(reach));
+    assert.ok(reach.overlaps.every((area) => area === 0), JSON.stringify(reach));
+    assert.deepEqual(reach.visibleMatches, reach.ids, JSON.stringify(reach));
+    assert.deepEqual(reach.fullyVisibleMatches, reach.ids, JSON.stringify(reach));
+    assert.equal(reach.camera.mode, 'semantic', JSON.stringify(reach));
+
+    await evaluate(browser, sessionId, `document.getElementById('btn-focus-details').click()`);
+    await waitForLayout(browser, sessionId);
+    const expandedReach = await evaluate(browser, sessionId, mobileReceiptExpression('[data-node-id][data-reach-match]'));
+    assert.equal(expandedReach.compact, 'true', JSON.stringify(expandedReach));
+    assert.equal(expandedReach.expanded, 'true', JSON.stringify(expandedReach));
+    assert.deepEqual(expandedReach.ids, reach.ids, JSON.stringify(expandedReach));
+    assert.ok(expandedReach.overlaps.every((area) => area === 0), JSON.stringify(expandedReach));
+    assert.deepEqual(expandedReach.fullyVisibleMatches, expandedReach.ids, JSON.stringify(expandedReach));
+
+    await evaluate(browser, sessionId, `document.getElementById('btn-focus-details').click()`);
+    await waitForLayout(browser, sessionId);
+    const collapsedReach = await evaluate(browser, sessionId, mobileReceiptExpression('[data-node-id][data-reach-match]'));
+    assert.equal(collapsedReach.expanded, null, JSON.stringify(collapsedReach));
+    assert.ok(collapsedReach.overlaps.every((area) => area === 0), JSON.stringify(collapsedReach));
+    assert.deepEqual(collapsedReach.fullyVisibleMatches, collapsedReach.ids, JSON.stringify(collapsedReach));
+
+    sessionId = await load(browser, artifact, { width: 390, height: 700 });
+    await evaluate(browser, sessionId, `(function () {
+      Archify.focus.set('hub', { toggle: false, updateUrl: false });
+      document.getElementById('btn-focus-relations').click();
+    })()`);
+    await waitForLayout(browser, sessionId);
+    await focusSelector(
+      browser,
+      sessionId,
+      '#relationship-lens-list .relationship-lens-row[data-direction="out"]',
+    );
+    await evaluate(browser, sessionId, `document.activeElement.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))`);
+    const previewActivated = await evaluate(browser, sessionId, `(function () {
+      return {
+        activeDirection: document.activeElement.getAttribute('data-direction'),
+        previewCount: document.querySelectorAll('[data-relationship-preview-node]').length,
+        mode: document.getElementById('focus-chip').getAttribute('data-exploration-mode')
+      };
+    })()`);
+    assert.deepEqual(previewActivated, { activeDirection: 'out', previewCount: 2, mode: 'relationship' });
+    await waitForLayout(browser, sessionId);
+    const preview = await evaluate(browser, sessionId, mobileReceiptExpression('[data-node-id][data-relationship-preview-node]'));
+    const previewControls = await evaluate(browser, sessionId, `(function () {
+      var reach = document.getElementById('focus-reach');
+      return {
+        reachVisible: !reach.hidden && getComputedStyle(reach).display !== 'none',
+        detailsHidden: document.getElementById('btn-focus-details').hidden
+      };
+    })()`);
+    assert.equal(preview.compact, null, JSON.stringify(preview));
+    assert.deepEqual(preview.ids, ['hub', 'out-left']);
+    assert.ok(preview.overlaps.every((area) => area === 0), JSON.stringify(preview));
+    assert.deepEqual(preview.fullyVisibleMatches, preview.ids, JSON.stringify(preview));
+    assert.equal(previewControls.reachVisible, true, JSON.stringify(previewControls));
+    assert.equal(previewControls.detailsHidden, true, JSON.stringify(previewControls));
+
+    sessionId = await load(browser, artifact, { width: 390, height: 700 });
+    const keyboardStart = await evaluate(browser, sessionId, `(function () {
+      var targets = Array.from(document.querySelectorAll('[data-relationship-hit-key]'));
+      var start = targets.find(function (target) { return target.getAttribute('tabindex') === '0'; });
+      var target = document.querySelector('[data-relationship-hit-key][data-relationship-id="hub-out-left"]');
+      start.focus({ preventScroll: true });
+      return {
+        steps: (targets.indexOf(target) - targets.indexOf(start) + targets.length) % targets.length,
+        startId: start.getAttribute('data-relationship-id'),
+        targetId: target.getAttribute('data-relationship-id')
+      };
+    })()`);
+    for (let index = 0; index < keyboardStart.steps; index += 1) {
+      await browser.cdp.send('Input.dispatchKeyEvent', {
+        type: 'keyDown', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39,
+      }, sessionId);
+      await browser.cdp.send('Input.dispatchKeyEvent', {
+        type: 'keyUp', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39,
+      }, sessionId);
+    }
+    const roved = await evaluate(browser, sessionId, `document.activeElement.getAttribute('data-relationship-id')`);
+    assert.equal(roved, keyboardStart.targetId, JSON.stringify({ keyboardStart, roved }));
+    await browser.cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13,
+    }, sessionId);
+    await browser.cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13,
+    }, sessionId);
+    await waitForLayout(browser, sessionId);
+    const keyReceipt = await evaluate(browser, sessionId, `(function () {
+      var target = document.querySelector('[data-relationship-hit-key][data-relationship-id="hub-out-left"]');
+      return { activeId: document.activeElement.getAttribute('data-relationship-id'), pressed: target.getAttribute('aria-pressed') };
+    })()`);
+    assert.equal(keyReceipt.activeId, 'hub-out-left', JSON.stringify(keyReceipt));
+    assert.equal(keyReceipt.pressed, 'true', JSON.stringify(keyReceipt));
+    const relation = await evaluate(browser, sessionId, mobileReceiptExpression('[data-node-id][data-relationship-preview-node]'));
+    assert.equal(relation.compact, 'true', JSON.stringify(relation));
+    assert.equal(relation.pinActive, true, JSON.stringify(relation));
+    assert.deepEqual(relation.ids, ['hub', 'out-left']);
+    assert.equal(relation.verticalClear, true, JSON.stringify(relation));
+    assert.ok(relation.overlaps.every((area) => area === 0), JSON.stringify(relation));
+    assert.deepEqual(relation.visibleMatches, relation.ids, JSON.stringify(relation));
+    assert.deepEqual(relation.fullyVisibleMatches, relation.ids, JSON.stringify(relation));
   } finally {
     await browser.close();
   }

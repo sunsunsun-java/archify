@@ -64,6 +64,8 @@ test('all typed renderers expose named, stable relationships without changing ge
 test('relationship lens groups incoming, outgoing, and self-loop paths and follows neighbors', () => {
   const html = render('architecture', CASES.architecture.example);
   assert.match(html, /id="focus-chip" hidden role="region" aria-labelledby="relationship-lens-title"/);
+  assert.match(html, /id="btn-focus-details"[^>]+aria-expanded="false"[^>]+aria-controls="relationship-lens-body"/);
+  assert.match(html, /id="relationship-lens-body" tabindex="0" role="group" aria-label="Details"/);
   assert.match(html, /id="relationship-lens-list" aria-label="Connected relationships"/);
   assert.match(html, /function relationshipsFor\(id, byId\)/);
   assert.match(html, /direction = from === id && to === id \? 'loop' : \(from === id \? 'out' : 'in'\)/);
@@ -73,9 +75,33 @@ test('relationship lens groups incoming, outgoing, and self-loop paths and follo
   assert.match(html, /data-relationship-key/);
   assert.match(html, /data-relationship-from/);
   assert.match(html, /data-relationship-to/);
+  assert.match(html, /data-relationship-group-toggle/);
+  assert.match(html, /heading\.setAttribute\('aria-controls', panelId\)/);
+  assert.match(html, /heading\.setAttribute\('aria-expanded', openedGroup \? 'false' : 'true'\)/);
+  assert.match(html, /panel\.hidden = openedGroup/);
+  assert.match(html, /function toggleRelationshipGroup\(toggle\)/);
+  assert.match(html, /expandRelationshipGroupForRow\(row\)/);
   assert.match(html, /set\(id, \{ toggle: false \}\)/);
   assert.match(html, /Archify\.view\.reveal\(\[id\], \{ includeNeighbors: true, reason: 'relationship' \}\)/);
   assert.doesNotMatch(svg(html), /relationship-lens|Connected relationships/);
+});
+
+test('relationship lens bounds one scroll body and exposes a non-blocking overflow cue', () => {
+  const html = render('architecture', CASES.architecture.example);
+  assert.match(html, /grid-template-rows: auto minmax\(0, 1fr\)/);
+  assert.match(html, /--archify-passport-max-height/);
+  assert.match(html, /\.relationship-lens-body \{[\s\S]*min-height: 0;[\s\S]*overflow-y: auto;[\s\S]*overscroll-behavior: contain;/);
+  assert.match(html, /\.relationship-lens-body \{[\s\S]*scroll-padding-bottom: 2\.4rem;/);
+  assert.match(html, /\.relationship-lens-list \{[\s\S]*overflow: visible;/);
+  assert.doesNotMatch(html, /\.relationship-lens-list \{\s*max-height:/);
+  assert.match(html, /data-relationship-scroll-more="true"\]::after[\s\S]*pointer-events: none/);
+  assert.match(html, /data-viewport-compact="true"\][\s\S]*relationship-lens-body[\s\S]*display: none/);
+  assert.match(html, /availableHeight < fixedHead\.scrollHeight \+ minimumUsableBodyHeight/);
+  assert.match(html, /relationshipBody\.contains\(document\.activeElement\)[\s\S]*clearBtn\.focus/);
+  assert.match(html, /function syncRelationshipScrollState\(\)/);
+  assert.match(html, /relationshipBody\.scrollHeight > relationshipBody\.clientHeight \+ 1/);
+  assert.match(html, /relationshipBody\.addEventListener\('scroll', requestRelationshipScrollState, \{ passive: true \}\)/);
+  assert.match(html, /button\.offsetParent !== null/);
 });
 
 test('relationship preview precisely links pointer and keyboard rows to an edge and its endpoints', () => {
@@ -114,6 +140,11 @@ test('relationship lens is keyboard navigable, mobile-pinned, and excluded from 
   assert.match(html, /\.relationship-lens-row:not\(\[data-preview-active="true"\]\)/);
   assert.match(html, /var mobile = window\.innerWidth <= 720/);
   assert.match(html, /previewingOnMobile = mobile && chip\.getAttribute\('data-relationship-previewing'\) === 'true'/);
+  assert.match(html, /compactExploration = chip\.getAttribute\('data-exploration-compact'\) === 'true'/);
+  assert.match(html, /setExplorationMode\('relationship', false\)/);
+  assert.match(html, /\.focus-chip\[data-exploration-mode="relationship"\]\[data-exploration-compact="true"\]:not\(\[data-exploration-expanded="true"\]\) \.semantic-passport-reach/);
+  assert.match(html, /Archify\.view\.reveal\(\[from, to\], \{[\s\S]*includeNeighbors: false,[\s\S]*maxScale: 1\.5,[\s\S]*reason: 'relationship-preview'/);
+  assert.match(html, /reason: 'relationship-preview-clear'/);
   assert.match(html, /nodeCenter < \(visibleTop \+ visibleBottom\) \/ 2 \? pinnedBottom : pinnedTop/);
   assert.match(html, /html\[data-embed="true"\] \.focus-chip/);
   assert.match(html, /\.toolbar, \.diagram-nav, \.focus-chip, \.guided-views/);

@@ -85,6 +85,8 @@ test('activation opens the existing source passport and pins its exact relations
   assert.match(template, /relationshipList\.querySelectorAll\('\[data-relationship-key\]'\)/);
   assert.match(template, /pinnedRelationship = row/);
   assert.match(template, /pinnedRelationshipKey = key/);
+  assert.match(template, /syncExplorationMode\(\);/);
+  assert.match(template, /setExplorationMode\('relationship', true\)/);
   assert.match(template, /data-relationship-pin-active/);
   assert.match(template, /function clearRelationshipPreview\(options\)/);
   assert.match(template, /clearRelationshipPreview\(\{ clearPin: true \}\)/);

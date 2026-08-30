@@ -172,7 +172,11 @@ test('Semantic Radar derives semantic node bounds and focuses stable IDs', () =>
 test('Semantic Radar tracks desktop camera and mobile contained scroll', () => {
   const html = render('sequence', CASES.sequence);
   assert.match(html, /function logicalViewport\(\)/);
-  assert.match(html, /x = viewBox\.x \+ container\.scrollLeft \/ metrics\.scale/);
+  assert.match(html, /var matrix = svg\.getScreenCTM\(\)/);
+  assert.match(html, /first = first\.matrixTransform\(inverse\)/);
+  assert.match(html, /x = viewBox\.x \+ \(\(\(container\.scrollLeft - state\.x\) \/ state\.scale\) - metrics\.offsetX\) \/ metrics\.scale/);
+  assert.match(html, /width = Math\.min\(viewBox\.width, Math\.max\(1, container\.clientWidth \/ state\.scale \/ metrics\.scale\)\)/);
+  assert.match(html, /height = Math\.min\(viewBox\.height, Math\.max\(1, metrics\.height \/ state\.scale \/ metrics\.scale\)\)/);
   assert.match(html, /x = viewBox\.x \+ \(\(-state\.x \/ state\.scale\) - metrics\.offsetX\) \/ metrics\.scale/);
   assert.match(html, /viewport\.setAttribute\('width', String\(visible\.width\)\)/);
   assert.match(html, /viewerText\('viewer\.radar\.viewport\.width'/);
@@ -195,6 +199,76 @@ test('Semantic Radar tracks desktop camera and mobile contained scroll', () => {
   assert.match(html, /target\.closest\('\[data-node-id\], \[data-relationship-hit-key\], \.overview-map'\)/);
   assert.match(html, /--archify-radar-top/);
   assert.match(html, /\.overview-map\[data-docked="true"\]/);
+});
+
+test('mobile Radar viewport follows relationship-exploration scale and translation', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const artifact = path.join(tmp, 'radar-mobile-exploration.html');
+  execFileSync(process.execPath, [
+    path.join(skillRoot, 'renderers/architecture/render-architecture.mjs'),
+    path.join(skillRoot, 'examples', CASES.architecture),
+    artifact,
+  ]);
+  const browser = new ChromeVisualBrowser(chromePath);
+  try {
+    const sessionId = await loadArtifact(browser, artifact, { width: 390, height: 700 });
+    const receipt = await evaluate(browser, sessionId, `(function () {
+      var container = document.querySelector('.diagram-container');
+      window.scrollTo(0, Math.max(0, container.offsetTop));
+      Archify.focus.set('api', { toggle: false, updateUrl: false });
+      Archify.focus.reach('downstream', { updateUrl: false });
+      return new Promise(function (resolve, reject) {
+        var frames = 0;
+        function sample() {
+          frames += 1;
+          if (!container.hasAttribute('data-camera-transaction') && frames > 8) {
+            var svg = container.querySelector(':scope > svg');
+            var matrix = svg.getScreenCTM();
+            var inverse = matrix.inverse();
+            var svgRect = svg.getBoundingClientRect();
+            var containerRect = container.getBoundingClientRect();
+            var left = Math.max(0, svgRect.left, containerRect.left);
+            var top = Math.max(0, svgRect.top, containerRect.top);
+            var right = Math.min(window.innerWidth, svgRect.right, containerRect.right);
+            var bottom = Math.min(window.innerHeight, svgRect.bottom, containerRect.bottom);
+            var first = new DOMPoint(left, top).matrixTransform(inverse);
+            var second = new DOMPoint(right, bottom).matrixTransform(inverse);
+            var box = svg.viewBox.baseVal;
+            var expected = {
+              x: Math.max(box.x, Math.min(box.x + box.width, first.x)),
+              y: Math.max(box.y, Math.min(box.y + box.height, first.y)),
+              width: Math.max(1, Math.min(box.width, second.x - first.x)),
+              height: Math.max(1, Math.min(box.height, second.y - first.y))
+            };
+            expected.x = Math.min(box.x + box.width - expected.width, expected.x);
+            expected.y = Math.min(box.y + box.height - expected.height, expected.y);
+            resolve({
+              state: Archify.view.state(),
+              reported: Archify.view.logicalViewport(),
+              expected: expected
+            });
+            return;
+          }
+          if (frames >= 180) {
+            reject(new Error('Mobile exploration camera did not settle.'));
+            return;
+          }
+          requestAnimationFrame(sample);
+        }
+        requestAnimationFrame(sample);
+      });
+    })()`, true);
+    assert.ok(receipt.state.scale < 1, JSON.stringify(receipt, null, 2));
+    for (const key of ['x', 'y', 'width', 'height']) {
+      assert.ok(
+        Math.abs(receipt.reported[key] - receipt.expected[key]) <= 2,
+        `${key}: ${JSON.stringify(receipt, null, 2)}`,
+      );
+    }
+  } finally {
+    await browser.close();
+  }
 });
 
 test('Semantic Radar keeps redundant accessible navigation and clean exports', () => {
