@@ -5,7 +5,7 @@
 Use `validate` after every candidate edit. Run the real-browser containment preflight on the first deterministic pass and again before freezing the candidate:
 
 ```bash
-node bin/archify.mjs validate <type> <candidate.json> --quality showcase --preflight --json
+node bin/archify.mjs validate <type> <candidate.json> --quality showcase --repair-history <repair-history.json> --preflight --json
 ```
 
 Use final atomic delivery only after the candidate is frozen:

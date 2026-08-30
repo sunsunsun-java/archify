@@ -7,13 +7,13 @@
   "fps": 10,
   "frameCount": 54,
   "durationSeconds": 5.4,
-  "bytes": 918340,
-  "sha256": "af7940a3d61f386a2e3afb21549bc689b3f3c7d142239e6cce52d4b3b511af2d",
+  "bytes": 1697402,
+  "sha256": "16836e91361efadee65df6f5a98cd1b7cde5ffb3ff8a798f64fdf28c28894a06",
   "scenes": [
     {
       "id": "signal-flow",
       "artifact": "docs/gallery/artifacts/agent-tool-call.workflow.html",
-      "artifactSha256": "7d9c378a53f9bd870a1f4e67db0d4b8e2bedbdb78c3678764aef4a48b4d1b391",
+      "artifactSha256": "80f7784e1c4fc4611136493df01c00afeaa89a0da43cd17736e916457cc5d2ce",
       "view": "happy-path",
       "eyebrow": "WORKFLOW · SIGNAL FLOW",
       "title": "Agent Tool Call",
@@ -22,7 +22,7 @@
     {
       "id": "blueprint",
       "artifact": "docs/gallery/artifacts/production-deployment.architecture.html",
-      "artifactSha256": "c640b8bde8a2400b99e01d9b8fc690e4a2ee47dde299363839499b27404f5fe0",
+      "artifactSha256": "43114461758234a0703de76c5891b58bbec0501e310fb86db9e632854e880692",
       "view": "request-boundary",
       "eyebrow": "ARCHITECTURE · BLUEPRINT",
       "title": "Production Deployment",

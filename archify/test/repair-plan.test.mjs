@@ -107,7 +107,7 @@ test('repair plan reports an infeasible viewBox width interval instead of recomm
   assert.doesNotMatch(JSON.stringify(plan.actions.map(({ supportedFixes }) => supportedFixes)), /at most 992/i);
 });
 
-test('bounded repair progress treats a deeper validation stage as progress and stops repeated churn', () => {
+test('bounded repair progress requests structural reflow before it can stop repeated churn', () => {
   const routeDiagnostic = {
     code: 'composition/label-route-clearance',
     subject: { relationship: { from: 'a', to: 'b' } },
@@ -128,11 +128,77 @@ test('bounded repair progress treats a deeper validation stage as progress and s
 
   assert.equal(progress.best.stage, 'check');
   assert.equal(progress.consecutiveNonImprovingAttempts, 2);
-  assert.equal(progress.shouldStop, true);
-  assert.match(progress.reason, /two consecutive/i);
+  assert.equal(progress.shouldStop, false);
+  assert.equal(progress.shouldReflow, true);
+  assert.match(progress.reason, /structural reflow/i);
 });
 
-test('repair plan carries bounded-stop progress without treating unresolved errors as success', () => {
+test('repair progress stops only after structural reflows are exhausted and the same failure repeats', () => {
+  const diagnostic = {
+    code: 'composition/label-route-clearance',
+    subject: { relationship: { from: 'a', to: 'b' } },
+    evidence: { clearance: 2, threshold: 8 },
+  };
+  const attempts = [
+    { stage: 'check', diagnostics: [diagnostic] },
+    { stage: 'check', diagnostics: [diagnostic] },
+    { stage: 'check', diagnostics: [diagnostic] },
+    { stage: 'check', repairMode: 'structural-reflow', diagnostics: [diagnostic] },
+    { stage: 'check', diagnostics: [diagnostic] },
+    { stage: 'check', diagnostics: [diagnostic] },
+    { stage: 'check', repairMode: 'structural-reflow', diagnostics: [diagnostic] },
+    { stage: 'check', diagnostics: [diagnostic] },
+    { stage: 'check', diagnostics: [diagnostic] },
+    { stage: 'check', diagnostics: [diagnostic] },
+    { stage: 'check', diagnostics: [diagnostic] },
+  ];
+  const progress = evaluateRepairProgress(attempts);
+
+  assert.equal(progress.structuralReflowCount, 2);
+  assert.equal(progress.consecutiveIdenticalAttempts, 5);
+  assert.equal(progress.shouldReflow, false);
+  assert.equal(progress.shouldStop, true);
+  assert.match(progress.reason, /reflow/i);
+});
+
+test('repair progress requests structural reflow after six improving but unresolved focused attempts', () => {
+  const attempts = [8, 7, 6, 5, 4, 3].map((errorCount) => ({
+    stage: 'check',
+    errorCount,
+    diagnostics: [{ code: 'composition/label-route-clearance', subject: { errorCount } }],
+  }));
+  const progress = evaluateRepairProgress(attempts);
+
+  assert.equal(progress.shouldStop, false);
+  assert.equal(progress.shouldReflow, true);
+  assert.equal(progress.focusedAttemptCount, 6);
+  assert.match(progress.reason, /structural reflow/i);
+});
+
+test('repair progress does not let an unclassified infrastructure failure hide real improvement', () => {
+  const unclassified = {
+    code: 'internal/unclassified',
+    subject: {},
+    evidence: { exitCode: 1 },
+  };
+  const attempts = [
+    { stage: 'render', diagnostics: [unclassified] },
+    ...[36, 20, 6].map((errorCount) => ({
+      stage: 'render',
+      errorCount,
+      diagnostics: [{ code: 'composition/proper-crossing', subject: { errorCount } }],
+    })),
+  ];
+
+  const progress = evaluateRepairProgress(attempts);
+
+  assert.equal(progress.best.errorCount, 6);
+  assert.equal(progress.consecutiveNonImprovingAttempts, 0);
+  assert.equal(progress.shouldStop, false);
+  assert.equal(progress.ignoredInfrastructureAttempts, 1);
+});
+
+test('repair plan carries structural-reflow progress without treating unresolved errors as success', () => {
   const diagnostic = {
     code: 'composition/label-route-clearance',
     subject: { relationship: { from: 'a', to: 'b' } },
@@ -149,8 +215,9 @@ test('repair plan carries bounded-stop progress without treating unresolved erro
     ],
   });
 
-  assert.equal(plan.status, 'bounded-stop');
-  assert.equal(plan.progress.shouldStop, true);
+  assert.equal(plan.status, 'structural-reflow-required');
+  assert.equal(plan.progress.shouldStop, false);
+  assert.equal(plan.progress.shouldReflow, true);
   assert.equal(plan.diagnosticFingerprint, diagnosticFingerprint([diagnostic]));
   assert.match(plan.acceptance.join(' '), /0 errors and 0 warnings/);
 });

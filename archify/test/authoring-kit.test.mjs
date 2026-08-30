@@ -41,8 +41,13 @@ test('authoring kit returns the exact schema, common schema, and one matching ex
     assert.equal(kit.layoutBudget.qualityGuards.desktopViewports.length, 4);
     assert.equal(kit.layoutBudget.qualityGuards.semanticDeletionAllowed, false);
     assert.match(kit.commands.validate, new RegExp(`validate ${type}`));
+    assert.match(kit.commands.validate, /--repair-history <repair-history\.json>/);
+    assert.match(kit.commands.validate, /--require-authored-language <en\|zh-CN>/);
+    assert.match(kit.commands.validateStructuralReflow, /--repair-mode structural-reflow/);
     assert.match(kit.commands.inspectLayout, /--layout-json/);
     assert.match(kit.commands.preflight, /--preflight/);
+    assert.match(kit.commands.preflight, /--repair-history <repair-history\.json>/);
+    assert.match(kit.commands.deliver, /--require-authored-language <en\|zh-CN>/);
     assert.match(kit.commands.sourceSearch, /project-index source-search/);
     assert.match(kit.commands.sourceInspect, /project-index inspect/);
     assert.match(kit.commands.evidenceHydrate, /evidence-ledger hydrate/);

@@ -16,9 +16,9 @@ function usage() {
   return `Usage:
   archify render <type> <input.json> [output.html] [--quality standard|showcase] [--repo-root path]
   archify compare architecture <base.json> <head.json> [output.html] [--receipt path] [--json] [--quality standard|showcase] [--repo-root path]
-  archify deliver <type> <input.json> [output.html] [--json] [--open] [--quality standard|showcase] [--repo-root path]
+  archify deliver <type> <input.json> [output.html] [--json] [--open] [--quality standard|showcase] [--repo-root path] [--require-authored-language en|zh-CN]
   archify preview <type> <input.json> [output.html] [--no-open] [--quality standard|showcase] [--repo-root path]
-  archify validate <type> <input.json> [--json] [--layout-json] [--preflight] [--quality standard|showcase] [--repo-root path]
+  archify validate <type> <input.json> [--json] [--layout-json] [--preflight] [--repair-history path] [--repair-mode focused|structural-reflow] [--quality standard|showcase] [--repo-root path] [--require-authored-language en|zh-CN]
   archify validate-batch <candidates.json> [--quality standard|showcase] [--json]
   archify inspect <type> <input.json>
   archify check <output.html>
@@ -111,6 +111,76 @@ function extractRepoRootArgs(args) {
     rest.push(arg);
   }
   return { rest, repoRoot: repoRoot ? path.resolve(repoRoot) : undefined };
+}
+
+function extractPathOption(args, name) {
+  const rest = [];
+  let value;
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === name) {
+      value = args[index + 1];
+      if (!value || value.startsWith('--')) fail(`${name} requires a path.`);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith(`${name}=`)) {
+      value = arg.slice(name.length + 1);
+      if (!value) fail(`${name} requires a path.`);
+      continue;
+    }
+    rest.push(arg);
+  }
+  return { rest, value: value ? path.resolve(value) : undefined };
+}
+
+function extractEnumOption(args, name, allowed) {
+  const rest = [];
+  let value;
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === name) {
+      value = args[index + 1];
+      if (!value || value.startsWith('--')) fail(`${name} requires one of: ${allowed.join(', ')}.`);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith(`${name}=`)) {
+      value = arg.slice(name.length + 1);
+      if (!value) fail(`${name} requires one of: ${allowed.join(', ')}.`);
+      continue;
+    }
+    rest.push(arg);
+  }
+  if (value !== undefined && !allowed.includes(value)) {
+    fail(`Unknown ${name} value "${value}". Expected one of: ${allowed.join(', ')}.`);
+  }
+  return { rest, value };
+}
+
+function authoredLanguageDiagnostics(diagram, requiredLanguage) {
+  if (!requiredLanguage) return [];
+  const locale = diagram?.meta?.locale;
+  const title = typeof diagram?.meta?.title === 'string' ? diagram.meta.title.trim() : '';
+  const hasCjk = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u.test(title);
+  const hasLatin = /[A-Za-z]/u.test(title);
+  const localeMatches = locale === requiredLanguage;
+  const titleMatches = requiredLanguage === 'zh-CN' ? hasCjk : hasLatin && !hasCjk;
+  if (localeMatches && titleMatches) return [];
+  const problems = [
+    ...(!localeMatches ? [`meta.locale must be "${requiredLanguage}"`] : []),
+    ...(!titleMatches ? [`meta.title must visibly use ${requiredLanguage === 'zh-CN' ? 'Simplified Chinese' : 'English'}`] : []),
+  ];
+  return [diagnostic({
+    code: 'content/authored-language',
+    message: `Authored language gate failed: ${problems.join('; ')}.`,
+    subject: { path: '/meta', requiredLanguage },
+    evidence: { locale: locale ?? null, title },
+    supportedFixes: [
+      `set meta.locale to "${requiredLanguage}"`,
+      `author the title and surrounding explanatory copy in ${requiredLanguage === 'zh-CN' ? 'Simplified Chinese' : 'English'} while preserving exact product and code identifiers`,
+    ],
+  })];
 }
 
 function rendererEnv(quality, repoRoot, diagnosticJson = false) {
@@ -761,7 +831,44 @@ function reportDeliveryFailure({ json, stage, type, input, output, error, diagno
   process.exitCode = status;
 }
 
-async function reportValidateFailure({ json, stage, type, input, error, diagnostics = [], status = 1, checker, preflight }) {
+async function persistRepairAttempt({ repairHistory, type, input, stage, diagnostics, repairMode = 'focused' }) {
+  if (!repairHistory) return null;
+  const { pathsAlias } = await import('../renderers/shared/output-path.mjs');
+  if (pathsAlias(repairHistory, input)) {
+    throw new Error(`Repair history must not replace or alias its candidate input: ${repairHistory}`);
+  }
+  let prior = [];
+  if (fs.existsSync(repairHistory)) {
+    const parsed = JSON.parse(fs.readFileSync(repairHistory, 'utf8'));
+    if (parsed?.schemaVersion !== 1 || !Array.isArray(parsed.attempts)) {
+      throw new Error(`Repair history is not a supported schemaVersion 1 document: ${repairHistory}`);
+    }
+    if (parsed.type !== type || path.resolve(parsed.input) !== path.resolve(input)) {
+      throw new Error(`Repair history belongs to ${parsed.type} ${parsed.input}, not ${type} ${input}.`);
+    }
+    prior = parsed.attempts;
+  }
+  const attempt = {
+    stage,
+    repairMode,
+    errorCount: diagnostics.length,
+    diagnostics,
+  };
+  const attempts = [...prior, attempt].slice(-64);
+  writeJsonAtomic(repairHistory, {
+    schemaVersion: 1,
+    type,
+    input: path.resolve(input),
+    attempts,
+  });
+  return {
+    path: repairHistory,
+    previousAttempts: prior.slice(-63),
+    attemptCount: attempts.length,
+  };
+}
+
+async function reportValidateFailure({ json, stage, type, input, error, diagnostics = [], status = 1, checker, preflight, repairHistory, repairMode = 'focused' }) {
   let candidate = null;
   try {
     candidate = JSON.parse(fs.readFileSync(path.resolve(input), 'utf8'));
@@ -769,9 +876,19 @@ async function reportValidateFailure({ json, stage, type, input, error, diagnost
     // Input diagnostics remain authoritative when the candidate cannot be read.
   }
   let repairPlan;
+  let repairHistoryReceipt;
   try {
+    repairHistoryReceipt = await persistRepairAttempt({ repairHistory, type, input, stage, diagnostics, repairMode });
     const { createRepairPlan } = await import('../authoring/repair-plan.mjs');
-    repairPlan = createRepairPlan({ type, candidate, stage, diagnostics, preflight });
+    repairPlan = createRepairPlan({
+      type,
+      candidate,
+      stage,
+      diagnostics,
+      preflight,
+      attemptHistory: repairHistoryReceipt?.previousAttempts || [],
+      repairMode,
+    });
   } catch (repairError) {
     repairPlan = {
       schemaVersion: 1,
@@ -792,6 +909,10 @@ async function reportValidateFailure({ json, stage, type, input, error, diagnost
     error,
     diagnostics,
     repairPlan,
+    ...(repairHistoryReceipt ? { repairHistory: {
+      path: repairHistoryReceipt.path,
+      attemptCount: repairHistoryReceipt.attemptCount,
+    } } : {}),
     ...(checker ? { checker } : {}),
     ...(preflight ? { preflight } : {}),
   };
@@ -820,12 +941,13 @@ async function commandDeliver(args) {
   const { resolveOutputPath } = await import('../renderers/shared/output-path.mjs');
   const qualityArgs = extractQualityArgs(args);
   const repoArgs = extractRepoRootArgs(qualityArgs.rest);
-  const json = repoArgs.rest.includes('--json');
-  const open = repoArgs.rest.includes('--open');
+  const languageArgs = extractEnumOption(repoArgs.rest, '--require-authored-language', ['en', 'zh-CN']);
+  const json = languageArgs.rest.includes('--json');
+  const open = languageArgs.rest.includes('--open');
   const knownOptions = new Set(['--json', '--open']);
-  const unknown = repoArgs.rest.filter((arg) => arg.startsWith('--') && !knownOptions.has(arg));
+  const unknown = languageArgs.rest.filter((arg) => arg.startsWith('--') && !knownOptions.has(arg));
   if (unknown.length) fail(`Unknown deliver option "${unknown[0]}".`);
-  const positional = repoArgs.rest.filter((arg) => !knownOptions.has(arg));
+  const positional = languageArgs.rest.filter((arg) => !knownOptions.has(arg));
   const [type, input, requestedOutput] = positional;
   if (!type || !input || positional.length > 3) fail(usage());
   assertEvidenceType(type, repoArgs.repoRoot);
@@ -847,6 +969,20 @@ async function commandDeliver(args) {
       output: path.resolve(requestedOutput || `${type}.html`),
       error: `Could not read delivery input "${inputPath}": ${error.message}`,
       diagnostics: [repair],
+    });
+    return;
+  }
+
+  const languageDiagnostics = authoredLanguageDiagnostics(diagram, languageArgs.value);
+  if (languageDiagnostics.length) {
+    reportDeliveryFailure({
+      json,
+      stage: 'language',
+      type,
+      input: inputPath,
+      output: path.resolve(requestedOutput || `${type}.html`),
+      error: 'Authored language validation failed.',
+      diagnostics: languageDiagnostics,
     });
     return;
   }
@@ -2142,9 +2278,14 @@ function ephemeralPreflightReceipt(receipt) {
 async function commandValidate(args) {
   const qualityArgs = extractQualityArgs(args);
   const repoArgs = extractRepoRootArgs(qualityArgs.rest);
-  args = repoArgs.rest;
+  const repairHistoryArgs = extractPathOption(repoArgs.rest, '--repair-history');
+  const repairModeArgs = extractEnumOption(repairHistoryArgs.rest, '--repair-mode', ['focused', 'structural-reflow']);
+  const languageArgs = extractEnumOption(repairModeArgs.rest, '--require-authored-language', ['en', 'zh-CN']);
+  args = languageArgs.rest;
   const quality = qualityArgs.quality;
   const repoRoot = repoArgs.repoRoot;
+  const repairHistory = repairHistoryArgs.value;
+  const repairMode = repairModeArgs.value || 'focused';
   const json = args.includes('--json');
   const layoutJson = args.includes('--layout-json');
   const preflight = args.includes('--preflight');
@@ -2157,6 +2298,28 @@ async function commandValidate(args) {
   if (!type || !input || rest.length !== 2) fail(usage());
   assertEvidenceType(type, repoRoot);
   const renderer = rendererPath(type);
+
+  if (languageArgs.value) {
+    try {
+      const diagram = JSON.parse(fs.readFileSync(path.resolve(input), 'utf8'));
+      const diagnostics = authoredLanguageDiagnostics(diagram, languageArgs.value);
+      if (diagnostics.length) {
+        await reportValidateFailure({
+          json,
+          stage: 'language',
+          type,
+          input: path.resolve(input),
+          error: 'Authored language validation failed.',
+          diagnostics,
+          repairHistory,
+          repairMode,
+        });
+        return;
+      }
+    } catch {
+      // The existing input/renderer path emits the authoritative parse diagnostic.
+    }
+  }
 
   if (layoutJson) {
     const inspectOutput = path.join(os.tmpdir(), `archify-inspect-${process.pid}-${type}.html`);
@@ -2187,6 +2350,8 @@ async function commandValidate(args) {
         error: failure.error,
         diagnostics: failure.diagnostics,
         status: result.status ?? 1,
+        repairHistory,
+        repairMode,
       });
       return;
     }
@@ -2213,6 +2378,8 @@ async function commandValidate(args) {
         error: failure.error,
         diagnostics: failure.diagnostics,
         status: render.status ?? 1,
+        repairHistory,
+        repairMode,
       });
       exitCode = render.status ?? 1;
     } else {
@@ -2234,6 +2401,8 @@ async function commandValidate(args) {
           diagnostics: checkerDiagnostics(checker),
           checker,
           status: check.status ?? 1,
+          repairHistory,
+          repairMode,
         });
         exitCode = check.status ?? 1;
       } else {
@@ -2255,6 +2424,8 @@ async function commandValidate(args) {
               checker: result,
               preflight: preflightReceipt,
               status: browserResult.exitCode,
+              repairHistory,
+              repairMode,
             });
             exitCode = browserResult.exitCode;
           }

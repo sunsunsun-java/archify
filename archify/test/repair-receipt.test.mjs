@@ -50,6 +50,62 @@ test('repair receipt: malformed JSON is one clean machine object without a Node 
   assert.doesNotMatch(result.stdout, /\n\s+at\s|file:\/\//);
 });
 
+test('repair receipt: persistent history requests structural reflow before bounded stop', () => {
+  const source = JSON.parse(fs.readFileSync(path.join(skillRoot, 'examples/agent-tool-call.workflow.json'), 'utf8'));
+  source.nodes[0].unexpected = true;
+  const input = writeFixture('history-schema.workflow.json', source);
+  const history = path.join(tmp, 'history-schema.workflow.repair-history.json');
+  const args = ['validate', 'workflow', input, '--repair-history', history, '--json'];
+
+  const first = run(args);
+  const second = run(args);
+  const third = run(args);
+
+  assert.equal(first.status, 1, first.stderr || first.stdout);
+  assert.equal(second.status, 1, second.stderr || second.stdout);
+  assert.equal(third.status, 1, third.stderr || third.stdout);
+  assert.equal(receipt(first).repairPlan.status, 'repair-required');
+  assert.equal(receipt(second).repairPlan.status, 'repair-required');
+  assert.equal(receipt(third).repairPlan.status, 'structural-reflow-required');
+  const persisted = JSON.parse(fs.readFileSync(history, 'utf8'));
+  assert.equal(persisted.schemaVersion, 1);
+  assert.equal(persisted.type, 'workflow');
+  assert.equal(persisted.input, input);
+  assert.equal(persisted.attempts.length, 3);
+});
+
+test('repair receipt: structural reflow mode is persisted for later stop decisions', () => {
+  const source = JSON.parse(fs.readFileSync(path.join(skillRoot, 'examples/agent-tool-call.workflow.json'), 'utf8'));
+  source.nodes[0].unexpected = true;
+  const input = writeFixture('history-reflow.workflow.json', source);
+  const history = path.join(tmp, 'history-reflow.workflow.repair-history.json');
+  const focused = ['validate', 'workflow', input, '--repair-history', history, '--json'];
+  const reflow = [...focused.slice(0, -1), '--repair-mode', 'structural-reflow', '--json'];
+
+  run(focused);
+  run(focused);
+  run(focused);
+  const result = run(reflow);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  const persisted = JSON.parse(fs.readFileSync(history, 'utf8'));
+  assert.equal(persisted.attempts.at(-1).repairMode, 'structural-reflow');
+});
+
+test('repair receipt: history can never overwrite or alias its candidate input', () => {
+  const source = JSON.parse(fs.readFileSync(path.join(skillRoot, 'examples/agent-tool-call.workflow.json'), 'utf8'));
+  source.nodes[0].unexpected = true;
+  const input = writeFixture('history-alias.workflow.json', source);
+  const before = fs.readFileSync(input, 'utf8');
+
+  const result = run(['validate', 'workflow', input, '--repair-history', input, '--json']);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  assert.equal(fs.readFileSync(input, 'utf8'), before);
+  assert.equal(receipt(result).repairPlan.status, 'unavailable');
+  assert.match(receipt(result).repairPlan.reason, /must not replace or alias/i);
+});
+
 test('repair receipt: all five modes identify schema subjects and supported fixes', () => {
   const cases = {
     architecture: ['web-app.architecture.json', 'components'],

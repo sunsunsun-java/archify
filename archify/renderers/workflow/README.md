@@ -44,8 +44,13 @@ Workflow JSON files must set:
 }
 ```
 
-Omit `meta.viewBox` for the common case: the width is fixed at 720 and the
-height is derived from the lane count, so lanes and legend always fit. A
+Omit `meta.viewBox` for the common case: the width is 720 and the height is
+derived from the lane count, so lanes and legend always fit. When an authored
+viewBox is wider than 720, workflow columns, authored `via` points,
+`channelX`, and `labelAt` positions spread together so the composition uses
+the available width without changing topology. Set `meta.column_fit` to
+`"fixed"` only when an intentionally wide canvas must retain the legacy 720px
+grid; `"spread"` forces fitting explicitly and `"auto"` is the default. A
 complete worked example lives at
 `archify/examples/agent-tool-call.workflow.json`.
 
@@ -68,7 +73,7 @@ backed by rendered nodes receive Semantic Legend controls.
 | Constant | Value |
 |----------|-------|
 | viewBox | default `[720, auto]` — auto height = 52 + lanes×104 + (lanes−1)×20 + 124 |
-| Lane frame | x 40, width 640, height 104, gap 20; first lane top at y 52 |
+| Lane frame | x 40, default width 640; in `auto`/`spread` on a wide viewBox, width = viewBox width − 80; height 104, gap 20; first lane top at y 52 |
 | Lane title strip | top 30px of each lane; node boxes must stay below it |
 | Column centers (`col` 0–5) | x = 88, 220, 300, 430, 500, 625 |
 | Phase headers | Optional `phases[]` render above the first lane, spanning `fromCol..toCol` |
@@ -80,9 +85,11 @@ backed by rendered nodes receive Semantic Legend controls.
 | Edge length | straight segments must span ≥28px |
 | Legend row | y = lane bottom + 44; viewBox height must be ≥ legend y + 18 |
 
-Column-center gaps are 132 / 80 / 130 / 70 / 125 px: columns 1↔2 (80px) and
-3↔4 (70px) cannot both hold default-width 92px nodes in the same lane — skip a
-column or reduce `width`.
+The fixed column-center gaps are 132 / 80 / 130 / 70 / 125 px: columns 1↔2
+(80px) and 3↔4 (70px) cannot both hold default-width 92px nodes in the same
+lane — skip a column, reduce `width`, or use a wide viewBox with `auto`/`spread`
+column fitting. Spread mode distributes all six columns evenly while reserving
+the edge space required by authored routes and relationship-label masks.
 
 ## Design Rules
 
@@ -91,6 +98,7 @@ column or reduce `width`.
 - Use groups for parallel checks, branch handling, or bounded work within a lane; every group must contain at least one node.
 - Use `lane.variant: "exception"` for human wait, denial, retry, fallback, and failure lanes instead of mixing those paths into the happy path.
 - Set `mainPath` when the diagram has a clear happy path; the renderer validates that consecutive ids have matching edges and move left-to-right.
+- For viewBoxes wider than 720, keep the first and last showcase story steps near columns 0 and 5 so automatic fitting can balance the composition. Use `meta.column_fit: "fixed"` only for deliberate legacy placement.
 - Place nodes with lane IDs and column indexes, not raw SVG coordinates.
 - Leave short adjacent links unlabeled; the arrow is enough.
 - Use labels for cross-lane decisions, approvals, async traces, and return paths.

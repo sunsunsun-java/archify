@@ -35,6 +35,9 @@ import {
   defaultFromSide,
   defaultToSide,
   chosenSide,
+  normalizeRoutePoints,
+  markerSafeRoutePoints,
+  markerEndpointSetback,
   roundedPath,
   routePointsValue,
   labelPoint,
@@ -357,6 +360,11 @@ function validateLifecycle() {
     relationCollection: 'transitions',
     fromSideFor: (transition) => transitionSides(transition).fromSide,
     toSideFor: (transition) => transitionSides(transition).toSide,
+    checkResolvedRouteSides: true,
+    endpointFor: (id) => states.get(id),
+    markerSetbackFor: (transition) => markerEndpointSetback({
+      strokeWidth: transition.width || (transition.variant === 'emphasis' ? 2 : 1.1),
+    }),
     shouldCheckRelation: (transition) => !Array.isArray(transition.via),
     routeHint: 'keep automatic routing, or choose fromSide/toSide and via points whose first and final segments cross state borders perpendicularly',
   }));
@@ -526,9 +534,15 @@ const pathCache = new Map();
 function transitionSides(transition) {
   const from = states.get(transition.from);
   const to = states.get(transition.to);
+  const channelSide = ({
+    'bottom-channel': 'bottom',
+    'top-channel': 'top',
+    'right-channel': 'right',
+    'left-channel': 'left',
+  })[transition.route] || null;
   return {
-    fromSide: chosenSide(transition.fromSide, defaultFromSide(from, to)),
-    toSide: chosenSide(transition.toSide, defaultToSide(from, to)),
+    fromSide: chosenSide(transition.fromSide, channelSide || defaultFromSide(from, to)),
+    toSide: chosenSide(transition.toSide, channelSide || defaultToSide(from, to)),
   };
 }
 
@@ -549,9 +563,11 @@ function pathFor(transition) {
     const midX = (start[0] + end[0]) / 2;
     via = [[midX, start[1]], [midX, end[1]]];
   }
-  const points = [start, ...via, end];
+  const points = normalizeRoutePoints([start, ...via, end]);
   const routed = {
-    d: roundedPath(points, transition.cornerRadius ?? 10),
+    d: roundedPath(markerSafeRoutePoints(points, {
+      strokeWidth: transition.width || (transition.variant === 'emphasis' ? 2 : 1.1),
+    }), transition.cornerRadius ?? 10),
     points
   };
   pathCache.set(transition, routed);
@@ -665,15 +681,6 @@ function renderLegend() {
   });
 }
 
-function renderLifecycleRail() {
-  const mainCols = [...states.values()]
-    .filter((state) => bandFor(state.lane) === 'phase')
-    .map((state) => state.col);
-  if (!mainCols.length) return '';
-  const railEnd = layout.phaseXs[Math.max(...mainCols)] + 38;
-  return `        <path d="M 154 ${layout.phaseY + 31} L ${railEnd} ${layout.phaseY + 31}" class="a-emphasis" stroke-width="2.2" marker-end="url(#arrowhead-emphasis)"/>`;
-}
-
 function renderSvg() {
   return `      <svg viewBox="0 0 ${viewBox[0]} ${viewBox[1]}" ${svgRootAttrs(lifecycle.meta, 'lifecycle diagram')}>
 ${svgAccessibleText(lifecycle.meta, 'lifecycle')}
@@ -684,9 +691,6 @@ ${renderDefinitions()}
 
         <!-- Lifecycle bands -->
 ${renderBands()}
-
-        <!-- Primary lifecycle rail -->
-${renderLifecycleRail()}
 
         <!-- Transition paths -->
 ${asArray(lifecycle.transitions).map(renderTransitionPath).join('\n')}

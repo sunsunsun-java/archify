@@ -37,7 +37,7 @@ const LAYOUT_BUDGETS = Object.freeze({
     recommendedViewBox: Object.freeze([1000, 540]),
     maximumViewBoxAspectRatio: 0.54,
     primaryLimits: Object.freeze({ nodes: 12, lanes: 4, cards: 2, guidedViews: 2 }),
-    composition: 'Prefer horizontal lanes or phases; reserve vertical stacks for short exception paths.',
+    composition: 'Prefer horizontal lanes or phases; wide viewBoxes auto-spread workflow columns and authored route geometry, while fixed is only for intentional legacy placement.',
   }),
   sequence: Object.freeze({
     recommendedViewBox: Object.freeze([1080, 620]),
@@ -61,12 +61,14 @@ const LAYOUT_BUDGETS = Object.freeze({
 
 function authoringCommands(type) {
   const repositoryOption = type === 'architecture' ? ' [--repo-root <path>]' : '';
+  const languageOption = ' --require-authored-language <en|zh-CN>';
   return Object.freeze({
-    validate: `node bin/archify.mjs validate ${type} <candidate.json> --quality showcase${repositoryOption} --json`,
+    validate: `node bin/archify.mjs validate ${type} <candidate.json> --quality showcase${repositoryOption}${languageOption} --repair-history <repair-history.json> --json`,
+    validateStructuralReflow: `node bin/archify.mjs validate ${type} <candidate.json> --quality showcase${repositoryOption}${languageOption} --repair-history <repair-history.json> --repair-mode structural-reflow --json`,
     inspectLayout: `node bin/archify.mjs validate ${type} <candidate.json> --quality showcase${repositoryOption} --layout-json`,
-    preflight: `node bin/archify.mjs validate ${type} <candidate.json> --quality showcase${repositoryOption} --preflight --json`,
+    preflight: `node bin/archify.mjs validate ${type} <candidate.json> --quality showcase${repositoryOption}${languageOption} --repair-history <repair-history.json> --preflight --json`,
     preflightBatch: 'node bin/archify.mjs validate-batch <candidates.json> --quality showcase --json',
-    deliver: `node bin/archify.mjs deliver ${type} <candidate.json> <output.html> --quality showcase${repositoryOption} --json`,
+    deliver: `node bin/archify.mjs deliver ${type} <candidate.json> <output.html> --quality showcase${repositoryOption}${languageOption} --json`,
     visualCheck: 'node bin/archify.mjs visual-check <output.html>... --json',
     projectQuery: 'node bin/archify.mjs project-index query <index.json> [--symbol <name>] [--import <specifier>] [--path <prefix>] --json',
     sourceSearch: 'node bin/archify.mjs project-index source-search <index.json> --term <literal> [--path <prefix>] --context-lines 3 --json',
@@ -136,7 +138,7 @@ export function loadAuthoringKit(type, {
     workflow: Object.freeze([
       'author a fresh candidate within layoutBudget',
       'validate after every candidate edit',
-      'use repairPlan actions without deleting semantics or reducing typography',
+      'reuse one repair-history file and follow repairPlan; validate a requested reflow with --repair-mode structural-reflow, without deleting semantics or reducing typography',
       'run preflight on the first deterministic pass and before freezing',
       'hydrate and verify revision-pinned evidence before delivery',
       'deliver the frozen candidate exactly once',

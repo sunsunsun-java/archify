@@ -32,6 +32,9 @@ import {
   cleanLabelRouteClearanceProblems,
   anchor,
   automaticPortSpread,
+  normalizeRoutePoints,
+  markerSafeRoutePoints,
+  markerEndpointSetback,
   defaultFromSide,
   defaultToSide,
   chosenSide,
@@ -296,6 +299,11 @@ function validateDataflow() {
     relationCollection: 'flows',
     fromSideFor: (flow) => flowSides(flow).fromSide,
     toSideFor: (flow) => flowSides(flow).toSide,
+    checkResolvedRouteSides: true,
+    endpointFor: (id) => nodes.get(id),
+    markerSetbackFor: (flow) => markerEndpointSetback({
+      strokeWidth: flow.width || (flow.variant === 'emphasis' ? 1.8 : 1.4),
+    }),
     routeHint: 'keep automatic routing, or choose fromSide/toSide and via points whose first and final segments cross node borders perpendicularly',
   }));
   problems.push(...cleanFlowProblems({
@@ -449,9 +457,14 @@ const pathCache = new Map();
 function flowSides(flow) {
   const from = nodes.get(flow.from);
   const to = nodes.get(flow.to);
+  const channelSide = flow.route === 'bottom-channel'
+    ? 'bottom'
+    : flow.route === 'top-channel'
+      ? 'top'
+      : null;
   return {
-    fromSide: chosenSide(flow.fromSide, defaultFromSide(from, to)),
-    toSide: chosenSide(flow.toSide, defaultToSide(from, to)),
+    fromSide: chosenSide(flow.fromSide, channelSide || defaultFromSide(from, to)),
+    toSide: chosenSide(flow.toSide, channelSide || defaultToSide(from, to)),
   };
 }
 
@@ -467,8 +480,9 @@ function pathFor(flow) {
   const { fromSide, toSide } = flowSides(flow);
   const start = ports?.from || anchor(from, fromSide);
   const end = ports?.to || anchor(to, toSide);
-  const points = [start, ...routeVia(flow, from, to, start, end), end];
-  const routed = { d: polylinePath(points), points };
+  const points = normalizeRoutePoints([start, ...routeVia(flow, from, to, start, end), end]);
+  const strokeWidth = flow.width || (flow.variant === 'emphasis' ? 1.8 : 1.4);
+  const routed = { d: polylinePath(markerSafeRoutePoints(points, { strokeWidth })), points };
   pathCache.set(flow, routed);
   return routed;
 }

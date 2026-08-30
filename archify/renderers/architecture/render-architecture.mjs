@@ -40,6 +40,8 @@ import {
   chosenSide,
   routeHonorsEndpointSides,
   normalizeRoutePoints,
+  markerSafeRoutePoints,
+  markerEndpointSetback,
   polylinePath,
   routePointsValue,
   roundedPath,
@@ -531,6 +533,10 @@ function validateArchitecture() {
     relationCollection: 'connections',
     fromSideFor: (conn) => connectionEndpointSide(conn, 'source'),
     toSideFor: (conn) => connectionEndpointSide(conn, 'target'),
+    endpointFor: (id) => components.get(id),
+    markerSetbackFor: (conn) => markerEndpointSetback({
+      strokeWidth: conn.width || (conn.variant === 'emphasis' ? 1.8 : 1.5),
+    }),
     routeHint: 'keep automatic routing so the renderer can use a side-aware bridge, or set truthful fromSide/toSide with perpendicular via segments',
   }));
   problems.push(...cleanFlowProblems({
@@ -1029,8 +1035,9 @@ function pathFor(conn) {
     toSide,
     ports,
   );
-  const points = [start, ...routeVia(conn, from, to, start, end, fromSide, toSide), end];
-  const routed = { d: roundedPath(points, 8), points };
+  const points = normalizeRoutePoints([start, ...routeVia(conn, from, to, start, end, fromSide, toSide), end]);
+  const strokeWidth = conn.width || (conn.variant === 'emphasis' ? 1.8 : 1.5);
+  const routed = { d: roundedPath(markerSafeRoutePoints(points, { strokeWidth }), 8), points };
   pathCache.set(conn, routed);
   return routed;
 }

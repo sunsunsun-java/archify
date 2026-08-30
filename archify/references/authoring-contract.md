@@ -94,8 +94,10 @@ in the generated viewer.
 ## Executable geometry rules
 
 - Node anchors start at side midpoints. `left`/`right` change the horizontal endpoint; `top`/`bottom` change the vertical endpoint. For an automatic Architecture relationship, unobstructed facing ports whose axis offset is under 16px may share one horizontal or vertical axis when both endpoints retain the 16px corner gutter. If exactly one endpoint belongs to a spread group, only its unshared counterpart moves; relationships spread at both endpoints keep their distinct ports and outside bridge.
+- Named channels resolve to the matching side centers unless the author explicitly overrides them: Data-flow `bottom-channel`/`top-channel` use bottom/bottom or top/top; Workflow `bottom-channel`/`up-channel` use bottom/bottom or top/top; Lifecycle additionally maps `left-channel`/`right-channel` to left/left or right/right. Validation checks both the endpoint's actual border and its perpendicular approach, so a downward-looking segment that starts on a left/right border cannot masquerade as a bottom port.
+- Renderer-owned paths remove consecutive duplicate and redundant collinear points before SVG emission. For arrows that terminate on a node, the logical composition endpoint remains on the node border while the painted path is shortened by the marker-tip overshoot, half the node stroke, and a 1px visual gap. A final run-up that cannot fit this setback fails the Clean Flow gate instead of allowing the arrowhead to merge with the node border.
 - A side is a direction contract. The first and final route segment must be perpendicular and outward/inward in the named direction.
-- Automatic Port Spread is a default renderer behavior for architecture, workflow, data-flow, and lifecycle diagrams. Shared automatic endpoints spread deterministically and symmetrically with a 16px corner gutter. It does not apply to sequence messages, single relationships, or explicit `via`, `channelX`, `channelY`, `labelAt`, or non-`auto` routes.
+- Automatic Port Spread is a default renderer behavior for architecture, workflow, data-flow, and lifecycle diagrams. Shared automatic endpoints spread deterministically and symmetrically with a 16px corner gutter. It does not apply to sequence messages, single relationships, or explicit `via`, `channelX`, `channelY`, or non-`auto` routes. `labelAt` controls only label placement and does not disable endpoint spreading.
 - Showcase route rhythm: every nonzero segment must be at least 8px; every interior segment must be at least 16px. When spread ports are nearly parallel, the router uses a 24px endpoint stub and a 16px outside bridge instead of manufacturing a tiny dogleg.
 - Shared endpoint corridors are allowed only when they remain semantically unambiguous. Unrelated collinear overlap of 8px or more fails showcase.
 - Container borders are intentional pass-through geometry, but a long edge running along a structural border is not.
@@ -130,7 +132,7 @@ geometry controls at once.
 4. Fix crossings, ambiguous corridors, border runs, and route rhythm.
 5. Fix label-to-node, label-to-label, then label-to-route clearance.
 
-Run `validate` after every edit. Consume `diagnostics[]` by stable `code`, exact `subject`, measured `evidence`, and `supportedFixes`. If the diagnostic gives `labelAt`, use that point instead of estimating another offset.
+Run `validate` after every edit with one reused `--repair-history <repair-history.json>` path and the request-derived `--require-authored-language <en|zh-CN>` gate. Consume `diagnostics[]` by stable `code`, exact `subject`, measured `evidence`, and `supportedFixes`. If the diagnostic gives `labelAt`, use that point instead of estimating another offset. Follow `structural-reflow-required` before bounded stop, preserve all semantics, and validate that reflow with `--repair-mode structural-reflow`. The controller allows two reflows and stops only after five identical unresolved attempts following exhausted reflows, or after 24 total attempts.
 
 ## Mode placement
 
@@ -143,6 +145,13 @@ Grid placement is preferred when the schema supports it. Free positions are appr
 ### Workflow
 
 Lanes express responsibility or phase. Columns express progression. Keep the happy path monotonic; route retries and exception returns outside the main lane corridor.
+
+Workflow `meta.column_fit` accepts `auto`, `spread`, or `fixed`. Omitted `auto`
+keeps the exact legacy grid at 720px and spreads wider authored viewBoxes;
+authored `via`, `channelX`, and `labelAt` horizontal geometry is remapped with
+the columns so routes and labels stay attached to their intended story steps.
+For showcase output on a wide canvas, place the first and last story steps near
+columns 0 and 5. Use `fixed` only when the left-biased legacy grid is deliberate.
 
 ### Sequence
 

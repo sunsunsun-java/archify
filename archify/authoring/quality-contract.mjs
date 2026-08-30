@@ -67,6 +67,10 @@ export const QUALITY_CONTRACT = deepFreeze({
   repairPolicy: {
     stageOrder: ['input', 'render', 'check', 'preflight'],
     maxConsecutiveNonImprovingAttempts: 2,
+    maxFocusedAttemptsBeforeStructuralReflow: 6,
+    maxStructuralReflows: 2,
+    maxConsecutiveIdenticalAttempts: 5,
+    maxTotalAttempts: 24,
   },
 });
 

@@ -36,18 +36,28 @@ function progressAttempt(attempt, stageOrder) {
     stageRank: stageOrder.indexOf(stage),
     errorCount,
     diagnosticFingerprint: attempt?.diagnosticFingerprint || diagnosticFingerprint(diagnostics),
+    repairMode: attempt?.repairMode === 'structural-reflow' ? 'structural-reflow' : 'focused',
+    infrastructureFailure: diagnostics.length > 0
+      && diagnostics.every((diagnostic) => diagnostic?.code === 'internal/unclassified'),
   };
 }
 
 export function evaluateRepairProgress(attempts = [], {
   stageOrder = QUALITY_CONTRACT.repairPolicy.stageOrder,
   maxConsecutiveNonImprovingAttempts = QUALITY_CONTRACT.repairPolicy.maxConsecutiveNonImprovingAttempts,
+  maxFocusedAttemptsBeforeStructuralReflow = QUALITY_CONTRACT.repairPolicy.maxFocusedAttemptsBeforeStructuralReflow,
+  maxStructuralReflows = QUALITY_CONTRACT.repairPolicy.maxStructuralReflows,
+  maxConsecutiveIdenticalAttempts = QUALITY_CONTRACT.repairPolicy.maxConsecutiveIdenticalAttempts,
+  maxTotalAttempts = QUALITY_CONTRACT.repairPolicy.maxTotalAttempts,
 } = {}) {
   if (!Array.isArray(attempts)) throw new Error('Repair progress attempts must be an array.');
   const normalized = attempts.map((attempt) => progressAttempt(attempt, stageOrder));
-  let best = normalized[0] || null;
+  const comparable = normalized.filter((attempt) => !attempt.infrastructureFailure);
+  const scored = comparable.length ? comparable : normalized;
+  const ignoredInfrastructureAttempts = normalized.length - scored.length;
+  let best = scored[0] || null;
   let consecutiveNonImprovingAttempts = 0;
-  for (const attempt of normalized.slice(1)) {
+  for (const attempt of scored.slice(1)) {
     const reachedDeeperStage = attempt.stageRank > best.stageRank;
     const reducedErrorsAtBestStage = attempt.stageRank === best.stageRank
       && attempt.errorCount < best.errorCount;
@@ -58,17 +68,58 @@ export function evaluateRepairProgress(attempts = [], {
       consecutiveNonImprovingAttempts += 1;
     }
   }
-  const shouldStop = consecutiveNonImprovingAttempts >= maxConsecutiveNonImprovingAttempts;
+  const currentStage = scored.at(-1)?.stage;
+  const focusedAttemptCount = currentStage
+    ? scored.slice().reverse().findIndex((attempt) => attempt.stage !== currentStage)
+    : 0;
+  const normalizedFocusedAttemptCount = focusedAttemptCount === -1
+    ? scored.length
+    : focusedAttemptCount;
+  const current = scored.at(-1) || null;
+  const structuralReflowCount = scored.filter((attempt) => attempt.repairMode === 'structural-reflow').length;
+  let consecutiveIdenticalAttempts = 0;
+  if (current) {
+    for (const attempt of scored.slice().reverse()) {
+      if (attempt.stage !== current.stage
+        || attempt.errorCount !== current.errorCount
+        || attempt.diagnosticFingerprint !== current.diagnosticFingerprint) break;
+      consecutiveIdenticalAttempts += 1;
+      if (attempt.repairMode === 'structural-reflow') break;
+    }
+  }
+  const unresolved = (current?.errorCount || 0) > 0;
+  const reflowThresholdReached = consecutiveNonImprovingAttempts >= maxConsecutiveNonImprovingAttempts
+    || normalizedFocusedAttemptCount >= maxFocusedAttemptsBeforeStructuralReflow;
+  const reflowsExhausted = structuralReflowCount >= maxStructuralReflows;
+  const totalAttemptsExhausted = scored.length >= maxTotalAttempts;
+  const repeatedAfterReflows = reflowsExhausted
+    && consecutiveIdenticalAttempts >= maxConsecutiveIdenticalAttempts;
+  const shouldStop = unresolved && (totalAttemptsExhausted || repeatedAfterReflows);
+  const shouldReflow = unresolved
+    && !shouldStop
+    && !reflowsExhausted
+    && reflowThresholdReached;
   return {
     stageOrder: [...stageOrder],
     attempts: normalized,
-    current: normalized.at(-1) || null,
+    current,
     best,
+    ignoredInfrastructureAttempts,
     consecutiveNonImprovingAttempts,
+    consecutiveIdenticalAttempts,
+    focusedAttemptCount: normalizedFocusedAttemptCount,
+    structuralReflowCount,
+    maxStructuralReflows,
+    maxTotalAttempts,
     shouldStop,
+    shouldReflow,
     reason: shouldStop
-      ? 'Two consecutive repair attempts did not reach a deeper validation stage or reduce the best error count.'
-      : 'Continue only with a diagnosed, semantics-preserving repair.',
+      ? totalAttemptsExhausted
+        ? `Stop after ${scored.length} repair attempts: the fail-closed total attempt budget is exhausted.`
+        : `Stop after ${structuralReflowCount} structural reflows and ${consecutiveIdenticalAttempts} identical unresolved attempts.`
+      : shouldReflow
+        ? `Switch to semantics-preserving structural reflow before stopping: ${consecutiveNonImprovingAttempts} non-improving attempts, ${normalizedFocusedAttemptCount} focused attempts at ${currentStage}, and ${structuralReflowCount}/${maxStructuralReflows} reflows used.`
+        : 'Continue only with a diagnosed, semantics-preserving repair.',
   };
 }
 
@@ -199,6 +250,7 @@ export function createRepairPlan({
   diagnostics = [],
   preflight = null,
   attemptHistory = [],
+  repairMode = 'focused',
 } = {}) {
   const normalizedDiagnostics = Array.isArray(diagnostics) ? diagnostics : [];
   const currentDiagnosticFingerprint = diagnosticFingerprint(normalizedDiagnostics);
@@ -208,6 +260,7 @@ export function createRepairPlan({
       stage,
       diagnostics: normalizedDiagnostics,
       diagnosticFingerprint: currentDiagnosticFingerprint,
+      repairMode,
     },
   ]);
   const containment = containmentAdvice(candidate, preflight);
@@ -258,6 +311,26 @@ export function createRepairPlan({
     });
   }
 
+  if (progress.shouldReflow) {
+    actions.unshift({
+      id: 'structural-reflow',
+      code: 'layout/structural-reflow',
+      subject: { type, stage },
+      evidence: {
+        focusedAttemptCount: progress.focusedAttemptCount,
+        structuralReflowCount: progress.structuralReflowCount,
+        maxStructuralReflows: progress.maxStructuralReflows,
+        bestErrorCount: progress.best?.errorCount,
+        currentErrorCount: progress.current?.errorCount,
+      },
+      supportedFixes: [
+        'recompose the same semantic nodes and relationships within layoutBudget instead of continuing local coordinate edits',
+        'keep every reader-facing fact and existing typography floor while shortening shared corridors and separating congested ports',
+        'rerun deterministic validation once on the reflowed candidate before browser preflight',
+      ],
+    });
+  }
+
   const causes = unique([
     widthConflict ? 'layout/viewbox-width-constraint-conflict' : null,
     containment?.cause,
@@ -271,6 +344,8 @@ export function createRepairPlan({
       ? 'constraint-conflict'
       : progress.shouldStop
         ? 'bounded-stop'
+        : progress.shouldReflow
+          ? 'structural-reflow-required'
         : actions.length
           ? 'repair-required'
           : 'manual-diagnosis-required',

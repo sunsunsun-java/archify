@@ -478,8 +478,9 @@ export function routeHonorsEndpointSides(points, fromSide, toSide) {
 // leaving a malformed arrow for visual review to discover. Named routes and
 // authored via points already carry their own geometry semantics: when they
 // omit endpoint sides, do not invent a relative-position side and then reject
-// the route for disagreeing with that invention. Pure automatic routes may
-// still be checked against renderer-inferred sides.
+// the route for disagreeing with that invention. A renderer may opt named
+// routes into checking once it resolves those route presets to semantic sides.
+// Pure automatic routes are always checked against renderer-inferred sides.
 export function cleanEndpointSideProblems({
   relations,
   endpointIds,
@@ -488,6 +489,9 @@ export function cleanEndpointSideProblems({
   relationCollection,
   fromSideFor,
   toSideFor,
+  checkResolvedRouteSides = false,
+  endpointFor,
+  markerSetbackFor,
   shouldCheckRelation = () => true,
   routeHint = 'align the first/final via segment with fromSide/toSide, change the side, or remove explicit routing so auto can choose a perpendicular approach',
 }) {
@@ -497,31 +501,101 @@ export function cleanEndpointSideProblems({
     if (!shouldCheckRelation(relation, relationIndex)) continue;
     const points = pathFor(relation)?.points;
     if (!Array.isArray(points) || points.length < 2) continue;
+    const markerSetback = typeof markerSetbackFor === 'function'
+      ? markerSetbackFor(relation, relationIndex)
+      : null;
+    if (Number.isFinite(markerSetback) && markerSetback > 0) {
+      const targetStubStart = points.at(-2);
+      const targetStubEnd = points.at(-1);
+      const targetStubLength = Math.hypot(
+        targetStubEnd[0] - targetStubStart[0],
+        targetStubEnd[1] - targetStubStart[1],
+      );
+      if (targetStubLength <= markerSetback + 0.0001) {
+        const relationId = relation.id ? ` id "${relation.id}"` : '';
+        const length = Math.round(targetStubLength * 100) / 100;
+        const required = Math.round(markerSetback * 100) / 100;
+        const message = `[clean-flow/marker-clearance] ${diagramType} ${relationCollection}[${relationIndex}]${relationId} "${relation.from}" -> "${relation.to}" has a ${length}px final segment but its arrow marker needs more than ${required}px — lengthen the target run-up or move its final via/channel turn away from the node border.`;
+        recordDiagnostic({
+          code: 'clean-flow/marker-clearance',
+          severity: 'error',
+          message,
+          subject: relationshipSubject(diagramType, relationCollection, relationIndex, relation),
+          evidence: {
+            targetStubLengthPx: length,
+            requiredSetbackPx: required,
+            from: targetStubStart,
+            to: targetStubEnd,
+          },
+          supportedFixes: ['lengthen the target run-up or move its final via/channel turn away from the node border'],
+        });
+        problems.push(message);
+      }
+    }
     const authoredFromSide = relation.fromSide && relation.fromSide !== 'auto' ? relation.fromSide : null;
     const authoredToSide = relation.toSide && relation.toSide !== 'auto' ? relation.toSide : null;
-    const hasAuthoredRouteGeometry = Boolean(
-      (relation.route && relation.route !== 'auto') || Array.isArray(relation.via),
-    );
-    const inferredFromSide = !hasAuthoredRouteGeometry && typeof fromSideFor === 'function'
+    const hasAuthoredVia = Array.isArray(relation.via);
+    const hasNamedRoute = Boolean(relation.route && relation.route !== 'auto');
+    const mayUseResolvedSides = !hasAuthoredVia && (!hasNamedRoute || checkResolvedRouteSides);
+    const inferredFromSide = mayUseResolvedSides && typeof fromSideFor === 'function'
       ? fromSideFor(relation)
       : null;
-    const inferredToSide = !hasAuthoredRouteGeometry && typeof toSideFor === 'function'
+    const inferredToSide = mayUseResolvedSides && typeof toSideFor === 'function'
       ? toSideFor(relation)
       : null;
     const fromSide = authoredFromSide ?? inferredFromSide;
     const toSide = authoredToSide ?? inferredToSide;
     const checks = [
-      fromSide
-        ? { ...endpointSideIssue(points, 'source', fromSide), sideOrigin: authoredFromSide ? 'authored' : 'inferred' }
-        : null,
-      toSide
-        ? { ...endpointSideIssue(points, 'target', toSide), sideOrigin: authoredToSide ? 'authored' : 'inferred' }
-        : null,
-    ].filter((issue) => issue?.endpoint);
-    for (const issue of checks) {
+      fromSide ? { endpoint: 'source', side: fromSide, sideOrigin: authoredFromSide ? 'authored' : 'inferred' } : null,
+      toSide ? { endpoint: 'target', side: toSide, sideOrigin: authoredToSide ? 'authored' : 'inferred' } : null,
+    ].filter(Boolean);
+    for (const check of checks) {
       const relationId = relation.id ? ` id "${relation.id}"` : '';
-      const authoredField = issue.endpoint === 'source' ? 'fromSide' : 'toSide';
-      const sideField = issue.sideOrigin === 'inferred' ? `inferred ${authoredField}` : authoredField;
+      const authoredField = check.endpoint === 'source' ? 'fromSide' : 'toSide';
+      const sideField = check.sideOrigin === 'inferred' ? `inferred ${authoredField}` : authoredField;
+      const endpointId = check.endpoint === 'source' ? relation.from : relation.to;
+      const endpoint = typeof endpointFor === 'function' ? endpointFor(endpointId, relation) : null;
+      const point = check.endpoint === 'source' ? points[0] : points.at(-1);
+      if (endpoint) {
+        const expectedCoordinate = ({
+          left: endpoint.x,
+          right: endpoint.x + endpoint.width,
+          top: endpoint.y,
+          bottom: endpoint.y + endpoint.height,
+        })[check.side];
+        const actualCoordinate = check.side === 'left' || check.side === 'right' ? point[0] : point[1];
+        const spanCoordinate = check.side === 'left' || check.side === 'right' ? point[1] : point[0];
+        const spanStart = check.side === 'left' || check.side === 'right' ? endpoint.y : endpoint.x;
+        const spanEnd = check.side === 'left' || check.side === 'right'
+          ? endpoint.y + endpoint.height
+          : endpoint.x + endpoint.width;
+        if (Math.abs(actualCoordinate - expectedCoordinate) > 0.01
+          || spanCoordinate < spanStart - 0.01
+          || spanCoordinate > spanEnd + 0.01) {
+          const message = `[clean-flow/endpoint-side-anchor] ${diagramType} ${relationCollection}[${relationIndex}]${relationId} "${relation.from}" -> "${relation.to}" ${check.endpoint} point [${point.join(', ')}] is not on ${sideField} "${check.side}" of "${endpointId}" — anchor the relationship on that node side before routing; ${routeHint}.`;
+          recordDiagnostic({
+            code: 'clean-flow/endpoint-side-anchor',
+            severity: 'error',
+            message,
+            subject: relationshipSubject(diagramType, relationCollection, relationIndex, relation),
+            evidence: {
+              endpoint: check.endpoint,
+              endpointId,
+              authoredField,
+              sideOrigin: check.sideOrigin,
+              side: check.side,
+              point,
+              expectedCoordinate,
+              span: [spanStart, spanEnd],
+            },
+            supportedFixes: [routeHint],
+          });
+          problems.push(message);
+          continue;
+        }
+      }
+      const issue = endpointSideIssue(points, check.endpoint, check.side);
+      if (!issue?.endpoint) continue;
       const segmentRole = issue.endpoint === 'source' ? 'first' : 'final';
       const from = issue.start.map((value) => Math.round(value * 10) / 10).join(', ');
       const to = issue.end.map((value) => Math.round(value * 10) / 10).join(', ');
@@ -534,7 +608,7 @@ export function cleanEndpointSideProblems({
         evidence: {
           endpoint: issue.endpoint,
           authoredField,
-          sideOrigin: issue.sideOrigin,
+          sideOrigin: check.sideOrigin,
           side: issue.side,
           segmentIndex: issue.segmentIndex,
           from: issue.start,
@@ -1107,6 +1181,36 @@ export function normalizeRoutePoints(points) {
   return normalized;
 }
 
+// SVG markers extend past a path endpoint by one marker coordinate unit. Keep
+// logical route points anchored on the node border for layout/reporting, while
+// moving only the painted path endpoint far enough back that the marker tip
+// clears the node stroke plus a small visual gap.
+export function markerEndpointSetback({
+  strokeWidth = 1.4,
+  nodeStrokeWidth = 1.5,
+  visualGap = 1,
+  markerTipOvershootUnits = 1,
+} = {}) {
+  return Math.max(0, markerTipOvershootUnits * strokeWidth + nodeStrokeWidth / 2 + visualGap);
+}
+
+export function markerSafeRoutePoints(points, options = {}) {
+  const normalized = normalizeRoutePoints(points);
+  if (normalized.length < 2) return normalized;
+  const start = normalized.at(-2);
+  const end = normalized.at(-1);
+  const dx = end[0] - start[0];
+  const dy = end[1] - start[1];
+  const length = Math.hypot(dx, dy);
+  const setback = markerEndpointSetback(options);
+  if (!Number.isFinite(setback) || length <= setback + 0.0001) return normalized;
+  const safeEnd = [
+    Math.round((end[0] - (dx / length) * setback) * 1000) / 1000,
+    Math.round((end[1] - (dy / length) * setback) * 1000) / 1000,
+  ];
+  return [...normalized.slice(0, -1), safeEnd];
+}
+
 function pointRectDistance(point, rect) {
   const dx = Math.max(rect.x - point[0], 0, point[0] - (rect.x + rect.width));
   const dy = Math.max(rect.y - point[1], 0, point[1] - (rect.y + rect.height));
@@ -1353,7 +1457,7 @@ export function automaticPortSpread(relations, boxes, { gutter = 16, maxSpacing 
 
   for (const relation of asArray(relations)) {
     if (!relation || (relation.route && relation.route !== 'auto')) continue;
-    if (relation.via || relation.channelX !== undefined || relation.channelY !== undefined || relation.labelAt) continue;
+    if (relation.via || relation.channelX !== undefined || relation.channelY !== undefined) continue;
     const from = boxes.get(relation.from);
     const to = boxes.get(relation.to);
     if (!from || !to) continue;

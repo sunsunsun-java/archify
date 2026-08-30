@@ -59,6 +59,13 @@
             "showcase"
           ]
         },
+        "column_fit": {
+          "enum": [
+            "auto",
+            "spread",
+            "fixed"
+          ]
+        },
         "views": {
           "$ref": "common.schema.json#/$defs/guidedViews"
         },

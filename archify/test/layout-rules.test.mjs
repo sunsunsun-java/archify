@@ -98,6 +98,15 @@ function workflowNodeRect(html, id) {
   return { x, y, width, height };
 }
 
+function workflowLaneRect(html, index = 0) {
+  const match = html.match(new RegExp(
+    `<rect data-graph-role="structural-frame"[^>]*data-composition-frame-id="lane-${index}"[^>]*x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)"`,
+  ));
+  assert.ok(match, `expected workflow lane ${index}`);
+  const [, x, y, width, height] = match.map(Number);
+  return { x, y, width, height };
+}
+
 function boundaryFrameRect(html, index) {
   const match = html.match(new RegExp(
     `<rect data-graph-role="structural-frame"[^>]*data-composition-frame-id="${index}"[^>]*x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)"`,
@@ -655,6 +664,80 @@ test('contract: ajv path errors are annotated with the element id', () => {
   assert.match(stderr, /id\/label:/);
 });
 
+test('workflow: auto column fit balances a wide authored viewBox', () => {
+  const d = {
+    schema_version: 1,
+    diagram_type: 'workflow',
+    meta: { title: 'Wide balanced workflow', viewBox: [1085, 400], quality_profile: 'showcase' },
+    lanes: [{ id: 'main', label: 'Main lane' }],
+    nodes: [
+      { id: 'first', lane: 'main', col: 0, type: 'frontend', label: 'First' },
+      { id: 'last', lane: 'main', col: 5, type: 'backend', label: 'Last' },
+    ],
+    edges: [{ id: 'main-path', from: 'first', to: 'last', route: 'straight' }],
+  };
+  const { code, stderr, outPath } = render('workflow', d);
+  assert.equal(code, 0, stderr);
+  const html = fs.readFileSync(outPath, 'utf8');
+  const lane = workflowLaneRect(html);
+  const first = workflowNodeRect(html, 'first');
+  const last = workflowNodeRect(html, 'last');
+  assert.deepEqual(lane, { x: 40, y: 52, width: 1005, height: 104 });
+  assert.ok(last.x - first.x > 850, 'wide workflows should use the available horizontal canvas');
+  const leftWhitespace = first.x;
+  const rightWhitespace = 1085 - (last.x + last.width);
+  assert.ok(Math.abs(leftWhitespace - rightWhitespace) <= 12, `content is not balanced: left=${leftWhitespace}, right=${rightWhitespace}`);
+});
+
+test('workflow: fixed column fit preserves the legacy 720px grid on a wide viewBox', () => {
+  const d = {
+    schema_version: 1,
+    diagram_type: 'workflow',
+    meta: { title: 'Fixed compatibility workflow', viewBox: [1085, 400], column_fit: 'fixed' },
+    lanes: [{ id: 'main', label: 'Main lane' }],
+    nodes: [
+      { id: 'first', lane: 'main', col: 0, type: 'frontend', label: 'First' },
+      { id: 'last', lane: 'main', col: 5, type: 'backend', label: 'Last' },
+    ],
+    edges: [{ id: 'main-path', from: 'first', to: 'last', route: 'straight' }],
+  };
+  const { code, stderr, outPath } = render('workflow', d);
+  assert.equal(code, 0, stderr);
+  const html = fs.readFileSync(outPath, 'utf8');
+  assert.deepEqual(workflowLaneRect(html), { x: 40, y: 52, width: 640, height: 104 });
+  assert.equal(workflowNodeRect(html, 'first').x, 42);
+  assert.equal(workflowNodeRect(html, 'last').x, 579);
+});
+
+test('workflow: wide fitting remaps authored labelAt without clipping its mask', () => {
+  const d = {
+    schema_version: 1,
+    diagram_type: 'workflow',
+    meta: { title: 'Wide authored label', viewBox: [1085, 400] },
+    lanes: [{ id: 'main', label: 'Main lane' }],
+    nodes: [
+      { id: 'first', lane: 'main', col: 0, type: 'frontend', label: 'First' },
+      { id: 'last', lane: 'main', col: 5, type: 'backend', label: 'Last' },
+    ],
+    edges: [{ id: 'projection', from: 'first', to: 'last', route: 'straight', label: 'Projection', labelAt: [730, 180] }],
+  };
+  const { code, stderr, outPath } = render('workflow', d);
+  assert.equal(code, 0, stderr);
+  const html = fs.readFileSync(outPath, 'utf8');
+  const [labelX] = workflowEdgeLabelPoint(html, 'projection');
+  assert.ok(labelX > 1000, `expected authored label to follow the spread columns, received x=${labelX}`);
+  assert.ok(labelX + 29 <= 1085, `relationship-label mask clips the viewBox at x=${labelX}`);
+});
+
+test('workflow: column fit rejects unknown layout modes at the schema boundary', () => {
+  const d = load('workflow');
+  d.meta.column_fit = 'elastic';
+  const { code, stderr } = render('workflow', d);
+  assert.notEqual(code, 0);
+  assert.match(stderr, /column_fit/);
+  assert.match(stderr, /fixed|spread|auto/);
+});
+
 test('workflow: same-lane offset auto edge stays orthogonal', () => {
   const d = {
     schema_version: 1,
@@ -665,13 +748,14 @@ test('workflow: same-lane offset auto edge stays orthogonal', () => {
       { id: 'left', lane: 'main', col: 1, type: 'backend', label: 'A', width: 32, height: 38, yOffset: -14 },
       { id: 'right', lane: 'main', col: 2, type: 'backend', label: 'B', width: 32, height: 38, yOffset: 14 },
     ],
-    edges: [{ from: 'left', to: 'right' }],
+    edges: [{ id: 'offset', from: 'left', to: 'right' }],
   };
   const { code, stderr, outPath } = render('workflow', d);
   assert.equal(code, 0, stderr);
   const html = fs.readFileSync(outPath, 'utf8');
-  assert.doesNotMatch(html, /M 236 105 L 284 133/);
-  assert.match(html, /M 236 105 L 260 105 L 260 133 L 284 133/);
+  assert.deepEqual(workflowEdgePoints(html, 'offset'), [
+    [236, 105], [260, 105], [260, 133], [284, 133],
+  ]);
 });
 
 test('workflow: automatic routing uses one bend and avoids every node border', () => {

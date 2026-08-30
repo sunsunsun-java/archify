@@ -35,6 +35,8 @@ import {
   defaultToSide,
   chosenSide,
   normalizeRoutePoints,
+  markerSafeRoutePoints,
+  markerEndpointSetback,
   routeHonorsEndpointSides,
   polylinePath,
   routePointsValue,
@@ -55,7 +57,7 @@ const { diagram: workflow, template, outPath } = await loadDiagramWithBrandMarks
   argv: cliArgs,
 });
 
-const layout = {
+const LEGACY_LAYOUT = {
   laneX: 40,
   laneY: 52,
   laneW: 640,
@@ -68,11 +70,84 @@ const layout = {
 };
 
 // Content is 680px wide (laneX + laneW); auto height fits the lanes plus legend.
-const autoHeight = layout.laneY
-  + (workflow.lanes?.length || 1) * layout.laneH
-  + ((workflow.lanes?.length || 1) - 1) * layout.laneGap
+const autoHeight = LEGACY_LAYOUT.laneY
+  + (workflow.lanes?.length || 1) * LEGACY_LAYOUT.laneH
+  + ((workflow.lanes?.length || 1) - 1) * LEGACY_LAYOUT.laneGap
   + 124;
 const viewBox = workflow.meta?.viewBox || [720, autoHeight];
+
+const requestedColumnFit = workflow.meta?.column_fit || 'auto';
+const columnFit = requestedColumnFit === 'fixed'
+  ? 'fixed'
+  : requestedColumnFit === 'spread' || viewBox[0] > 720
+    ? 'spread'
+    : 'fixed';
+
+function authoredHorizontalExtents() {
+  const extents = [];
+  for (const edge of asArray(workflow.edges)) {
+    if (Array.isArray(edge.via)) {
+      for (const point of edge.via) {
+        if (Number.isFinite(point?.[0])) extents.push({ x: point[0], padding: 20 });
+      }
+    }
+    if (Number.isFinite(edge.channelX)) extents.push({ x: edge.channelX, padding: 20 });
+    if (Number.isFinite(edge.labelAt?.[0])) {
+      const labelWidth = Math.max(30, textUnits(edge.label || '') * 4.8 + 10);
+      extents.push({ x: edge.labelAt[0], padding: labelWidth / 2 + 4 });
+    }
+  }
+  return extents;
+}
+
+function widestNodeHalfWidthAt(col) {
+  return asArray(workflow.nodes)
+    .filter((node) => node.col === col)
+    .reduce((largest, node) => Math.max(largest, (node.width || LEGACY_LAYOUT.nodeW) / 2), 0);
+}
+
+function spreadColumnCenters() {
+  const authoredExtents = authoredHorizontalExtents();
+  const legacyFirst = LEGACY_LAYOUT.colXs[0];
+  const legacyLast = LEGACY_LAYOUT.colXs.at(-1);
+  const leftCanvasInset = Math.max(
+    legacyFirst,
+    LEGACY_LAYOUT.laneX + widestNodeHalfWidthAt(0),
+    ...authoredExtents.map(({ x, padding }) => padding + legacyFirst - x),
+  );
+  const rightCanvasInset = Math.max(
+    720 - legacyLast,
+    40 + widestNodeHalfWidthAt(LEGACY_LAYOUT.colXs.length - 1),
+    ...authoredExtents.map(({ x, padding }) => padding + x - legacyLast),
+  );
+  const first = leftCanvasInset;
+  const last = viewBox[0] - rightCanvasInset;
+  const gap = (last - first) / (LEGACY_LAYOUT.colXs.length - 1);
+  return LEGACY_LAYOUT.colXs.map((_, index) => Number((first + gap * index).toFixed(3)));
+}
+
+const layout = {
+  ...LEGACY_LAYOUT,
+  laneW: columnFit === 'spread' ? viewBox[0] - LEGACY_LAYOUT.laneX * 2 : LEGACY_LAYOUT.laneW,
+  colXs: columnFit === 'spread' ? spreadColumnCenters() : [...LEGACY_LAYOUT.colXs],
+  columnFit,
+};
+
+function workflowX(value) {
+  if (columnFit !== 'spread' || !Number.isFinite(value)) return value;
+  const legacy = LEGACY_LAYOUT.colXs;
+  const resolved = layout.colXs;
+  if (value <= legacy[0]) return Number((resolved[0] + value - legacy[0]).toFixed(3));
+  if (value >= legacy.at(-1)) return Number((resolved.at(-1) + value - legacy.at(-1)).toFixed(3));
+  const interval = legacy.findIndex((x, index) => index < legacy.length - 1 && value >= x && value <= legacy[index + 1]);
+  const ratio = (value - legacy[interval]) / (legacy[interval + 1] - legacy[interval]);
+  return Number((resolved[interval] + ratio * (resolved[interval + 1] - resolved[interval])).toFixed(3));
+}
+
+function resolvedLabelEdge(edge) {
+  if (!edge.labelAt || columnFit !== 'spread') return edge;
+  return { ...edge, labelAt: [workflowX(edge.labelAt[0]), edge.labelAt[1]] };
+}
 
 const laneIndex = new Map(asArray(workflow.lanes).map((lane, index) => [lane.id, index]));
 const laneLabels = new Map(asArray(workflow.lanes).map((lane) => [lane.id, lane.label]));
@@ -344,6 +419,11 @@ function validateWorkflow() {
     relationCollection: 'edges',
     fromSideFor: (edge) => edgeSides(edge).fromSide,
     toSideFor: (edge) => edgeSides(edge).toSide,
+    checkResolvedRouteSides: true,
+    endpointFor: (id) => nodes.get(id),
+    markerSetbackFor: (edge) => markerEndpointSetback({
+      strokeWidth: edge.width || (edge.variant === 'emphasis' ? 1.8 : 1.4),
+    }),
     routeHint: 'keep automatic routing, or choose fromSide/toSide and via points whose first and final segments cross node borders perpendicularly',
   }));
   problems.push(...cleanFlowProblems({
@@ -454,6 +534,21 @@ function validateWorkflow() {
     profile: workflow.meta?.quality_profile,
   }));
 
+  if (workflow.meta?.quality_profile === 'showcase' && columnFit === 'spread' && nodes.size >= 2) {
+    const contentLeft = Math.min(...[...nodes.values()].map((node) => node.x));
+    const contentRight = Math.max(...[...nodes.values()].map((node) => node.x + node.width));
+    const leftWhitespace = contentLeft;
+    const rightWhitespace = viewBox[0] - contentRight;
+    const imbalance = Math.abs(leftWhitespace - rightWhitespace);
+    const horizontalUtilization = (contentRight - contentLeft) / viewBox[0];
+    if (imbalance > Math.max(24, viewBox[0] * 0.08)) {
+      problems.push(`Wide workflow content leaves ${Math.round(leftWhitespace)}px on the left and ${Math.round(rightWhitespace)}px on the right — keep the first and last story steps near columns 0 and 5, or set meta.column_fit to "fixed" for intentional legacy placement.`);
+    }
+    if (horizontalUtilization < 0.72) {
+      problems.push(`Wide workflow content uses only ${Math.round(horizontalUtilization * 100)}% of the viewBox width (minimum 72% for showcase) — distribute story steps across columns 0..5, reduce meta.viewBox[0], or set meta.column_fit to "fixed" for intentional legacy placement.`);
+    }
+  }
+
   if (viewBox[0] < layout.laneX + layout.laneW + 16) {
     problems.push(`viewBox width ${viewBox[0]} clips the ${layout.laneW}px lanes — set meta.viewBox[0] to at least ${layout.laneX + layout.laneW + 16}.`);
   }
@@ -541,7 +636,7 @@ function automaticOneBendSides(edge, from, to) {
 }
 
 function routeVia(edge, from, to, start, end, fromSide, toSide) {
-  if (edge.via) return edge.via;
+  if (edge.via) return edge.via.map(([x, y]) => [workflowX(x), y]);
   switch (edge.route || 'auto') {
     case 'straight':
       return [];
@@ -550,11 +645,11 @@ function routeVia(edge, from, to, start, end, fromSide, toSide) {
       return [[start[0], y], [end[0], y]];
     }
     case 'outside-right': {
-      const x = edge.channelX ?? layout.laneX + layout.laneW + 12;
+      const x = Number.isFinite(edge.channelX) ? workflowX(edge.channelX) : layout.laneX + layout.laneW + 12;
       return [[x, start[1]], [x, end[1]]];
     }
     case 'return-left': {
-      const x = edge.channelX ?? Math.min(from.x, to.x) - 28;
+      const x = Number.isFinite(edge.channelX) ? workflowX(edge.channelX) : Math.min(from.x, to.x) - 28;
       return [[x, start[1]], [x, end[1]]];
     }
     case 'bottom-channel': {
@@ -579,15 +674,16 @@ function routeVia(edge, from, to, start, end, fromSide, toSide) {
 const pathCache = new Map();
 
 function workflowEdgeLabelPoint(edge, points) {
+  const positionedEdge = resolvedLabelEdge(edge);
   if (edge.labelAt || Number.isInteger(edge.labelSegment) || points.length !== 3) {
-    return labelPoint(edge, points);
+    return labelPoint(positionedEdge, points);
   }
   const segmentLengths = [0, 1].map((index) => Math.hypot(
     points[index + 1][0] - points[index][0],
     points[index + 1][1] - points[index][1],
   ));
   const labelSegment = segmentLengths[0] >= segmentLengths[1] ? 0 : 1;
-  const point = labelPoint({ ...edge, labelSegment }, points);
+  const point = labelPoint({ ...positionedEdge, labelSegment }, points);
   if (points[labelSegment][0] === points[labelSegment + 1][0]) point[1] += 10;
   return point;
 }
@@ -597,9 +693,14 @@ function edgeSides(edge) {
   const to = nodes.get(edge.to);
   const oneBendSides = automaticOneBendSides(edge, from, to);
   if (oneBendSides) return oneBendSides;
+  const channelSide = edge.route === 'bottom-channel'
+    ? 'bottom'
+    : edge.route === 'up-channel'
+      ? 'top'
+      : null;
   return {
-    fromSide: chosenSide(edge.fromSide, defaultFromSide(from, to)),
-    toSide: chosenSide(edge.toSide, defaultToSide(from, to)),
+    fromSide: chosenSide(edge.fromSide, channelSide || defaultFromSide(from, to)),
+    toSide: chosenSide(edge.toSide, channelSide || defaultToSide(from, to)),
   };
 }
 
@@ -615,8 +716,9 @@ function pathFor(edge) {
   const { fromSide, toSide } = edgeSides(edge);
   const start = ports?.from || anchor(from, fromSide);
   const end = ports?.to || anchor(to, toSide);
-  const points = [start, ...routeVia(edge, from, to, start, end, fromSide, toSide), end];
-  const routed = { d: polylinePath(points), points };
+  const points = normalizeRoutePoints([start, ...routeVia(edge, from, to, start, end, fromSide, toSide), end]);
+  const strokeWidth = edge.width || (edge.variant === 'emphasis' ? 1.8 : 1.4);
+  const routed = { d: polylinePath(markerSafeRoutePoints(points, { strokeWidth })), points };
   pathCache.set(edge, routed);
   return routed;
 }
@@ -798,7 +900,7 @@ function buildLayoutReport(validation) {
     entities: [...nodes.values()].map(componentBox),
     relationships,
     labels,
-    extras: { lanes },
+    extras: { lanes, columnFit: layout.columnFit, columnCenters: layout.colXs },
   });
 }
 
