@@ -69,6 +69,7 @@ export function isTechnicalAuthoredText(text) {
   if (signature.test(source)) return true;
 
   const safeToken = (token) => /^[A-Za-z0-9][A-Za-z0-9[\]()._/:@{}<>#+-]*$/u.test(token);
+  const plainIdentifier = new RegExp(`^${identifier}$`, 'u');
   const technicalSignal = (token) => /[\[\]()._/:@{}<>#+]/u.test(token)
     || /[a-z][A-Z]/u.test(token)
     || /^[A-Z0-9-]{2,}$/u.test(token)
@@ -76,7 +77,7 @@ export function isTechnicalAuthoredText(text) {
   const qualifiedIdentifier = new RegExp(`^(?:${identifier}\\.)+${identifier}(?:\\[\\])?$`, 'u');
   const technicalAtom = (token) => qualifiedIdentifier.test(token)
     || new RegExp(`^${identifier}\\[\\]$`, 'u').test(token)
-    || /[a-z][A-Z]/u.test(token)
+    || (plainIdentifier.test(token) && /[a-z][A-Z]/u.test(token))
     || /^[A-Z0-9-]{2,}$/u.test(token)
     || /^[A-Za-z][A-Za-z0-9]*(?:\+\+|#)$/u.test(token)
     || /^https?:\/\/[^\s]+$/iu.test(token);

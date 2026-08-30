@@ -360,6 +360,21 @@ export async function runCandidatePreflightBatch({
       let attemptHistory = [];
       const inputStarted = performance.now();
       try {
+        attemptHistory = candidateAttemptHistory(candidate);
+      } catch (error) {
+        timing.inputMs = elapsed(inputStarted);
+        const diagnostics = [failureDiagnostic('input/read', `Repair history could not be read: ${error.message}`)];
+        receipts.push(failedReceipt({
+          candidate,
+          stage: 'input',
+          diagnostics,
+          specification,
+          persistRepairHistory: false,
+          timing: finishCandidateTiming(timing),
+        }));
+        continue;
+      }
+      try {
         const bytes = fs.readFileSync(candidate.input);
         specification = JSON.parse(bytes.toString('utf8'));
         specificationReceipt = {
@@ -368,7 +383,6 @@ export async function runCandidatePreflightBatch({
         };
         frozenInput = path.join(temporary, `${candidate.id}.candidate.json`);
         fs.writeFileSync(frozenInput, bytes, { flag: 'wx', mode: 0o400 });
-        attemptHistory = candidateAttemptHistory(candidate);
         timing.inputMs = elapsed(inputStarted);
       } catch (error) {
         timing.inputMs = elapsed(inputStarted);
@@ -378,7 +392,7 @@ export async function runCandidatePreflightBatch({
           stage: 'input',
           diagnostics,
           specification,
-          persistRepairHistory: false,
+          attemptHistory,
           timing: finishCandidateTiming(timing),
         }));
         continue;

@@ -168,6 +168,7 @@ test('validate rejects ordinary English hidden behind operators or a technical-l
     source.cards[0].items = [
       'retry / cancel / abort',
       'retry. / cancel. / abort.',
+      'retryLater. / cancelNow. / abortSoon.',
       'this) / is) / english)',
       'GitHub Actions Builds Every Pull Request Automatically',
     ];
@@ -182,6 +183,7 @@ test('validate rejects ordinary English hidden behind operators or a technical-l
     [
       'retry / cancel / abort',
       'retry. / cancel. / abort.',
+      'retryLater. / cancelNow. / abortSoon.',
       'this) / is) / english)',
       'GitHub Actions Builds Every Pull Request Automatically',
     ],

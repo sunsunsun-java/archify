@@ -294,6 +294,41 @@ test('candidate preflight reuses the candidate repair history in failure plannin
   assert.equal(persisted.attempts[1].repairMode, 'structural-reflow');
 });
 
+test('candidate preflight appends malformed candidate failures to existing repair history', async (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-candidate-malformed-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const input = path.join(tmp, 'candidate.json');
+  const repairHistory = path.join(tmp, 'repair-history.json');
+  fs.writeFileSync(input, '{ malformed');
+  fs.writeFileSync(repairHistory, `${JSON.stringify({
+    schemaVersion: 1,
+    type: 'workflow',
+    input,
+    attempts: [{ stage: 'check', repairMode: 'focused', diagnostics: [{ code: 'composition/previous' }] }],
+  }, null, 2)}\n`);
+
+  const result = await runCandidatePreflightBatch({
+    skillRoot,
+    session: new FakeSession(),
+    candidates: [{
+      id: 'malformed',
+      type: 'workflow',
+      input,
+      repairHistory,
+      repairMode: 'structural-reflow',
+    }],
+  });
+
+  assert.equal(result.exitCode, 1);
+  assert.equal(result.receipt.candidates[0].stage, 'input');
+  assert.equal(result.receipt.candidates[0].repairHistory.loadedAttemptCount, 1);
+  assert.equal(result.receipt.candidates[0].repairHistory.attemptCount, 2);
+  const persisted = JSON.parse(fs.readFileSync(repairHistory, 'utf8'));
+  assert.equal(persisted.attempts.length, 2);
+  assert.equal(persisted.attempts[1].stage, 'input');
+  assert.equal(persisted.attempts[1].repairMode, 'structural-reflow');
+});
+
 test('candidate preflight freezes the first-read specification before the source can be replaced', async (t) => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-candidate-source-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
