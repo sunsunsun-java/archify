@@ -349,12 +349,12 @@ export function createRepairPlan({
     schemaVersion: 1,
     type,
     stage,
-    status: widthConflict
-      ? 'constraint-conflict'
-      : progress.shouldStop
-        ? 'bounded-stop'
-        : progress.shouldReflow
-          ? 'structural-reflow-required'
+    status: progress.shouldStop
+      ? 'bounded-stop'
+      : progress.shouldReflow
+        ? 'structural-reflow-required'
+        : widthConflict
+          ? 'constraint-conflict'
         : actions.length
           ? 'repair-required'
           : 'manual-diagnosis-required',

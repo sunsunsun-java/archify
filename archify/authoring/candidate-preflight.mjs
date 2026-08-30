@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { authoredLanguageAssessment } from './authored-language.mjs';
 import { createRepairPlan } from './repair-plan.mjs';
+import { pathsAlias } from '../renderers/shared/output-path.mjs';
 import {
   VISUAL_PREFLIGHT_VIEWPORTS,
   VISUAL_RECEIPT_SCHEMA_VERSION,
@@ -73,16 +75,107 @@ function normalizeCandidates(candidates) {
     if (candidate.repoRoot && candidate.type !== 'architecture') {
       throw new Error(`Candidate ${id}: repoRoot is supported for architecture only.`);
     }
+    if (candidate.requiredLanguage !== undefined && !['en', 'zh-CN'].includes(candidate.requiredLanguage)) {
+      throw new Error(`Candidate ${id}: requiredLanguage must be en or zh-CN.`);
+    }
+    if (candidate.repairHistory !== undefined
+      && (typeof candidate.repairHistory !== 'string' || !candidate.repairHistory.trim())) {
+      throw new Error(`Candidate ${id}: repairHistory must be a path.`);
+    }
+    if (candidate.repairMode !== undefined
+      && !['focused', 'structural-reflow'].includes(candidate.repairMode)) {
+      throw new Error(`Candidate ${id}: repairMode must be focused or structural-reflow.`);
+    }
     return {
       id,
       type: candidate.type,
       input: path.resolve(candidate.input),
       ...(candidate.repoRoot ? { repoRoot: path.resolve(candidate.repoRoot) } : {}),
+      ...(candidate.requiredLanguage ? { requiredLanguage: candidate.requiredLanguage } : {}),
+      ...(candidate.repairHistory ? { repairHistory: path.resolve(candidate.repairHistory) } : {}),
+      repairMode: candidate.repairMode || 'focused',
     };
   });
 }
 
-function failedReceipt({ candidate, stage, diagnostics, checker, preflight, specification, specificationReceipt, artifactReceipt, timing }) {
+function candidateAttemptHistory(candidate) {
+  if (!candidate.repairHistory) return [];
+  if (pathsAlias(candidate.repairHistory, candidate.input)) {
+    throw new Error('Repair history must not replace or alias its candidate input.');
+  }
+  let document;
+  try {
+    document = JSON.parse(fs.readFileSync(candidate.repairHistory, 'utf8'));
+  } catch (error) {
+    if (error?.code === 'ENOENT') return [];
+    throw error;
+  }
+  if (document?.schemaVersion !== 1 || !Array.isArray(document.attempts)
+    || document.type !== candidate.type
+    || path.resolve(document.input) !== candidate.input) {
+    throw new Error(`Repair history does not belong to ${candidate.type} ${candidate.input}.`);
+  }
+  return document.attempts.slice(-63);
+}
+
+function persistCandidateAttempt(candidate, attemptHistory, attempt) {
+  if (!candidate.repairHistory) return null;
+  if (pathsAlias(candidate.repairHistory, candidate.input)) {
+    throw new Error('Repair history must not replace or alias its candidate input.');
+  }
+  const attempts = [...attemptHistory, attempt].slice(-64);
+  const document = {
+    schemaVersion: 1,
+    type: candidate.type,
+    input: candidate.input,
+    attempts,
+  };
+  fs.mkdirSync(path.dirname(candidate.repairHistory), { recursive: true });
+  const temporary = `${candidate.repairHistory}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    fs.writeFileSync(temporary, `${JSON.stringify(document, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
+    fs.renameSync(temporary, candidate.repairHistory);
+  } finally {
+    try {
+      fs.unlinkSync(temporary);
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
+  }
+  return { path: candidate.repairHistory, loadedAttemptCount: attemptHistory.length, attemptCount: attempts.length };
+}
+
+function failedReceipt({ candidate, stage, diagnostics, checker, preflight, specification, specificationReceipt, artifactReceipt, timing, authoredLanguage, attemptHistory = [], persistRepairHistory = true }) {
+  let repairHistory = null;
+  let repairPlan;
+  try {
+    if (persistRepairHistory) {
+      repairHistory = persistCandidateAttempt(candidate, attemptHistory, {
+        stage,
+        repairMode: candidate.repairMode,
+        errorCount: diagnostics.length,
+        diagnostics,
+      });
+    }
+    repairPlan = createRepairPlan({
+      type: candidate.type,
+      candidate: specification,
+      stage,
+      diagnostics,
+      preflight,
+      attemptHistory,
+      repairMode: candidate.repairMode,
+    });
+  } catch (error) {
+    repairPlan = {
+      schemaVersion: 1,
+      type: candidate.type,
+      stage,
+      status: 'unavailable',
+      reason: error.message,
+      actions: [],
+    };
+  }
   return {
     schemaVersion: 1,
     ok: false,
@@ -94,13 +187,9 @@ function failedReceipt({ candidate, stage, diagnostics, checker, preflight, spec
     ...(artifactReceipt ? { artifact: artifactReceipt } : {}),
     stage,
     diagnostics,
-    repairPlan: createRepairPlan({
-      type: candidate.type,
-      candidate: specification,
-      stage,
-      diagnostics,
-      preflight,
-    }),
+    repairPlan,
+    ...(authoredLanguage ? { authoredLanguage } : {}),
+    ...(repairHistory ? { repairHistory } : {}),
     ...(checker ? { checker } : {}),
     ...(preflight ? { preflight } : {}),
     ...(timing ? { timing } : {}),
@@ -267,6 +356,8 @@ export async function runCandidatePreflightBatch({
       let specification = null;
       let specificationReceipt = null;
       let frozenInput = null;
+      let authoredLanguage = null;
+      let attemptHistory = [];
       const inputStarted = performance.now();
       try {
         const bytes = fs.readFileSync(candidate.input);
@@ -277,6 +368,7 @@ export async function runCandidatePreflightBatch({
         };
         frozenInput = path.join(temporary, `${candidate.id}.candidate.json`);
         fs.writeFileSync(frozenInput, bytes, { flag: 'wx', mode: 0o400 });
+        attemptHistory = candidateAttemptHistory(candidate);
         timing.inputMs = elapsed(inputStarted);
       } catch (error) {
         timing.inputMs = elapsed(inputStarted);
@@ -286,9 +378,27 @@ export async function runCandidatePreflightBatch({
           stage: 'input',
           diagnostics,
           specification,
+          persistRepairHistory: false,
           timing: finishCandidateTiming(timing),
         }));
         continue;
+      }
+      if (candidate.requiredLanguage) {
+        const assessment = authoredLanguageAssessment(specification, candidate.requiredLanguage);
+        authoredLanguage = assessment.receipt;
+        if (assessment.diagnostics.length > 0) {
+          receipts.push(failedReceipt({
+            candidate,
+            stage: 'language',
+            diagnostics: assessment.diagnostics,
+            specification,
+            specificationReceipt,
+            authoredLanguage,
+            attemptHistory,
+            timing: finishCandidateTiming(timing),
+          }));
+          continue;
+        }
       }
       const artifactPath = path.join(temporary, `${candidate.id}.html`);
       const renderer = path.join(root, 'renderers', candidate.type, `render-${candidate.type}.mjs`);
@@ -311,6 +421,8 @@ export async function runCandidatePreflightBatch({
           diagnostics: rendererFailure(render),
           specification,
           specificationReceipt,
+          authoredLanguage,
+          attemptHistory,
           timing: finishCandidateTiming(timing),
         }));
         continue;
@@ -325,6 +437,8 @@ export async function runCandidatePreflightBatch({
           diagnostics: [failureDiagnostic('artifact/read', `Rendered artifact could not be read: ${error.message}`)],
           specification,
           specificationReceipt,
+          authoredLanguage,
+          attemptHistory,
           timing: finishCandidateTiming(timing),
         }));
         continue;
@@ -350,6 +464,8 @@ export async function runCandidatePreflightBatch({
           specification,
           specificationReceipt,
           artifactReceipt,
+          authoredLanguage,
+          attemptHistory,
           timing: finishCandidateTiming(timing),
         }));
         continue;
@@ -377,11 +493,13 @@ export async function runCandidatePreflightBatch({
           specification,
           specificationReceipt,
           artifactReceipt,
+          authoredLanguage,
+          attemptHistory,
           timing: finishCandidateTiming(timing),
         }));
         continue;
       }
-      prepared.push({ candidate, specification, specificationReceipt, artifactReceipt, artifactPath, checker, timing });
+      prepared.push({ candidate, specification, specificationReceipt, artifactReceipt, artifactPath, checker, timing, authoredLanguage, attemptHistory });
     }
 
     if (prepared.length > 0) {
@@ -425,6 +543,8 @@ export async function runCandidatePreflightBatch({
             specification: entry.specification,
             specificationReceipt: entry.specificationReceipt,
             artifactReceipt: entry.artifactReceipt,
+            authoredLanguage: entry.authoredLanguage,
+            attemptHistory: entry.attemptHistory,
             timing,
           }));
           continue;
@@ -444,6 +564,8 @@ export async function runCandidatePreflightBatch({
               specification: entry.specification,
               specificationReceipt: entry.specificationReceipt,
               artifactReceipt: entry.artifactReceipt,
+              authoredLanguage: entry.authoredLanguage,
+              attemptHistory: entry.attemptHistory,
               timing,
             }));
             continue;
@@ -464,6 +586,8 @@ export async function runCandidatePreflightBatch({
             specification: entry.specification,
             specificationReceipt: entry.specificationReceipt,
             artifactReceipt: entry.artifactReceipt,
+            authoredLanguage: entry.authoredLanguage,
+            attemptHistory: entry.attemptHistory,
             timing,
           }));
         } else {
@@ -478,6 +602,7 @@ export async function runCandidatePreflightBatch({
             artifact: entry.artifactReceipt,
             checks: entry.checker.checks,
             composition: entry.checker.composition,
+            ...(entry.authoredLanguage ? { authoredLanguage: entry.authoredLanguage } : {}),
             preflight,
             timing,
           });

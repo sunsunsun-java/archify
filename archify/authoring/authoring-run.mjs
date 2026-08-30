@@ -118,6 +118,9 @@ function assertRun(run) {
   if (typeof run.diagramType !== 'string' || !run.diagramType.trim()) {
     throw new TypeError('run must contain a non-empty diagramType.');
   }
+  if (run.requiredLanguage !== undefined && !['en', 'zh-CN'].includes(run.requiredLanguage)) {
+    throw new TypeError('run.requiredLanguage must be en or zh-CN.');
+  }
   return JSON.parse(JSON.stringify(run));
 }
 
@@ -194,6 +197,14 @@ function buildHandoff({ run, evidenceBinding, candidatePath, evidencePath, valid
     || validation.document.specification?.sha256 !== candidate.sha256) {
     throw new Error('validation specification does not match the current candidate bytes.');
   }
+  const authoredLanguage = validation.document.authoredLanguage;
+  if (run.requiredLanguage && (
+    authoredLanguage?.required !== run.requiredLanguage
+    || authoredLanguage?.locale !== run.requiredLanguage
+    || authoredLanguage?.violations !== 0
+  )) {
+    throw new Error(`validation receipt must prove the authored-language contract ${run.requiredLanguage}.`);
+  }
   const preflightArtifact = validation.document.artifact;
   const preflightArtifactPath = validation.document.preflight?.artifact?.path;
   const preflightProblems = successfulPreflightReceiptProblems(validation.document.preflight, {
@@ -244,6 +255,7 @@ function buildHandoff({ run, evidenceBinding, candidatePath, evidencePath, valid
       checksTotal: checks.length,
       errors,
       warnings,
+      ...(authoredLanguage ? { authoredLanguage } : {}),
       specification: validation.document.specification,
       artifact: validation.document.artifact,
       preflight: {

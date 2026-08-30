@@ -125,6 +125,69 @@ test('validate preserves bounded multi-word product names in Chinese diagrams', 
   assert.ok(receipt.authoredLanguage.technicalIdentifiersPreserved >= 1);
 });
 
+test('validate preserves bounded technical expressions and operator-separated event names', () => {
+  const input = fixture('chinese-technical-expressions.workflow.json', (source) => {
+    source.meta.title = 'Agent 工具调用工作流';
+    source.meta.locale = 'zh-CN';
+    localizeReaderFacing(source);
+    source.cards[0].items = [
+      'runAgentLoop(AgentMessage[], snapshot)',
+      'transformContext + convertToLlm',
+      'AgentEvent.start / AgentEvent.delta / AgentEvent.done',
+      'runAgentLoop(first, second, third)',
+    ];
+  });
+  const result = run(['validate', 'workflow', input, '--require-authored-language', 'zh-CN', '--json']);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const receipt = JSON.parse(result.stdout);
+  assert.equal(receipt.authoredLanguage.violations, 0);
+  assert.ok(receipt.authoredLanguage.technicalIdentifiersPreserved >= 4);
+});
+
+test('validate still rejects ordinary lower-case English prose', () => {
+  const input = fixture('chinese-english-prose.workflow.json', (source) => {
+    source.meta.title = 'Agent 工具调用工作流';
+    source.meta.locale = 'zh-CN';
+    localizeReaderFacing(source);
+    source.cards[0].items[0] = 'prompt input';
+  });
+  const result = run(['validate', 'workflow', input, '--require-authored-language', 'zh-CN', '--json']);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  const receipt = JSON.parse(result.stdout);
+  assert.equal(receipt.stage, 'language');
+  assert.ok(receipt.diagnostics[0].evidence.violations.some((entry) => entry.text === 'prompt input'));
+});
+
+test('validate rejects ordinary English hidden behind operators or a technical-looking prefix', () => {
+  const input = fixture('chinese-operator-prose.workflow.json', (source) => {
+    source.meta.title = 'Agent 工具调用工作流';
+    source.meta.locale = 'zh-CN';
+    localizeReaderFacing(source);
+    source.cards[0].items = [
+      'retry / cancel / abort',
+      'retry. / cancel. / abort.',
+      'this) / is) / english)',
+      'GitHub Actions Builds Every Pull Request Automatically',
+    ];
+  });
+  const result = run(['validate', 'workflow', input, '--require-authored-language', 'zh-CN', '--json']);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  const receipt = JSON.parse(result.stdout);
+  assert.equal(receipt.stage, 'language');
+  assert.deepEqual(
+    receipt.diagnostics[0].evidence.violations.map(({ text }) => text),
+    [
+      'retry / cancel / abort',
+      'retry. / cancel. / abort.',
+      'this) / is) / english)',
+      'GitHub Actions Builds Every Pull Request Automatically',
+    ],
+  );
+});
+
 test('deliver enforces the same authored-language gate before touching output', () => {
   const input = fixture('english-delivery.workflow.json', (source) => {
     source.meta.title = 'Agent tool workflow';
@@ -138,4 +201,24 @@ test('deliver enforces the same authored-language gate before touching output', 
   const receipt = JSON.parse(result.stdout);
   assert.equal(receipt.stage, 'language');
   assert.equal(receipt.diagnostics[0].code, 'content/authored-language');
+});
+
+test('validate-batch enforces each candidate authored-language requirement before browser work', () => {
+  const manifest = path.join(tmp, 'language-batch.json');
+  fs.writeFileSync(manifest, `${JSON.stringify({
+    schemaVersion: 1,
+    candidates: [{
+      id: 'english-workflow',
+      type: 'workflow',
+      input: path.join(skillRoot, 'examples', 'agent-tool-call.workflow.json'),
+      requiredLanguage: 'zh-CN',
+    }],
+  }, null, 2)}\n`);
+  const result = run(['validate-batch', manifest, '--quality', 'showcase', '--json']);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  const receipt = JSON.parse(result.stdout);
+  assert.equal(receipt.command, 'validate-batch');
+  assert.equal(receipt.candidates[0].stage, 'language');
+  assert.equal(receipt.candidates[0].diagnostics[0].code, 'content/authored-language');
 });

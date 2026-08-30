@@ -199,6 +199,101 @@ function artifactMutationSkillRoot(t) {
   return root;
 }
 
+function localizeReaderFacing(source) {
+  const visit = (value) => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (!value || typeof value !== 'object') return;
+    for (const [key, entry] of Object.entries(value)) {
+      if (['label', 'sublabel', 'tag', 'note', 'title', 'subtitle'].includes(key)
+        && typeof entry === 'string') {
+        value[key] = key === 'title' && value === source.meta ? 'Agent 工具调用工作流' : '中文说明';
+      } else if (key === 'items' && Array.isArray(entry)) {
+        entry.forEach((_item, index) => { entry[index] = '中文说明'; });
+      } else {
+        visit(entry);
+      }
+    }
+  };
+  visit(source);
+  source.meta.locale = 'zh-CN';
+}
+
+test('candidate preflight enforces and reports the authored-language contract before browser work', async (t) => {
+  const rejectedSession = new FakeSession();
+  const missingRepairHistory = path.join(os.tmpdir(), `archify-missing-repair-history-${process.pid}-${Date.now()}.json`);
+  t.after(() => fs.rmSync(missingRepairHistory, { force: true }));
+  const rejected = await runCandidatePreflightBatch({
+    skillRoot,
+    session: rejectedSession,
+    candidates: [{
+      id: 'english-workflow',
+      type: 'workflow',
+      input: path.join(skillRoot, 'examples', 'agent-tool-call.workflow.json'),
+      requiredLanguage: 'zh-CN',
+      repairHistory: missingRepairHistory,
+    }],
+  });
+  assert.equal(rejected.exitCode, 1);
+  assert.equal(rejected.receipt.candidates[0].stage, 'language');
+  assert.equal(rejected.receipt.candidates[0].diagnostics[0].code, 'content/authored-language');
+  assert.equal(rejected.receipt.candidates[0].repairHistory.attemptCount, 1);
+  assert.equal(JSON.parse(fs.readFileSync(missingRepairHistory, 'utf8')).attempts.length, 1);
+  assert.equal(rejectedSession.calls.length, 0);
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-candidate-language-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const input = path.join(tmp, 'chinese.workflow.json');
+  const source = JSON.parse(fs.readFileSync(path.join(skillRoot, 'examples', 'agent-tool-call.workflow.json'), 'utf8'));
+  localizeReaderFacing(source);
+  fs.writeFileSync(input, `${JSON.stringify(source, null, 2)}\n`);
+  const acceptedSession = new FakeSession();
+  const accepted = await runCandidatePreflightBatch({
+    skillRoot,
+    session: acceptedSession,
+    candidates: [{ id: 'chinese-workflow', type: 'workflow', input, requiredLanguage: 'zh-CN' }],
+  });
+  assert.equal(accepted.exitCode, 0);
+  assert.equal(accepted.receipt.candidates[0].authoredLanguage.required, 'zh-CN');
+  assert.equal(accepted.receipt.candidates[0].authoredLanguage.violations, 0);
+  assert.equal(acceptedSession.calls.length, 1);
+});
+
+test('candidate preflight reuses the candidate repair history in failure planning', async (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-candidate-history-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const input = path.join(tmp, 'candidate.json');
+  const repairHistory = path.join(tmp, 'repair-history.json');
+  fs.writeFileSync(input, `${JSON.stringify({ diagram_type: 'workflow', marker: 'artifact-A' })}\n`);
+  fs.writeFileSync(repairHistory, `${JSON.stringify({
+    schemaVersion: 1,
+    type: 'workflow',
+    input,
+    attempts: [{ stage: 'check', diagnostics: [{ code: 'composition/previous' }] }],
+  }, null, 2)}\n`);
+
+  const result = await runCandidatePreflightBatch({
+    skillRoot: artifactMutationSkillRoot(t),
+    session: new FakeSession(),
+    candidates: [{
+      id: 'history',
+      type: 'workflow',
+      input,
+      repairHistory,
+      repairMode: 'structural-reflow',
+    }],
+  });
+  assert.equal(result.exitCode, 1);
+  assert.equal(result.receipt.candidates[0].repairHistory.loadedAttemptCount, 1);
+  assert.equal(result.receipt.candidates[0].repairHistory.attemptCount, 2);
+  assert.equal(result.receipt.candidates[0].repairPlan.progress.attempts.length, 2);
+  const persisted = JSON.parse(fs.readFileSync(repairHistory, 'utf8'));
+  assert.equal(persisted.attempts.length, 2);
+  assert.equal(persisted.attempts[1].repairMode, 'structural-reflow');
+});
+
 test('candidate preflight freezes the first-read specification before the source can be replaced', async (t) => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-candidate-source-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));

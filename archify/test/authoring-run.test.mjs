@@ -72,7 +72,7 @@ function evidenceFixture(root) {
   return { repoRoot, revision, projectIndexPath, evidencePath, ledger };
 }
 
-function passingValidation(candidatePath, type = 'workflow') {
+function passingValidation(candidatePath, type = 'workflow', requiredLanguage) {
   const candidate = fs.readFileSync(candidatePath);
   const artifact = Buffer.from('<!doctype html><title>candidate</title>\n');
   const artifactReceipt = {
@@ -108,6 +108,14 @@ function passingValidation(candidatePath, type = 'workflow') {
     artifact: { ...artifactReceipt, ephemeral: true },
     checks: QUALITY_CONTRACT.guards.deterministicCheckNames.map((name) => ({ name, ok: true })),
     composition: { summary: { errors: 0, warnings: 0 }, profile: 'showcase' },
+    ...(requiredLanguage ? { authoredLanguage: {
+      required: requiredLanguage,
+      locale: requiredLanguage,
+      inspected: 1,
+      proseInspected: 1,
+      technicalIdentifiersPreserved: 0,
+      violations: 0,
+    } } : {}),
     preflight: {
       schemaVersion: 2,
       command: 'visual-preflight',
@@ -334,7 +342,7 @@ test('authoring-run CLI measures a durable envelope and mechanically finalizes r
   const evidencePath = evidence.evidencePath;
   const validationPath = path.join(tmp, 'validation.json');
   writeJson(candidatePath, { schema_version: 1, diagram_type: 'workflow', meta: { title: 'Measured run' }, nodes: [] });
-  writeJson(validationPath, passingValidation(candidatePath));
+  writeJson(validationPath, passingValidation(candidatePath, 'workflow', 'zh-CN'));
 
   const forgedTiming = spawnSync(process.execPath, [
     cli,
@@ -359,6 +367,7 @@ test('authoring-run CLI measures a durable envelope and mechanically finalizes r
     '--output', outputDirectory,
     '--repo-root', evidence.repoRoot,
     '--project-index', evidence.projectIndexPath,
+    '--require-authored-language', 'zh-CN',
     '--json',
   ], { cwd: skillRoot, encoding: 'utf8' });
   assert.equal(started.status, 0, started.stderr);
@@ -368,6 +377,7 @@ test('authoring-run CLI measures a durable envelope and mechanically finalizes r
   assert.equal(startReceipt.envelope.kind, 'archify.authoring-run-envelope');
   assert.equal(startReceipt.envelope.run.id, 'pi/workflow');
   assert.equal(startReceipt.envelope.run.diagramType, 'workflow');
+  assert.equal(startReceipt.envelope.run.requiredLanguage, 'zh-CN');
   assert.match(startReceipt.envelope.digest, /^[a-f0-9]{64}$/);
   assert.deepEqual(
     JSON.parse(fs.readFileSync(startReceipt.paths.envelopePath, 'utf8')),
@@ -392,6 +402,7 @@ test('authoring-run CLI measures a durable envelope and mechanically finalizes r
   assert.equal(finalReceipt.status, 'ready');
   assert.equal(finalReceipt.handoff.repository.revision, evidence.revision);
   assert.equal(finalReceipt.handoff.candidate.sha256, sha256(candidatePath));
+  assert.equal(finalReceipt.handoff.validation.authoredLanguage.required, 'zh-CN');
   assert.equal(finalReceipt.timing.kind, 'archify.run-timing');
   assert.equal(finalReceipt.timing.run.measurementDomain, 'agent-authoring');
   assert.equal(finalReceipt.timing.run.repository.revision, evidence.revision);

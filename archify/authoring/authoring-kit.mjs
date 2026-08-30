@@ -7,6 +7,11 @@ import {
   assertExpectedQualityContract,
   qualityContractIdentity,
 } from './quality-contract.mjs';
+import {
+  DESKTOP_READER_DIAGRAM_WIDTH,
+  MIN_PROJECTED_NODE_TEXT_PX,
+  minimumReadableSourceTextPx,
+} from '../renderers/shared/desktop-readability.mjs';
 
 const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -26,34 +31,64 @@ const EXAMPLES = Object.freeze({
   lifecycle: 'examples/agent-run.lifecycle.json',
 });
 
+function desktopReadability(maximumViewBoxWidth) {
+  return Object.freeze({
+    diagramWidth: DESKTOP_READER_DIAGRAM_WIDTH,
+    minimumProjectedNodeTextPx: MIN_PROJECTED_NODE_TEXT_PX,
+    minimumSourceNodeTextPxAtMaximumWidth: minimumReadableSourceTextPx(maximumViewBoxWidth),
+    formula: 'sourceFontPx * min(1, diagramWidth / viewBoxWidth) >= minimumProjectedNodeTextPx',
+  });
+}
+
+const EVIDENCE_SELECTION_TEMPLATE = Object.freeze({
+  rootShape: 'selections.json must be a bare JSON array of source selections, not an object wrapper.',
+  document: freezeDocument([{
+    claimId: 'stable-source-fact-id',
+    path: 'path/from-project-index',
+    line: 1,
+    endLine: 1,
+    summary: 'short source-derived fact',
+  }]),
+});
+
 const LAYOUT_BUDGETS = Object.freeze({
   architecture: Object.freeze({
-    recommendedViewBox: Object.freeze([1280, 640]),
-    maximumViewBoxAspectRatio: 0.5,
+    recommendedViewBox: Object.freeze([1080, 600]),
+    maximumRecommendedViewBoxWidth: 1080,
+    maximumViewBoxAspectRatio: 0.556,
+    desktopReadability: desktopReadability(1080),
     primaryLimits: Object.freeze({ components: 12, boundaries: 4, cards: 3, guidedViews: 2 }),
     composition: 'Use one left-to-right main path with short vertical branches.',
   }),
   workflow: Object.freeze({
-    recommendedViewBox: Object.freeze([1000, 540]),
-    maximumViewBoxAspectRatio: 0.54,
+    recommendedViewBox: Object.freeze([960, 540]),
+    maximumRecommendedViewBoxWidth: 960,
+    maximumViewBoxAspectRatio: 0.563,
+    desktopReadability: desktopReadability(960),
     primaryLimits: Object.freeze({ nodes: 12, lanes: 4, cards: 2, guidedViews: 2 }),
     composition: 'Use schema v2 horizontal lanes or phases with constraint-driven readable layout; retain schema v1 only for fixed legacy geometry compatibility.',
   }),
   sequence: Object.freeze({
     recommendedViewBox: Object.freeze([1080, 620]),
+    maximumRecommendedViewBoxWidth: 1080,
     maximumViewBoxAspectRatio: 0.575,
+    desktopReadability: desktopReadability(1080),
     primaryLimits: Object.freeze({ participants: 7, messages: 13, cards: 3, guidedViews: 2 }),
     composition: 'Keep one authored timeline and merge repeated low-information events before changing typography.',
   }),
   dataflow: Object.freeze({
     recommendedViewBox: Object.freeze([1080, 600]),
+    maximumRecommendedViewBoxWidth: 1080,
     maximumViewBoxAspectRatio: 0.556,
+    desktopReadability: desktopReadability(1080),
     primaryLimits: Object.freeze({ nodes: 12, stages: 5, cards: 2, guidedViews: 2 }),
     composition: 'Use horizontal stage bands and keep persistence or recovery paths as compact side branches.',
   }),
   lifecycle: Object.freeze({
     recommendedViewBox: Object.freeze([1080, 630]),
-    maximumViewBoxAspectRatio: 0.575,
+    maximumRecommendedViewBoxWidth: 1080,
+    maximumViewBoxAspectRatio: 0.584,
+    desktopReadability: desktopReadability(1080),
     primaryLimits: Object.freeze({ states: 10, lanes: 4, cards: 2, guidedViews: 2 }),
     composition: 'Keep the main lifecycle horizontal and place terminal outcomes in one compact terminal band.',
   }),
@@ -75,7 +110,7 @@ function authoringCommands(type) {
     sourceInspect: 'node bin/archify.mjs project-index inspect <index.json> --range <path:start-end> --json',
     evidenceHydrate: 'node bin/archify.mjs evidence-ledger hydrate <index.json> <selections.json> --output <ledger.json> --json',
     evidenceVerify: 'node bin/archify.mjs evidence-ledger verify <ledger.json> --project-index <index.json> --repo-root <path> --json',
-    authoringRunStart: `node bin/archify.mjs authoring-run start ${type} --run-id <id> --output <run-directory> --json`,
+    authoringRunStart: `node bin/archify.mjs authoring-run start ${type} --run-id <id> --output <run-directory> --repo-root <path> --project-index <index.json>${languageOption} --json`,
     authoringRunFinalize: 'node bin/archify.mjs authoring-run finalize <authoring-run.json> --candidate <candidate.json> --evidence <ledger.json> --validation <validation.json> --json',
   });
 }
@@ -124,6 +159,8 @@ export function loadAuthoringKit(type, {
       qualityGuards: QUALITY_CONTRACT.guards,
     }),
     commands: authoringCommands(type),
+    evidenceSelectionTemplate: EVIDENCE_SELECTION_TEMPLATE,
+    repairPolicy: QUALITY_CONTRACT.repairPolicy,
     capabilities: Object.freeze({
       repositoryEvidence: true,
       projectIndexQuery: true,
@@ -140,7 +177,7 @@ export function loadAuthoringKit(type, {
       'validate after every candidate edit',
       'reuse one repair-history file and follow repairPlan; validate a requested reflow with --repair-mode structural-reflow, without deleting semantics or reducing typography',
       'run preflight on the first deterministic pass and before freezing',
-      'hydrate and verify revision-pinned evidence before delivery',
+      'write selections.json using evidenceSelectionTemplate.document as the exact root shape, then hydrate and verify revision-pinned evidence before delivery',
       'deliver the frozen candidate exactly once',
     ]),
     files: Object.freeze({

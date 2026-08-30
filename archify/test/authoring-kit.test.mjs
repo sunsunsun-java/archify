@@ -13,6 +13,11 @@ import {
   QUALITY_CONTRACT,
   QUALITY_CONTRACT_DIGEST,
 } from '../authoring/quality-contract.mjs';
+import {
+  DESKTOP_READER_DIAGRAM_WIDTH,
+  MIN_PROJECTED_NODE_TEXT_PX,
+  projectedNodeTextPx,
+} from '../renderers/shared/desktop-readability.mjs';
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cli = path.join(skillRoot, 'bin', 'archify.mjs');
@@ -40,6 +45,26 @@ test('authoring kit returns the exact schema, common schema, and one matching ex
     assert.equal(kit.layoutBudget.qualityGuards.deterministicChecks, 9);
     assert.equal(kit.layoutBudget.qualityGuards.desktopViewports.length, 4);
     assert.equal(kit.layoutBudget.qualityGuards.semanticDeletionAllowed, false);
+    assert.equal(
+      kit.layoutBudget.recommendedViewBox[0] <= kit.layoutBudget.maximumRecommendedViewBoxWidth,
+      true,
+    );
+    assert.equal(kit.layoutBudget.desktopReadability.minimumProjectedNodeTextPx, 6);
+    assert.equal(kit.layoutBudget.desktopReadability.diagramWidth, 930);
+    assert.equal(kit.layoutBudget.desktopReadability.diagramWidth, DESKTOP_READER_DIAGRAM_WIDTH);
+    assert.equal(
+      kit.layoutBudget.desktopReadability.minimumProjectedNodeTextPx,
+      MIN_PROJECTED_NODE_TEXT_PX,
+    );
+    assert.ok(Math.abs(projectedNodeTextPx(
+      kit.layoutBudget.desktopReadability.minimumSourceNodeTextPxAtMaximumWidth,
+      kit.layoutBudget.maximumRecommendedViewBoxWidth,
+    ) - MIN_PROJECTED_NODE_TEXT_PX) < 1e-12);
+    assert.equal(
+      kit.layoutBudget.recommendedViewBox[1] / kit.layoutBudget.recommendedViewBox[0]
+        <= kit.layoutBudget.maximumViewBoxAspectRatio,
+      true,
+    );
     assert.match(kit.commands.validate, new RegExp(`validate ${type}`));
     assert.match(kit.commands.validate, /--repair-history <repair-history\.json>/);
     assert.match(kit.commands.validate, /--require-authored-language <en\|zh-CN>/);
@@ -53,12 +78,30 @@ test('authoring kit returns the exact schema, common schema, and one matching ex
     assert.match(kit.commands.evidenceHydrate, /evidence-ledger hydrate/);
     assert.match(kit.commands.evidenceVerify, /evidence-ledger verify/);
     assert.match(kit.commands.authoringRunStart, new RegExp(`authoring-run start ${type}`));
+    assert.match(kit.commands.authoringRunStart, /--repo-root <path>/);
+    assert.match(kit.commands.authoringRunStart, /--project-index <index\.json>/);
+    assert.match(kit.commands.authoringRunStart, /--require-authored-language <en\|zh-CN>/);
     assert.match(kit.commands.authoringRunFinalize, /authoring-run finalize/);
     assert.equal(kit.capabilities.repositoryEvidence, true);
     assert.equal(kit.capabilities.projectSourceSearch, true);
     assert.equal(kit.capabilities.evidenceLedgerVerify, true);
     assert.equal(kit.capabilities.machineAuthoringReport, true);
     assert.equal(kit.capabilities.deterministicRepairPlan, true);
+    assert.equal(kit.repairPolicy.maxStructuralReflows, 2);
+    assert.equal(kit.repairPolicy.maxTotalAttempts, 24);
+    assert.equal(Array.isArray(kit.evidenceSelectionTemplate.document), true);
+    assert.deepEqual(Object.keys(kit.evidenceSelectionTemplate.document[0]), [
+      'claimId',
+      'path',
+      'line',
+      'endLine',
+      'summary',
+    ]);
+    assert.match(kit.evidenceSelectionTemplate.rootShape, /JSON array/);
+    assert.equal(Object.isFrozen(kit.evidenceSelectionTemplate), true);
+    assert.equal(Object.isFrozen(kit.evidenceSelectionTemplate.document), true);
+    assert.equal(Object.isFrozen(kit.evidenceSelectionTemplate.document[0]), true);
+    assert.equal(Array.isArray(JSON.parse(JSON.stringify(kit)).evidenceSelectionTemplate.document), true);
     assert.ok(kit.workflow.length >= 5);
     assert.deepEqual(Object.keys(kit.files), ['schema', 'commonSchema', 'example']);
     assert.equal(kit.files.schema.path, `schemas/${type}.schema.json`);
@@ -128,7 +171,9 @@ test('authoring-kit CLI emits a complete machine packet without an extra discove
   assert.equal(packet.files.commonSchema.path, 'schemas/common.schema.json');
   assert.equal(packet.files.example.path, 'examples/agent-tool-call.workflow.json');
   assert.match(packet.files.example.content, /Agent Tool Call Workflow/);
-  assert.deepEqual(packet.layoutBudget.recommendedViewBox, [1000, 540]);
+  assert.deepEqual(packet.layoutBudget.recommendedViewBox, [960, 540]);
+  assert.equal(packet.layoutBudget.maximumRecommendedViewBoxWidth, 960);
+  assert.match(packet.evidenceSelectionTemplate.rootShape, /JSON array/);
   assert.match(packet.commands.deliver, /deliver workflow/);
   assert.doesNotMatch(packet.commands.deliver, /--repo-root/);
 });

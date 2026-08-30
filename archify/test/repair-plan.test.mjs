@@ -257,3 +257,36 @@ test('repair plan does not duplicate a renderer-classified width conflict', () =
   );
   assert.deepEqual(plan.actions[0].subject, { path: '/meta/viewBox/0' });
 });
+
+test('width conflicts cannot hide structural reflow or bounded stop controller states', () => {
+  const diagnostics = [
+    {
+      code: 'layout/dataflow-stage-width',
+      evidence: { minViewBoxWidth: 1068 },
+    },
+    {
+      code: 'composition/desktop-readability',
+      evidence: { maxReadableViewBoxWidth: 992 },
+    },
+  ];
+  const attempt = { stage: 'check', diagnostics };
+  const reflowPlan = createRepairPlan({
+    type: 'dataflow',
+    stage: 'check',
+    candidate: { meta: { viewBox: [1080, 600] } },
+    diagnostics,
+    attemptHistory: [attempt, attempt],
+  });
+  assert.equal(reflowPlan.progress.shouldReflow, true);
+  assert.equal(reflowPlan.status, 'structural-reflow-required');
+
+  const stopPlan = createRepairPlan({
+    type: 'dataflow',
+    stage: 'check',
+    candidate: { meta: { viewBox: [1080, 600] } },
+    diagnostics,
+    attemptHistory: Array.from({ length: 23 }, () => attempt),
+  });
+  assert.equal(stopPlan.progress.shouldStop, true);
+  assert.equal(stopPlan.status, 'bounded-stop');
+});
