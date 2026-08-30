@@ -13358,6 +13358,27 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         }
         if (!reveal()) requestAnimationFrame(reveal);
       }
+      function clearPinnedRelationship(options) {
+        options = options || {};
+        var record = pinnedRelationshipRecord();
+        if (!record) return false;
+        var sourceNode = svg.querySelector(&#39;[data-node-id=&quot;&#39; + record.from + &#39;&quot;]&#39;);
+        if (!set(record.from, {
+          toggle: false,
+          updateUrl: options.updateUrl !== false
+        })) return false;
+        if (options.reveal !== false &amp;&amp; Archify.view &amp;&amp; typeof Archify.view.reveal === &#39;function&#39;) {
+          Archify.view.reveal([record.from], {
+            includeNeighbors: true,
+            reason: &#39;relationship-clear&#39;
+          });
+        }
+        if (options.restoreFocus === true &amp;&amp; sourceNode) {
+          try { sourceNode.focus({ preventScroll: true }); }
+          catch (_) { try { sourceNode.focus(); } catch (_) {} }
+        }
+        return true;
+      }
       function inspectRelationship(key, options) {
         options = options || {};
         if (html.getAttribute(&#39;data-embed&#39;) === &#39;true&#39;) return false;
@@ -13367,7 +13388,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         focusedRelationship = null;
         if (pinnedRelationshipKey === key) {
           if (options.toggle === false) return true;
-          clear({ updateUrl: options.updateUrl !== false });
+          clearPinnedRelationship({ updateUrl: options.updateUrl !== false });
           return true;
         }
         var record = relationshipRecordForKey(key);
@@ -13488,9 +13509,10 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         });
         relationshipHitOverlay.addEventListener(&#39;click&#39;, function (event) {
           var target = event.target.closest(&#39;[data-relationship-hit-key]&#39;);
-          if (!target || directRelationshipBlocked()) return;
+          if (!target) return;
           event.preventDefault();
           event.stopPropagation();
+          if (directRelationshipBlocked()) return;
           focusedRelationship = null;
           hoveredRelationship = null;
           inspectRelationship(target.getAttribute(&#39;data-relationship-key&#39;));
@@ -13500,11 +13522,14 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           if (!target) return;
           if (event.key === &#39;Escape&#39; &amp;&amp; pinnedRelationshipKey) {
             event.preventDefault();
-            clear({ updateUrl: false });
+            event.stopPropagation();
+            clearPinnedRelationship({ restoreFocus: true });
             return;
           }
           if (event.key === &#39;Enter&#39; || event.key === &#39; &#39;) {
             event.preventDefault();
+            event.stopPropagation();
+            if (directRelationshipBlocked()) return;
             focusedRelationship = null;
             hoveredRelationship = null;
             inspectRelationship(target.getAttribute(&#39;data-relationship-key&#39;));
@@ -14192,6 +14217,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         reachabilitySnapshot: reachabilitySnapshot,
         inspectRelationship: inspectRelationship,
         inspectRelationshipById: inspectRelationshipById,
+        clearRelationship: clearPinnedRelationship,
         reposition: requestLensPlacement,
         relationship: function () {
           var record = pinnedRelationshipRecord();
@@ -16681,7 +16707,8 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       var cameraGeneration = 0;
       var cameraTransaction = null;
       var clipFrame = 0;
-      var resizeFrame = 0;
+      var viewSyncFrame = 0;
+      var semanticSyncRequested = false;
       var autoScrollUntil = 0;
       var semanticViewport = null;
 
@@ -17087,6 +17114,43 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           if (receiptTop &lt; svgHeight / 2) top = Math.max(top, receiptBottom + 24);
           else bottom = Math.min(bottom, receiptTop - 24);
         }
+        var radar = document.getElementById(&#39;overview-map&#39;);
+        if (radar &amp;&amp; !radar.hidden) {
+          var radarRect = radar.getBoundingClientRect();
+          var svgRect = svg.getBoundingClientRect();
+          var renderedState = sampleRenderedState();
+          var svgLayoutLeft = svgRect.left - renderedState.x;
+          var svgLayoutTop = svgRect.top - renderedState.y;
+          var radarBounds = {
+            left: radarRect.left - svgLayoutLeft - 24,
+            right: radarRect.right - svgLayoutLeft + 24,
+            top: radarRect.top - svgLayoutTop - 24,
+            bottom: radarRect.bottom - svgLayoutTop + 24
+          };
+          var overlapsViewport = radarBounds.left &lt; right &amp;&amp; radarBounds.right &gt; left &amp;&amp;
+            radarBounds.top &lt; bottom &amp;&amp; radarBounds.bottom &gt; top;
+          if (overlapsViewport) {
+            var safeRegions = [
+              { left: Math.max(left, radarBounds.right), right: right, top: top, bottom: bottom },
+              { left: left, right: Math.min(right, radarBounds.left), top: top, bottom: bottom },
+              { left: left, right: right, top: Math.max(top, radarBounds.bottom), bottom: bottom },
+              { left: left, right: right, top: top, bottom: Math.min(bottom, radarBounds.top) }
+            ].filter(function (region) {
+              return region.right &gt; region.left &amp;&amp; region.bottom &gt; region.top;
+            });
+            safeRegions.sort(function (first, second) {
+              var firstArea = (first.right - first.left) * (first.bottom - first.top);
+              var secondArea = (second.right - second.left) * (second.bottom - second.top);
+              return secondArea - firstArea;
+            });
+            if (safeRegions.length) {
+              left = safeRegions[0].left;
+              right = safeRegions[0].right;
+              top = safeRegions[0].top;
+              bottom = safeRegions[0].bottom;
+            }
+          }
+        }
         if (right &lt;= left || bottom &lt;= top) return false;
         semanticViewport = { left: left, right: right, top: top, bottom: bottom };
         var maxScale = options.maxScale || (options.includeNeighbors ? 1.9 : 2.15);
@@ -17325,6 +17389,17 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         if (Array.isArray(active) &amp;&amp; active.length) return reveal(active, { reason: &#39;selection-sync&#39; });
         return false;
       }
+      function requestViewSync(forceSemantic) {
+        if (forceSemantic === true) semanticSyncRequested = true;
+        if (viewSyncFrame) return;
+        viewSyncFrame = requestAnimationFrame(function () {
+          viewSyncFrame = 0;
+          var shouldSyncSemantic = semanticSyncRequested || state.mode === &#39;semantic&#39;;
+          semanticSyncRequested = false;
+          if (shouldSyncSemantic) syncSemantic();
+          else apply();
+        });
+      }
       function pinControls() {
         container.style.setProperty(&#39;--archify-scroll-x&#39;, container.scrollLeft + &#39;px&#39;);
       }
@@ -17370,17 +17445,14 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       container.addEventListener(&#39;pointercancel&#39;, onPointerEnd);
       container.addEventListener(&#39;scroll&#39;, onScroll, { passive: true });
       window.addEventListener(&#39;resize&#39;, function () {
-        if (resizeFrame) cancelAnimationFrame(resizeFrame);
-        resizeFrame = requestAnimationFrame(function () {
-          resizeFrame = 0;
-          if (state.mode === &#39;semantic&#39;) syncSemantic();
-          else apply();
-        });
+        requestViewSync(false);
       });
-      window.addEventListener(&#39;hashchange&#39;, function () { requestAnimationFrame(syncSemantic); });
+      window.addEventListener(&#39;hashchange&#39;, function () {
+        requestViewSync(true);
+      });
       apply();
       pinControls();
-      requestAnimationFrame(syncSemantic);
+      requestViewSync(true);
 
       return {
         zoomIn: function () { zoom(state.scale + 0.25); },
@@ -20340,6 +20412,9 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       } else if (e.key === &#39;Escape&#39; &amp;&amp; Archify.intentTrace.active()) {
         e.preventDefault();
         Archify.intentTrace.clear();
+      } else if (e.key === &#39;Escape&#39; &amp;&amp; Archify.focus.relationship()) {
+        e.preventDefault();
+        Archify.focus.clearRelationship({ restoreFocus: true });
       } else if (e.key === &#39;Escape&#39; &amp;&amp; Archify.focus.active()) {
         e.preventDefault();
         Archify.focus.clear({ restoreFocus: true });
@@ -29048,6 +29123,27 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         }
         if (!reveal()) requestAnimationFrame(reveal);
       }
+      function clearPinnedRelationship(options) {
+        options = options || {};
+        var record = pinnedRelationshipRecord();
+        if (!record) return false;
+        var sourceNode = svg.querySelector(&#39;[data-node-id=&quot;&#39; + record.from + &#39;&quot;]&#39;);
+        if (!set(record.from, {
+          toggle: false,
+          updateUrl: options.updateUrl !== false
+        })) return false;
+        if (options.reveal !== false &amp;&amp; Archify.view &amp;&amp; typeof Archify.view.reveal === &#39;function&#39;) {
+          Archify.view.reveal([record.from], {
+            includeNeighbors: true,
+            reason: &#39;relationship-clear&#39;
+          });
+        }
+        if (options.restoreFocus === true &amp;&amp; sourceNode) {
+          try { sourceNode.focus({ preventScroll: true }); }
+          catch (_) { try { sourceNode.focus(); } catch (_) {} }
+        }
+        return true;
+      }
       function inspectRelationship(key, options) {
         options = options || {};
         if (html.getAttribute(&#39;data-embed&#39;) === &#39;true&#39;) return false;
@@ -29057,7 +29153,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         focusedRelationship = null;
         if (pinnedRelationshipKey === key) {
           if (options.toggle === false) return true;
-          clear({ updateUrl: options.updateUrl !== false });
+          clearPinnedRelationship({ updateUrl: options.updateUrl !== false });
           return true;
         }
         var record = relationshipRecordForKey(key);
@@ -29178,9 +29274,10 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         });
         relationshipHitOverlay.addEventListener(&#39;click&#39;, function (event) {
           var target = event.target.closest(&#39;[data-relationship-hit-key]&#39;);
-          if (!target || directRelationshipBlocked()) return;
+          if (!target) return;
           event.preventDefault();
           event.stopPropagation();
+          if (directRelationshipBlocked()) return;
           focusedRelationship = null;
           hoveredRelationship = null;
           inspectRelationship(target.getAttribute(&#39;data-relationship-key&#39;));
@@ -29190,11 +29287,14 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           if (!target) return;
           if (event.key === &#39;Escape&#39; &amp;&amp; pinnedRelationshipKey) {
             event.preventDefault();
-            clear({ updateUrl: false });
+            event.stopPropagation();
+            clearPinnedRelationship({ restoreFocus: true });
             return;
           }
           if (event.key === &#39;Enter&#39; || event.key === &#39; &#39;) {
             event.preventDefault();
+            event.stopPropagation();
+            if (directRelationshipBlocked()) return;
             focusedRelationship = null;
             hoveredRelationship = null;
             inspectRelationship(target.getAttribute(&#39;data-relationship-key&#39;));
@@ -29882,6 +29982,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         reachabilitySnapshot: reachabilitySnapshot,
         inspectRelationship: inspectRelationship,
         inspectRelationshipById: inspectRelationshipById,
+        clearRelationship: clearPinnedRelationship,
         reposition: requestLensPlacement,
         relationship: function () {
           var record = pinnedRelationshipRecord();
@@ -32371,7 +32472,8 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       var cameraGeneration = 0;
       var cameraTransaction = null;
       var clipFrame = 0;
-      var resizeFrame = 0;
+      var viewSyncFrame = 0;
+      var semanticSyncRequested = false;
       var autoScrollUntil = 0;
       var semanticViewport = null;
 
@@ -32777,6 +32879,43 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           if (receiptTop &lt; svgHeight / 2) top = Math.max(top, receiptBottom + 24);
           else bottom = Math.min(bottom, receiptTop - 24);
         }
+        var radar = document.getElementById(&#39;overview-map&#39;);
+        if (radar &amp;&amp; !radar.hidden) {
+          var radarRect = radar.getBoundingClientRect();
+          var svgRect = svg.getBoundingClientRect();
+          var renderedState = sampleRenderedState();
+          var svgLayoutLeft = svgRect.left - renderedState.x;
+          var svgLayoutTop = svgRect.top - renderedState.y;
+          var radarBounds = {
+            left: radarRect.left - svgLayoutLeft - 24,
+            right: radarRect.right - svgLayoutLeft + 24,
+            top: radarRect.top - svgLayoutTop - 24,
+            bottom: radarRect.bottom - svgLayoutTop + 24
+          };
+          var overlapsViewport = radarBounds.left &lt; right &amp;&amp; radarBounds.right &gt; left &amp;&amp;
+            radarBounds.top &lt; bottom &amp;&amp; radarBounds.bottom &gt; top;
+          if (overlapsViewport) {
+            var safeRegions = [
+              { left: Math.max(left, radarBounds.right), right: right, top: top, bottom: bottom },
+              { left: left, right: Math.min(right, radarBounds.left), top: top, bottom: bottom },
+              { left: left, right: right, top: Math.max(top, radarBounds.bottom), bottom: bottom },
+              { left: left, right: right, top: top, bottom: Math.min(bottom, radarBounds.top) }
+            ].filter(function (region) {
+              return region.right &gt; region.left &amp;&amp; region.bottom &gt; region.top;
+            });
+            safeRegions.sort(function (first, second) {
+              var firstArea = (first.right - first.left) * (first.bottom - first.top);
+              var secondArea = (second.right - second.left) * (second.bottom - second.top);
+              return secondArea - firstArea;
+            });
+            if (safeRegions.length) {
+              left = safeRegions[0].left;
+              right = safeRegions[0].right;
+              top = safeRegions[0].top;
+              bottom = safeRegions[0].bottom;
+            }
+          }
+        }
         if (right &lt;= left || bottom &lt;= top) return false;
         semanticViewport = { left: left, right: right, top: top, bottom: bottom };
         var maxScale = options.maxScale || (options.includeNeighbors ? 1.9 : 2.15);
@@ -33015,6 +33154,17 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         if (Array.isArray(active) &amp;&amp; active.length) return reveal(active, { reason: &#39;selection-sync&#39; });
         return false;
       }
+      function requestViewSync(forceSemantic) {
+        if (forceSemantic === true) semanticSyncRequested = true;
+        if (viewSyncFrame) return;
+        viewSyncFrame = requestAnimationFrame(function () {
+          viewSyncFrame = 0;
+          var shouldSyncSemantic = semanticSyncRequested || state.mode === &#39;semantic&#39;;
+          semanticSyncRequested = false;
+          if (shouldSyncSemantic) syncSemantic();
+          else apply();
+        });
+      }
       function pinControls() {
         container.style.setProperty(&#39;--archify-scroll-x&#39;, container.scrollLeft + &#39;px&#39;);
       }
@@ -33060,17 +33210,14 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       container.addEventListener(&#39;pointercancel&#39;, onPointerEnd);
       container.addEventListener(&#39;scroll&#39;, onScroll, { passive: true });
       window.addEventListener(&#39;resize&#39;, function () {
-        if (resizeFrame) cancelAnimationFrame(resizeFrame);
-        resizeFrame = requestAnimationFrame(function () {
-          resizeFrame = 0;
-          if (state.mode === &#39;semantic&#39;) syncSemantic();
-          else apply();
-        });
+        requestViewSync(false);
       });
-      window.addEventListener(&#39;hashchange&#39;, function () { requestAnimationFrame(syncSemantic); });
+      window.addEventListener(&#39;hashchange&#39;, function () {
+        requestViewSync(true);
+      });
       apply();
       pinControls();
-      requestAnimationFrame(syncSemantic);
+      requestViewSync(true);
 
       return {
         zoomIn: function () { zoom(state.scale + 0.25); },
@@ -36030,6 +36177,9 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       } else if (e.key === &#39;Escape&#39; &amp;&amp; Archify.intentTrace.active()) {
         e.preventDefault();
         Archify.intentTrace.clear();
+      } else if (e.key === &#39;Escape&#39; &amp;&amp; Archify.focus.relationship()) {
+        e.preventDefault();
+        Archify.focus.clearRelationship({ restoreFocus: true });
       } else if (e.key === &#39;Escape&#39; &amp;&amp; Archify.focus.active()) {
         e.preventDefault();
         Archify.focus.clear({ restoreFocus: true });

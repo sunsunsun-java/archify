@@ -1531,16 +1531,14 @@ test('Radar, Passport, Legend, and Dock remain mutually clear on desktop and nar
   }
 });
 
-test('direct and reachable relationship exploration keeps highlighted nodes outside the Passport', {
+test('reachable relationship exploration keeps highlighted nodes outside the Passport', {
   skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
 }, async () => {
   const browser = new ChromeVisualBrowser(chromePath);
   const artifact = renderRelationshipExplorationStress();
   const scenarios = [
-    { label: 'outgoing', trigger: 'relationship', direction: 'out', match: '[data-node-id][data-relationship-preview-node]', expectedIds: ['hub', 'out-left'] },
-    { label: 'incoming', trigger: 'relationship', direction: 'in', match: '[data-node-id][data-relationship-preview-node]', expectedIds: ['hub', 'in-left'] },
-    { label: 'upstream', trigger: 'reach', direction: 'upstream', match: '[data-node-id][data-reach-match]', expectedIds: ['hub', 'in-left', 'in-right'] },
-    { label: 'downstream', trigger: 'reach', direction: 'downstream', match: '[data-node-id][data-reach-match]', expectedIds: ['hub', 'out-left', 'out-right'] },
+    { label: 'upstream', direction: 'upstream', match: '[data-node-id][data-reach-match]', expectedIds: ['hub', 'in-left', 'in-right'] },
+    { label: 'downstream', direction: 'downstream', match: '[data-node-id][data-reach-match]', expectedIds: ['hub', 'out-left', 'out-right'] },
   ];
   try {
     for (const scenario of scenarios) {
@@ -1556,29 +1554,7 @@ test('direct and reachable relationship exploration keeps highlighted nodes outs
         });
       })()`);
       await waitForLayout(browser, sessionId);
-      if (scenario.trigger === 'reach') {
-        await evaluate(browser, sessionId, `document.getElementById('btn-reach-${scenario.direction}').click()`);
-      } else {
-        await evaluate(browser, sessionId, `(function () {
-          var row = document.querySelector('#relationship-lens-list .relationship-lens-row[data-direction="${scenario.direction}"]');
-          if (row && row.offsetParent === null) {
-            row.closest('.relationship-lens-group').querySelector('[data-relationship-group-toggle]').click();
-          }
-        })()`);
-        await waitForLayout(browser, sessionId);
-        const point = await evaluate(browser, sessionId, `(function () {
-          var row = document.querySelector('#relationship-lens-list .relationship-lens-row[data-direction="${scenario.direction}"]');
-          var rect = row.getBoundingClientRect();
-          return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-        })()`);
-        await browser.cdp.send('Input.dispatchMouseEvent', {
-          type: 'mouseMoved',
-          x: point.x,
-          y: point.y,
-          button: 'none',
-          buttons: 0,
-        }, sessionId);
-      }
+      await evaluate(browser, sessionId, `document.getElementById('btn-reach-${scenario.direction}').click()`);
       const receipt = await evaluate(browser, sessionId, `(function () {
         var scenario = ${JSON.stringify(scenario)};
         var container = document.querySelector('.diagram-container');
@@ -1652,38 +1628,7 @@ test('direct and reachable relationship exploration keeps highlighted nodes outs
       assert.equal(receipt.matchCount, scenario.expectedIds.length, message);
       assert.ok(receipt.overlaps.every((entry) => entry.fullyVisible), message);
       assert.equal(Math.max(...receipt.overlaps.map((entry) => entry.area)), 0, message);
-      if (scenario.trigger === 'relationship') assert.ok(receipt.camera.scale < 1, message);
-      if (scenario.trigger === 'reach') assert.equal(receipt.compact, 'true', message);
-
-      if (scenario.label === 'outgoing') {
-        await browser.cdp.send('Input.dispatchMouseEvent', {
-          type: 'mouseMoved',
-          x: 1420,
-          y: 20,
-          button: 'none',
-          buttons: 0,
-        }, sessionId);
-        await waitForLayout(browser, sessionId);
-        const restored = await evaluate(browser, sessionId, `(function () {
-          var passport = document.getElementById('focus-chip');
-          return {
-            camera: Archify.view.state(),
-            compact: passport.getAttribute('data-exploration-compact'),
-            mode: passport.getAttribute('data-exploration-mode'),
-            previewCount: document.querySelectorAll('[data-relationship-preview-node]').length,
-            reachVisible: !document.getElementById('focus-reach').hidden &&
-              getComputedStyle(document.getElementById('focus-reach')).display !== 'none',
-            detailsHidden: document.getElementById('btn-focus-details').hidden
-          };
-        })()`);
-        assert.equal(restored.previewCount, 0, JSON.stringify(restored));
-        assert.equal(restored.compact, null, JSON.stringify(restored));
-        assert.equal(restored.mode, null, JSON.stringify(restored));
-        assert.equal(restored.reachVisible, true, JSON.stringify(restored));
-        assert.equal(restored.detailsHidden, true, JSON.stringify(restored));
-        assert.equal(restored.camera.mode, 'semantic', JSON.stringify(restored));
-        assert.ok(restored.camera.scale >= 1, JSON.stringify(restored));
-      }
+      assert.equal(receipt.compact, 'true', message);
 
       if (scenario.label === 'downstream') {
         await evaluate(browser, sessionId, `document.getElementById('btn-reach-downstream').click()`);
@@ -2352,17 +2297,52 @@ test('relationship hash synchronization owns exactly one camera reveal', {
       return {
         transactions: window.__archifyInitialCameraTransactions,
         relation: document.querySelector('.diagram-container > svg').getAttribute('data-relationship-pin-active'),
+        expectedRelation: document.querySelector('[data-relationship-hit-key][data-relationship-id="agent-tools"]').getAttribute('data-relationship-key'),
+        pressedRelationshipIds: Array.prototype.map.call(
+          document.querySelectorAll('[data-relationship-hit-key][aria-pressed="true"]'),
+          function (item) { return item.getAttribute('data-relationship-id'); }
+        ),
         hash: location.hash
       };
     })()`);
     assert.equal(initial.transactions.length, 1, JSON.stringify(initial));
-    assert.ok(initial.relation, JSON.stringify(initial));
+    assert.equal(initial.relation, initial.expectedRelation, JSON.stringify(initial));
+    assert.deepEqual(initial.pressedRelationshipIds, ['agent-tools'], JSON.stringify(initial));
     assert.equal(initial.hash, '#relation=agent-tools', JSON.stringify(initial));
+
+    await evaluate(browser, sessionId, `window.__archifyInitialCameraTransactions.length = 0`);
+    await browser.cdp.send('Input.dispatchKeyEvent', {
+      type: 'rawKeyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27,
+    }, sessionId);
+    await browser.cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27,
+    }, sessionId);
+    await waitForLayout(browser, sessionId);
+    const escaped = await evaluate(browser, sessionId, `(function () {
+      var svg = document.querySelector('.diagram-container > svg');
+      var passport = document.getElementById('focus-chip');
+      return {
+        transactions: window.__archifyInitialCameraTransactions,
+        relation: svg.getAttribute('data-relationship-pin-active'),
+        focused: svg.getAttribute('data-focus-active'),
+        hash: location.hash,
+        passportHidden: passport.hidden,
+        activeNode: document.activeElement && document.activeElement.getAttribute('data-node-id')
+      };
+    })()`);
+    assert.equal(escaped.transactions.length, 1, JSON.stringify(escaped));
+    assert.equal(escaped.relation, null, JSON.stringify(escaped));
+    assert.equal(escaped.focused, 'agent-kernel', JSON.stringify(escaped));
+    assert.equal(escaped.hash, '#focus=agent-kernel', JSON.stringify(escaped));
+    assert.equal(escaped.passportHidden, false, JSON.stringify(escaped));
+    assert.equal(escaped.activeNode, 'agent-kernel', JSON.stringify(escaped));
 
     sessionId = await load(browser, artifact);
     await waitForLayout(browser, sessionId);
     await evaluate(browser, sessionId, `(function () {
       window.__archifyInitialCameraTransactions.length = 0;
+      location.hash = 'relation=agent-ai';
+      window.dispatchEvent(new Event('resize'));
       location.hash = 'relation=agent-tools';
     })()`);
     await waitForLayout(browser, sessionId);
@@ -2370,11 +2350,18 @@ test('relationship hash synchronization owns exactly one camera reveal', {
       return {
         transactions: window.__archifyInitialCameraTransactions,
         relation: document.querySelector('.diagram-container > svg').getAttribute('data-relationship-pin-active'),
+        expectedRelation: document.querySelector('[data-relationship-hit-key][data-relationship-id="agent-tools"]').getAttribute('data-relationship-key'),
+        firstPressed: document.querySelector('[data-relationship-hit-key][data-relationship-id="agent-ai"]').getAttribute('aria-pressed'),
+        secondPressed: document.querySelector('[data-relationship-hit-key][data-relationship-id="agent-tools"]').getAttribute('aria-pressed'),
+        pressedCount: document.querySelectorAll('[data-relationship-hit-key][aria-pressed="true"]').length,
         hash: location.hash
       };
     })()`);
     assert.equal(changed.transactions.length, 1, JSON.stringify(changed));
-    assert.ok(changed.relation, JSON.stringify(changed));
+    assert.equal(changed.relation, changed.expectedRelation, JSON.stringify(changed));
+    assert.equal(changed.firstPressed, 'false', JSON.stringify(changed));
+    assert.equal(changed.secondPressed, 'true', JSON.stringify(changed));
+    assert.equal(changed.pressedCount, 1, JSON.stringify(changed));
     assert.equal(changed.hash, '#relation=agent-tools', JSON.stringify(changed));
   } finally {
     await browser.close();
@@ -2405,22 +2392,68 @@ test('relationship click, Enter, and Space activation each reveal exactly once',
       };
     })()`);
   }
-  async function collectProbe(sessionId) {
+  async function collectProbe(sessionId, expectedRelationshipId = 'agent-tools') {
     return evaluate(browser, sessionId, `(function () {
       var probe = window.__archifyActivationProbe;
       Archify.view.reveal = probe.originalReveal;
       Archify.view.reset = probe.originalReset;
       delete window.__archifyActivationProbe;
+      function rect(element) {
+        if (!element || element.hidden) return null;
+        var value = element.getBoundingClientRect();
+        return value.width > 0 && value.height > 0 ? value : null;
+      }
+      function overlap(first, second) {
+        if (!first || !second) return 0;
+        return Math.max(0, Math.min(first.right, second.right) - Math.max(first.left, second.left)) *
+          Math.max(0, Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top));
+      }
+      var expectedRelationshipId = ${JSON.stringify(expectedRelationshipId)};
+      var expectedRelationship = document.querySelector('[data-relationship-hit-key][data-relationship-id="' + expectedRelationshipId + '"]');
+      var sourceId = expectedRelationship.getAttribute('data-relationship-from');
+      var targetId = expectedRelationship.getAttribute('data-relationship-to');
+      var source = rect(document.querySelector('[data-node-id="' + sourceId + '"]'));
+      var target = rect(document.querySelector('[data-node-id="' + targetId + '"]'));
+      var passport = rect(document.getElementById('focus-chip'));
+      var radar = rect(document.getElementById('overview-map'));
+      var container = rect(document.querySelector('.diagram-container'));
+      var visibleTop = container ? Math.max(0, container.top) : 0;
+      var visibleBottom = container ? Math.min(window.innerHeight, container.bottom) : 0;
+      function fullyVisible(value) {
+        return !value || !container || (value.left >= container.left - 1 && value.right <= container.right + 1 &&
+          value.top >= visibleTop - 1 && value.bottom <= visibleBottom + 1);
+      }
       return {
         calls: probe.calls,
         resetCalls: probe.resetCalls,
-        focused: document.querySelector('.diagram-container > svg').getAttribute('data-focus-active')
+        focused: document.querySelector('.diagram-container > svg').getAttribute('data-focus-active'),
+        pinned: document.querySelector('.diagram-container > svg').getAttribute('data-relationship-pin-active'),
+        explorationMode: document.getElementById('focus-chip').getAttribute('data-exploration-mode'),
+        passportHidden: document.getElementById('focus-chip').hidden,
+        hash: location.hash,
+        expectedPin: expectedRelationship.getAttribute('data-relationship-key'),
+        pressedRelationshipIds: Array.prototype.map.call(
+          document.querySelectorAll('[data-relationship-hit-key][aria-pressed="true"]'),
+          function (item) { return item.getAttribute('data-relationship-id'); }
+        ),
+        geometryVisible: {
+          source: Boolean(source),
+          target: Boolean(target),
+          passport: Boolean(passport),
+          radar: Boolean(radar),
+          container: Boolean(container)
+        },
+        passportOverlap: overlap(passport, source) + overlap(passport, target),
+        radarOverlap: overlap(radar, source) + overlap(radar, target),
+        fullyVisible: fullyVisible(source) && fullyVisible(target),
+        targetPassportOverlap: overlap(passport, target),
+        targetFullyVisible: fullyVisible(target)
       };
     })()`);
   }
   async function activateKey(sessionId, key) {
-    const code = key === 'Enter' ? 'Enter' : 'Space';
-    const windowsVirtualKeyCode = key === 'Enter' ? 13 : 32;
+    const code = key === 'Enter' || key === 'Escape' ? key : 'Space';
+    const windowsVirtualKeyCode = key === 'Enter' ? 13 : (key === 'Escape' ? 27 : 32);
     await browser.cdp.send('Input.dispatchKeyEvent', {
       type: 'rawKeyDown', key, code, windowsVirtualKeyCode,
     }, sessionId);
@@ -2445,8 +2478,15 @@ test('relationship click, Enter, and Space activation each reveal exactly once',
       assert.deepEqual(listReceipt.calls, [{ ids: ['tools'], reason: 'relationship' }], JSON.stringify({ activation, listReceipt }));
       assert.equal(listReceipt.resetCalls, 0, JSON.stringify({ activation, listReceipt }));
       assert.equal(listReceipt.focused, 'tools', JSON.stringify({ activation, listReceipt }));
+      assert.equal(listReceipt.geometryVisible.target, true, JSON.stringify({ activation, listReceipt }));
+      assert.equal(listReceipt.geometryVisible.passport, true, JSON.stringify({ activation, listReceipt }));
+      assert.equal(listReceipt.geometryVisible.container, true, JSON.stringify({ activation, listReceipt }));
+      assert.equal(listReceipt.targetPassportOverlap, 0, JSON.stringify({ activation, listReceipt }));
+      assert.equal(listReceipt.targetFullyVisible, true, JSON.stringify({ activation, listReceipt }));
 
       sessionId = await load(browser, artifact, { query: `?direct=${encodeURIComponent(activation)}` });
+      await evaluate(browser, sessionId, `Archify.radar.open()`);
+      await waitForLayout(browser, sessionId);
       await focusSelector(browser, sessionId, '[data-relationship-hit-key][data-relationship-id="agent-tools"]');
       await installProbe(sessionId);
       if (activation === 'click') {
@@ -2462,6 +2502,80 @@ test('relationship click, Enter, and Space activation each reveal exactly once',
       }], JSON.stringify({ activation, directReceipt }));
       assert.equal(directReceipt.resetCalls, 0, JSON.stringify({ activation, directReceipt }));
       assert.equal(directReceipt.focused, 'agent-kernel', JSON.stringify({ activation, directReceipt }));
+      assert.deepEqual(directReceipt.geometryVisible, {
+        source: true,
+        target: true,
+        passport: true,
+        radar: true,
+        container: true
+      }, JSON.stringify({ activation, directReceipt }));
+      assert.equal(directReceipt.pinned, directReceipt.expectedPin, JSON.stringify({ activation, directReceipt }));
+      assert.deepEqual(directReceipt.pressedRelationshipIds, ['agent-tools'], JSON.stringify({ activation, directReceipt }));
+      assert.equal(directReceipt.explorationMode, 'relationship', JSON.stringify({ activation, directReceipt }));
+      assert.equal(directReceipt.passportHidden, false, JSON.stringify({ activation, directReceipt }));
+      assert.equal(directReceipt.hash, '#relation=agent-tools', JSON.stringify({ activation, directReceipt }));
+      assert.equal(directReceipt.passportOverlap, 0, JSON.stringify({ activation, directReceipt }));
+      assert.equal(directReceipt.radarOverlap, 0, JSON.stringify({ activation, directReceipt }));
+      assert.equal(directReceipt.fullyVisible, true, JSON.stringify({ activation, directReceipt }));
+
+      await installProbe(sessionId);
+      await activateKey(sessionId, 'Escape');
+      await waitForLayout(browser, sessionId);
+      const clearedReceipt = await collectProbe(sessionId);
+      assert.deepEqual(clearedReceipt.calls, [{
+        ids: ['agent-kernel'],
+        reason: 'relationship-clear'
+      }], JSON.stringify({ activation, clearedReceipt }));
+      assert.equal(clearedReceipt.resetCalls, 0, JSON.stringify({ activation, clearedReceipt }));
+      assert.equal(clearedReceipt.focused, 'agent-kernel', JSON.stringify({ activation, clearedReceipt }));
+      assert.equal(clearedReceipt.pinned, null, JSON.stringify({ activation, clearedReceipt }));
+      assert.deepEqual(clearedReceipt.pressedRelationshipIds, [], JSON.stringify({ activation, clearedReceipt }));
+      assert.equal(clearedReceipt.explorationMode, null, JSON.stringify({ activation, clearedReceipt }));
+      assert.equal(clearedReceipt.passportHidden, false, JSON.stringify({ activation, clearedReceipt }));
+      assert.equal(clearedReceipt.hash, '#focus=agent-kernel', JSON.stringify({ activation, clearedReceipt }));
+
+      await focusSelector(browser, sessionId, '[data-relationship-hit-key][data-relationship-id="agent-tools"]');
+      await installProbe(sessionId);
+      if (activation === 'click') {
+        await evaluate(browser, sessionId, `document.activeElement.dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
+      } else {
+        await activateKey(sessionId, activation);
+      }
+      await waitForLayout(browser, sessionId);
+      const blockedReceipt = await collectProbe(sessionId);
+      assert.deepEqual(blockedReceipt.calls, [], JSON.stringify({ activation, blockedReceipt }));
+      assert.equal(blockedReceipt.resetCalls, 0, JSON.stringify({ activation, blockedReceipt }));
+      assert.equal(blockedReceipt.focused, 'agent-kernel', JSON.stringify({ activation, blockedReceipt }));
+      assert.equal(blockedReceipt.pinned, null, JSON.stringify({ activation, blockedReceipt }));
+      assert.deepEqual(blockedReceipt.pressedRelationshipIds, [], JSON.stringify({ activation, blockedReceipt }));
+      assert.equal(blockedReceipt.explorationMode, null, JSON.stringify({ activation, blockedReceipt }));
+      assert.equal(blockedReceipt.hash, '#focus=agent-kernel', JSON.stringify({ activation, blockedReceipt }));
+
+      if (activation === 'click') {
+        await evaluate(browser, sessionId, `Archify.focus.clear({ updateUrl: false, preserveView: true })`);
+        await focusSelector(browser, sessionId, '[data-relationship-hit-key][data-relationship-id="agent-ai"]');
+        await installProbe(sessionId);
+        await evaluate(browser, sessionId, `document.activeElement.dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
+        await waitForLayout(browser, sessionId);
+        const secondReceipt = await collectProbe(sessionId, 'agent-ai');
+        assert.deepEqual(secondReceipt.calls, [{
+          ids: ['agent-kernel', 'ai-router'],
+          reason: 'relationship-direct'
+        }], JSON.stringify({ activation, secondReceipt }));
+        assert.equal(secondReceipt.pinned, secondReceipt.expectedPin, JSON.stringify({ activation, secondReceipt }));
+        assert.deepEqual(secondReceipt.pressedRelationshipIds, ['agent-ai'], JSON.stringify({ activation, secondReceipt }));
+        assert.deepEqual(secondReceipt.geometryVisible, {
+          source: true,
+          target: true,
+          passport: true,
+          radar: true,
+          container: true
+        }, JSON.stringify({ activation, secondReceipt }));
+        assert.equal(secondReceipt.passportOverlap, 0, JSON.stringify({ activation, secondReceipt }));
+        assert.equal(secondReceipt.radarOverlap, 0, JSON.stringify({ activation, secondReceipt }));
+        assert.equal(secondReceipt.fullyVisible, true, JSON.stringify({ activation, secondReceipt }));
+        assert.equal(secondReceipt.hash, '#relation=agent-ai', JSON.stringify({ activation, secondReceipt }));
+      }
     }
   } finally {
     await browser.close();

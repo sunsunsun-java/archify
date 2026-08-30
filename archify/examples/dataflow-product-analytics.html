@@ -8513,6 +8513,27 @@
         }
         if (!reveal()) requestAnimationFrame(reveal);
       }
+      function clearPinnedRelationship(options) {
+        options = options || {};
+        var record = pinnedRelationshipRecord();
+        if (!record) return false;
+        var sourceNode = svg.querySelector('[data-node-id="' + record.from + '"]');
+        if (!set(record.from, {
+          toggle: false,
+          updateUrl: options.updateUrl !== false
+        })) return false;
+        if (options.reveal !== false && Archify.view && typeof Archify.view.reveal === 'function') {
+          Archify.view.reveal([record.from], {
+            includeNeighbors: true,
+            reason: 'relationship-clear'
+          });
+        }
+        if (options.restoreFocus === true && sourceNode) {
+          try { sourceNode.focus({ preventScroll: true }); }
+          catch (_) { try { sourceNode.focus(); } catch (_) {} }
+        }
+        return true;
+      }
       function inspectRelationship(key, options) {
         options = options || {};
         if (html.getAttribute('data-embed') === 'true') return false;
@@ -8522,7 +8543,7 @@
         focusedRelationship = null;
         if (pinnedRelationshipKey === key) {
           if (options.toggle === false) return true;
-          clear({ updateUrl: options.updateUrl !== false });
+          clearPinnedRelationship({ updateUrl: options.updateUrl !== false });
           return true;
         }
         var record = relationshipRecordForKey(key);
@@ -8643,9 +8664,10 @@
         });
         relationshipHitOverlay.addEventListener('click', function (event) {
           var target = event.target.closest('[data-relationship-hit-key]');
-          if (!target || directRelationshipBlocked()) return;
+          if (!target) return;
           event.preventDefault();
           event.stopPropagation();
+          if (directRelationshipBlocked()) return;
           focusedRelationship = null;
           hoveredRelationship = null;
           inspectRelationship(target.getAttribute('data-relationship-key'));
@@ -8655,11 +8677,14 @@
           if (!target) return;
           if (event.key === 'Escape' && pinnedRelationshipKey) {
             event.preventDefault();
-            clear({ updateUrl: false });
+            event.stopPropagation();
+            clearPinnedRelationship({ restoreFocus: true });
             return;
           }
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
+            event.stopPropagation();
+            if (directRelationshipBlocked()) return;
             focusedRelationship = null;
             hoveredRelationship = null;
             inspectRelationship(target.getAttribute('data-relationship-key'));
@@ -9347,6 +9372,7 @@
         reachabilitySnapshot: reachabilitySnapshot,
         inspectRelationship: inspectRelationship,
         inspectRelationshipById: inspectRelationshipById,
+        clearRelationship: clearPinnedRelationship,
         reposition: requestLensPlacement,
         relationship: function () {
           var record = pinnedRelationshipRecord();
@@ -11836,7 +11862,8 @@
       var cameraGeneration = 0;
       var cameraTransaction = null;
       var clipFrame = 0;
-      var resizeFrame = 0;
+      var viewSyncFrame = 0;
+      var semanticSyncRequested = false;
       var autoScrollUntil = 0;
       var semanticViewport = null;
 
@@ -12242,6 +12269,43 @@
           if (receiptTop < svgHeight / 2) top = Math.max(top, receiptBottom + 24);
           else bottom = Math.min(bottom, receiptTop - 24);
         }
+        var radar = document.getElementById('overview-map');
+        if (radar && !radar.hidden) {
+          var radarRect = radar.getBoundingClientRect();
+          var svgRect = svg.getBoundingClientRect();
+          var renderedState = sampleRenderedState();
+          var svgLayoutLeft = svgRect.left - renderedState.x;
+          var svgLayoutTop = svgRect.top - renderedState.y;
+          var radarBounds = {
+            left: radarRect.left - svgLayoutLeft - 24,
+            right: radarRect.right - svgLayoutLeft + 24,
+            top: radarRect.top - svgLayoutTop - 24,
+            bottom: radarRect.bottom - svgLayoutTop + 24
+          };
+          var overlapsViewport = radarBounds.left < right && radarBounds.right > left &&
+            radarBounds.top < bottom && radarBounds.bottom > top;
+          if (overlapsViewport) {
+            var safeRegions = [
+              { left: Math.max(left, radarBounds.right), right: right, top: top, bottom: bottom },
+              { left: left, right: Math.min(right, radarBounds.left), top: top, bottom: bottom },
+              { left: left, right: right, top: Math.max(top, radarBounds.bottom), bottom: bottom },
+              { left: left, right: right, top: top, bottom: Math.min(bottom, radarBounds.top) }
+            ].filter(function (region) {
+              return region.right > region.left && region.bottom > region.top;
+            });
+            safeRegions.sort(function (first, second) {
+              var firstArea = (first.right - first.left) * (first.bottom - first.top);
+              var secondArea = (second.right - second.left) * (second.bottom - second.top);
+              return secondArea - firstArea;
+            });
+            if (safeRegions.length) {
+              left = safeRegions[0].left;
+              right = safeRegions[0].right;
+              top = safeRegions[0].top;
+              bottom = safeRegions[0].bottom;
+            }
+          }
+        }
         if (right <= left || bottom <= top) return false;
         semanticViewport = { left: left, right: right, top: top, bottom: bottom };
         var maxScale = options.maxScale || (options.includeNeighbors ? 1.9 : 2.15);
@@ -12480,6 +12544,17 @@
         if (Array.isArray(active) && active.length) return reveal(active, { reason: 'selection-sync' });
         return false;
       }
+      function requestViewSync(forceSemantic) {
+        if (forceSemantic === true) semanticSyncRequested = true;
+        if (viewSyncFrame) return;
+        viewSyncFrame = requestAnimationFrame(function () {
+          viewSyncFrame = 0;
+          var shouldSyncSemantic = semanticSyncRequested || state.mode === 'semantic';
+          semanticSyncRequested = false;
+          if (shouldSyncSemantic) syncSemantic();
+          else apply();
+        });
+      }
       function pinControls() {
         container.style.setProperty('--archify-scroll-x', container.scrollLeft + 'px');
       }
@@ -12525,17 +12600,14 @@
       container.addEventListener('pointercancel', onPointerEnd);
       container.addEventListener('scroll', onScroll, { passive: true });
       window.addEventListener('resize', function () {
-        if (resizeFrame) cancelAnimationFrame(resizeFrame);
-        resizeFrame = requestAnimationFrame(function () {
-          resizeFrame = 0;
-          if (state.mode === 'semantic') syncSemantic();
-          else apply();
-        });
+        requestViewSync(false);
       });
-      window.addEventListener('hashchange', function () { requestAnimationFrame(syncSemantic); });
+      window.addEventListener('hashchange', function () {
+        requestViewSync(true);
+      });
       apply();
       pinControls();
-      requestAnimationFrame(syncSemantic);
+      requestViewSync(true);
 
       return {
         zoomIn: function () { zoom(state.scale + 0.25); },
@@ -15495,6 +15567,9 @@
       } else if (e.key === 'Escape' && Archify.intentTrace.active()) {
         e.preventDefault();
         Archify.intentTrace.clear();
+      } else if (e.key === 'Escape' && Archify.focus.relationship()) {
+        e.preventDefault();
+        Archify.focus.clearRelationship({ restoreFocus: true });
       } else if (e.key === 'Escape' && Archify.focus.active()) {
         e.preventDefault();
         Archify.focus.clear({ restoreFocus: true });
