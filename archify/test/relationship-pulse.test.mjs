@@ -94,7 +94,7 @@ test('pulse is finite, event-owned, preset-aware, touch-safe, and motion-safe', 
   assert.match(html, /@keyframes archify-relationship-token-life/);
   assert.doesNotMatch(html, /relationship-flow-pulse[^}]+infinite/);
   assert.match(html, /var activeRelationshipPreview = null/);
-  assert.match(html, /if \(next === activeRelationshipPreview && pointerStable === activePointerStable\) return/);
+  assert.match(html, /if \(next === activeRelationshipPreview\) return/);
   assert.match(html, /event\.pointerType === 'touch'/);
   assert.match(html, /finePointerQuery && !finePointerQuery\.matches/);
   assert.match(html, /Archify\.motionGovernor && Archify\.motionGovernor\.isPaused\(\)/);

@@ -68,7 +68,7 @@ test('semantic camera follows reader intent but yields to manual navigation', ()
   const html = render('workflow', CASES.workflow);
   assert.match(html, /beginHandoff\(previousIndex, index, previous, view, outgoingBeatIndex, options\.playback === true \? 'playback' : 'guided'\)/);
   assert.match(html, /reveal\(\[id\], \{ includeNeighbors: true, reason: 'focus' \}\)/);
-  assert.match(html, /reveal\(\[id\], \{ includeNeighbors: true, reason: 'relationship' \}\)/);
+  assert.match(html, /reveal\(\[id\], \{[\s\S]*?avoidPassport: true,[\s\S]*?reason: 'relationship'/);
   assert.match(html, /reveal\(\[id\], \{ includeNeighbors: true, reason: 'finder' \}\)/);
   assert.match(html, /function interruptCamera\(reason\)/);
   assert.match(html, /Archify\.guidedViews\.pause\(\)/);
@@ -80,9 +80,7 @@ test('semantic camera follows reader intent but yields to manual navigation', ()
   assert.match(html, /reset\(\{ automatic: true \}\)/);
   assert.match(html, /routeReceipt\.hasAttribute\('data-route-journey'\)/);
   assert.match(html, /receiptBottom \+ 24/);
-  assert.match(html, /reason: 'relationship-preview'/);
-  assert.match(html, /fitAll: true,[\s\S]+minimumScale: window\.innerWidth <= 900 \? 0\.35 : 0\.58,[\s\S]+reason: 'relationship-preview'/);
-  assert.match(html, /reason: 'relationship-preview-clear'/);
+  assert.doesNotMatch(html, /reason: 'relationship-preview(?:-clear)?'/);
   assert.match(html, /reason: 'relationship-sync'/);
   assert.match(html, /reason: 'reachability-sync'/);
   assert.ok(html.indexOf("reason: 'relationship-sync'") < html.indexOf("reason: 'focus-sync'"));

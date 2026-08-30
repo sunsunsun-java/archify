@@ -82,7 +82,8 @@ test('relationship lens groups incoming, outgoing, and self-loop paths and follo
   assert.match(html, /function toggleRelationshipGroup\(toggle\)/);
   assert.match(html, /expandRelationshipGroupForRow\(row\)/);
   assert.match(html, /set\(id, \{ toggle: false \}\)/);
-  assert.match(html, /Archify\.view\.reveal\(\[id\], \{ includeNeighbors: true, reason: 'relationship' \}\)/);
+  assert.match(html, /if \(window\.innerWidth <= 720\) setRelationshipListExpanded\(false\)/);
+  assert.match(html, /Archify\.view\.reveal\(\[id\], \{[\s\S]*?includeNeighbors: true,[\s\S]*?avoidPassport: true,[\s\S]*?reason: 'relationship'/);
   assert.doesNotMatch(svg(html), /relationship-lens|Connected relationships/);
 });
 
@@ -116,14 +117,9 @@ test('relationship preview precisely links pointer and keyboard rows to an edge 
   assert.match(html, /addEventListener\('focusin'/);
   assert.match(html, /addEventListener\('focusout'/);
   assert.match(html, /pinnedRelationship \|\| focusedRelationship \|\| hoveredRelationship/);
-  assert.match(html, /function lockRelationshipLensPosition\(\)/);
-  assert.match(html, /coarseNarrowPointer = window\.innerWidth <= 720/);
-  assert.match(html, /positionLocked = relationshipLensLockedTop !== null/);
-  assert.match(html, /if \(positionLocked\) \{[\s\S]*preferred = relationshipLensLockedTop/);
-  assert.match(html, /unlockRelationshipLensPosition\(\);[\s\S]*chip\.removeAttribute\('data-relationship-previewing'\)/);
-  assert.match(html, /data-relationship-preview-origin="pointer"/);
-  assert.match(html, /pointerStable = !!\(next && next === hoveredRelationship && !focusedRelationship\)/);
-  assert.match(html, /next === activeRelationshipPreview && pointerStable === activePointerStable/);
+  assert.doesNotMatch(html, /relationshipLensLockedTop|data-relationship-previewing|data-relationship-preview-origin/);
+  assert.doesNotMatch(html, /reason: 'relationship-preview(?:-clear)?'/);
+  assert.doesNotMatch(html, /reframeExploration\('relationship-group-toggle'\)/);
   assert.doesNotMatch(diagram, /data-relationship-preview(?:-active|-node|-source|-target)?=/);
 });
 
@@ -139,21 +135,22 @@ test('relationship preview is export-clean and visually geometry-neutral', () =>
 test('relationship lens is keyboard navigable, mobile-pinned, and excluded from embed and print', () => {
   const html = render('workflow', CASES.workflow.example);
   assert.match(html, /event\.key !== 'ArrowDown'/);
+  assert.match(html, /event\.key === 'Enter' \|\| event\.key === ' '/);
+  assert.match(html, /activationControl\.click\(\)/);
   assert.match(html, /event\.key !== 'ArrowUp'/);
   assert.match(html, /event\.key !== 'Home'/);
   assert.match(html, /event\.key !== 'End'/);
   assert.match(html, /buttons\[index\]\.focus\(\)/);
   assert.match(html, /data-wide-diagram="true"\] \.focus-chip/);
-  assert.match(html, /\.focus-chip\[data-relationship-previewing="true"\]:not\(\[data-relationship-preview-origin="pointer"\]\) \.relationship-lens-list/);
-  assert.match(html, /\.relationship-lens-row:not\(\[data-preview-active="true"\]\)/);
   assert.match(html, /var mobile = window\.innerWidth <= 720/);
-  assert.match(html, /previewingOnMobile = mobile && chip\.getAttribute\('data-relationship-previewing'\) === 'true'/);
   assert.match(html, /compactExploration = chip\.getAttribute\('data-exploration-compact'\) === 'true'/);
-  assert.match(html, /setExplorationMode\('relationship', false\)/);
+  assert.doesNotMatch(html, /activeRelationshipPreview\) setExplorationMode\('relationship'/);
+  assert.match(html, /clearRelationshipPreview\(\{ preserveLayout: true \}\)/);
+  assert.match(html, /control\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(html, /avoidPassport: true/);
+  assert.match(html, /options\.avoidPassport !== true/);
   assert.match(html, /\.focus-chip\[data-exploration-mode="relationship"\]\[data-exploration-compact="true"\]:not\(\[data-exploration-expanded="true"\]\) \.semantic-passport-reach/);
-  assert.match(html, /Archify\.view\.reveal\(\[from, to\], \{[\s\S]*includeNeighbors: false,[\s\S]*maxScale: 1\.5,[\s\S]*reason: 'relationship-preview'/);
-  assert.match(html, /reason: 'relationship-preview-clear'/);
-  assert.match(html, /nodeCenter < \(visibleTop \+ visibleBottom\) \/ 2 \? pinnedBottom : pinnedTop/);
+  assert.match(html, /Archify\.view\.reveal\(\[id\], \{[\s\S]*?avoidPassport: true,[\s\S]*?reason: 'relationship'/);
   assert.match(html, /html\[data-embed="true"\] \.focus-chip/);
   assert.match(html, /\.toolbar, \.diagram-nav, \.focus-chip, \.guided-views/);
   assert.match(html, /chip\.hidden = options\.hideChip === true \|\| normalized\.length !== 1 \|\| selectionMode/);

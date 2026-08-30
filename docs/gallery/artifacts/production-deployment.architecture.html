@@ -3821,16 +3821,6 @@
       .relationship-lens-actions #btn-focus-relations { display: block; color: var(--database-stroke); }
       .focus-chip:not([data-relations-expanded="true"]) .relationship-lens-head { border-bottom-color: transparent; }
       .focus-chip:not([data-relations-expanded="true"]) .relationship-lens-list { display: none; }
-      /* Keep a stationary fine-pointer row under the cursor. Focus/touch
-         previews still compact the Passport so both endpoints fit on mobile. */
-      .focus-chip[data-relationship-previewing="true"]:not([data-relationship-preview-origin="pointer"]) .relationship-lens-list {
-        padding: 0.35rem;
-      }
-      .focus-chip[data-relationship-previewing="true"]:not([data-relationship-preview-origin="pointer"]) .relationship-lens-group { margin: 0; }
-      .focus-chip[data-relationship-previewing="true"]:not([data-relationship-preview-origin="pointer"]) .relationship-lens-group-title,
-      .focus-chip[data-relationship-previewing="true"]:not([data-relationship-preview-origin="pointer"]) .relationship-lens-row:not([data-preview-active="true"]) {
-        display: none;
-      }
       .node-finder {
         top: 0.5rem;
         left: 0.5rem;
@@ -7729,8 +7719,6 @@
       var relationshipHitTargets = [];
       var directPreviewTimer = null;
       var relationshipPreviewTimer = null;
-      var relationshipRestoreTimer = null;
-      var relationshipLensLockedTop = null;
       var reachabilityMode = null;
       var activeReachability = null;
       var svgNamespace = 'http://www.w3.org/2000/svg';
@@ -7841,7 +7829,6 @@
       function syncExplorationMode() {
         if (reachabilityMode) setExplorationMode('reach', true);
         else if (pinnedRelationshipKey) setExplorationMode('relationship', true);
-        else if (activeRelationshipPreview) setExplorationMode('relationship', false);
         else setExplorationMode(null, false);
       }
       function explorationNodeIds() {
@@ -8446,43 +8433,11 @@
         if (relationshipPreviewTimer) window.clearTimeout(relationshipPreviewTimer);
         relationshipPreviewTimer = null;
       }
-      function cancelRelationshipRestore() {
-        if (relationshipRestoreTimer) window.clearTimeout(relationshipRestoreTimer);
-        relationshipRestoreTimer = null;
-      }
-      function lockRelationshipLensPosition() {
-        var coarseNarrowPointer = window.innerWidth <= 720 &&
-          (!finePointerQuery || !finePointerQuery.matches);
-        if (chip.hidden || coarseNarrowPointer) return;
-        var containerRect = container.getBoundingClientRect();
-        var chipRect = chip.getBoundingClientRect();
-        var currentTop = parseFloat(chip.style.top);
-        relationshipLensLockedTop = Number.isFinite(currentTop)
-          ? currentTop
-          : chipRect.top - containerRect.top - container.clientTop;
-      }
-      function unlockRelationshipLensPosition() {
-        relationshipLensLockedTop = null;
-      }
-      function scheduleRelationshipRestore() {
-        cancelRelationshipRestore();
-        relationshipRestoreTimer = window.setTimeout(function () {
-          relationshipRestoreTimer = null;
-          if (activeRelationshipPreview || pinnedRelationshipKey || reachabilityMode || activeIds.length !== 1 ||
-              !Archify.view || typeof Archify.view.reveal !== 'function') return;
-          requestLensPlacement();
-          Archify.view.reveal(activeIds, {
-            includeNeighbors: true,
-            reason: 'relationship-preview-clear'
-          });
-        }, reducedMotionQuery && reducedMotionQuery.matches ? 0 : 120);
-      }
       function clearRelationshipPreview(options) {
         options = options || {};
         if (directPreviewTimer) window.clearTimeout(directPreviewTimer);
         directPreviewTimer = null;
         cancelRelationshipPreviewSchedule();
-        cancelRelationshipRestore();
         removeRelationshipPulse();
         activeRelationshipPreview = null;
         svg.removeAttribute('data-relationship-preview-active');
@@ -8492,9 +8447,6 @@
           pinnedRelationshipKey = null;
           svg.removeAttribute('data-relationship-pin-active');
         }
-        unlockRelationshipLensPosition();
-        chip.removeAttribute('data-relationship-previewing');
-        chip.removeAttribute('data-relationship-preview-origin');
         edges().forEach(function (edge) { edge.removeAttribute('data-relationship-preview'); });
         nodes().forEach(function (node) {
           node.removeAttribute('data-relationship-preview-node');
@@ -8509,19 +8461,16 @@
           target.removeAttribute('data-preview-active');
         });
         renderRelationshipCopyAction();
-        syncExplorationMode();
-        requestLensPlacement();
+        if (options.preserveLayout !== true) {
+          syncExplorationMode();
+          requestLensPlacement();
+        }
       }
       function previewRelationship(button, options) {
         options = options || {};
         if (pinnedRelationshipKey && pinnedRelationship && button !== pinnedRelationship) return;
-        var previous = activeRelationshipPreview;
-        clearRelationshipPreview();
-        if (!button) {
-          if (options.restoreView === true && previous &&
-              !previous.hasAttribute('data-relationship-hit-key')) scheduleRelationshipRestore();
-          return;
-        }
+        clearRelationshipPreview({ preserveLayout: true });
+        if (!button) return;
         var key = button.getAttribute('data-relationship-key');
         var from = button.getAttribute('data-relationship-from');
         var to = button.getAttribute('data-relationship-to');
@@ -8539,39 +8488,14 @@
           if (id === to) node.setAttribute('data-relationship-preview-target', '');
         });
         button.setAttribute('data-preview-active', 'true');
-        if (!chip.hidden && options.direct !== true) {
-          lockRelationshipLensPosition();
-          chip.setAttribute('data-relationship-previewing', 'true');
-          if (options.pointerStable === true) chip.setAttribute('data-relationship-preview-origin', 'pointer');
-          else chip.removeAttribute('data-relationship-preview-origin');
-        }
         activeRelationshipPreview = button;
-        syncExplorationMode();
         renderRelationshipPulse(key);
-        requestLensPlacement();
-        if (options.direct !== true && options.reveal !== false &&
-            Archify.view && typeof Archify.view.reveal === 'function') {
-          requestAnimationFrame(function () {
-            if (activeRelationshipPreview !== button) return;
-            Archify.view.reveal([from, to], {
-              includeNeighbors: false,
-              fitAll: true,
-              maxScale: 1.5,
-              minimumScale: window.innerWidth <= 900 ? 0.35 : 0.58,
-              reason: 'relationship-preview'
-            });
-          });
-        }
       }
       function syncRelationshipPreview() {
         var next = pinnedRelationship || focusedRelationship || hoveredRelationship;
-        var pointerStable = !!(next && next === hoveredRelationship && !focusedRelationship);
-        var activePointerStable = chip.getAttribute('data-relationship-preview-origin') === 'pointer';
-        if (next === activeRelationshipPreview && pointerStable === activePointerStable) return;
+        if (next === activeRelationshipPreview) return;
         previewRelationship(next, {
-          direct: !!(next && next.hasAttribute('data-relationship-hit-key')),
-          pointerStable: pointerStable,
-          restoreView: !next
+          direct: !!(next && next.hasAttribute('data-relationship-hit-key'))
         });
       }
       function scheduleRelationshipPreview(button) {
@@ -8635,7 +8559,7 @@
         var record = relationshipRecordForKey(key);
         if (!record) return false;
         if (Archify.guidedViews && typeof Archify.guidedViews.showAll === 'function') {
-          Archify.guidedViews.showAll({ clearFocus: false, updateUrl: false });
+          Archify.guidedViews.showAll({ clearFocus: false, updateUrl: false, resetView: false });
         }
         set(record.from, { toggle: false, updateUrl: false });
         var row = Array.prototype.slice.call(relationshipList.querySelectorAll('[data-relationship-key]')).find(function (candidate) {
@@ -8643,7 +8567,7 @@
         });
         if (!row) return false;
         expandRelationshipGroupForRow(row);
-        previewRelationship(row, { reveal: false });
+        previewRelationship(row);
         pinnedRelationship = row;
         pinnedRelationshipKey = key;
         syncExplorationMode();
@@ -8656,7 +8580,7 @@
           to: record.toLabel,
           label: record.label
         });
-        revealPinnedRelationship(record);
+        if (options.reveal !== false) revealPinnedRelationship(record);
         if (options.updateUrl !== false && record.id) {
           try { history.replaceState(null, '', location.pathname + location.search + '#relation=' + encodeURIComponent(record.id)); } catch (_) {}
         }
@@ -8826,7 +8750,6 @@
         });
         requestRelationshipScrollState();
         requestLensPlacement();
-        requestAnimationFrame(function () { reframeExploration('relationship-group-toggle'); });
       }
       function renderRelationshipLens(id, byId) {
         hoveredRelationship = null;
@@ -8968,9 +8891,19 @@
         var containerRect = container.getBoundingClientRect();
         var nodeRect = node.getBoundingClientRect();
         if (containerRect.bottom <= 0 || containerRect.top >= window.innerHeight) return;
+        var mobile = window.innerWidth <= 720;
         var padding = window.innerWidth <= 720 ? 8 : 16;
         var visibleTop = Math.max(padding, -containerRect.top + padding);
         var visibleBottom = Math.min(containerRect.height - padding, window.innerHeight - containerRect.top - padding);
+        var viewerNav = container.querySelector('.diagram-nav');
+        if (mobile && viewerNav && !viewerNav.hidden) {
+          var viewerNavStyle = window.getComputedStyle(viewerNav);
+          var viewerNavRect = viewerNav.getBoundingClientRect();
+          if (viewerNavStyle.display !== 'none' && viewerNavStyle.visibility !== 'hidden' &&
+              viewerNavRect.width > 0 && viewerNavRect.height > 0) {
+            visibleBottom = Math.min(visibleBottom, viewerNavRect.top - containerRect.top - 10);
+          }
+        }
         var availableHeight = Math.max(0, visibleBottom - visibleTop);
         chip.removeAttribute('data-viewport-compact');
         chip.style.setProperty('--archify-passport-max-height', availableHeight + 'px');
@@ -8986,19 +8919,13 @@
         var maxTop = Math.max(padding, visibleBottom - chip.offsetHeight);
         var minTop = Math.min(visibleTop, maxTop);
         var nodeCenter = nodeRect.top - containerRect.top + nodeRect.height / 2;
-        var mobile = window.innerWidth <= 720;
-        var positionLocked = relationshipLensLockedTop !== null &&
-          chip.getAttribute('data-relationship-previewing') === 'true';
         var compactExploration = chip.getAttribute('data-exploration-compact') === 'true' &&
           chip.getAttribute('data-exploration-expanded') !== 'true';
         var stackedExploration = mobile &&
           chip.getAttribute('data-exploration-compact') === 'true';
-        var previewingOnMobile = mobile && chip.getAttribute('data-relationship-previewing') === 'true';
         var compactOnMobile = mobile && chip.getAttribute('data-relations-expanded') !== 'true';
         var preferred;
-        if (positionLocked) {
-          preferred = relationshipLensLockedTop;
-        } else if (compactExploration || stackedExploration) {
+        if (compactExploration || stackedExploration) {
           preferred = visibleTop;
         } else if (compactOnMobile) {
           var nodeTop = nodeRect.top - containerRect.top;
@@ -9009,20 +8936,16 @@
           if (above >= visibleTop) preferred = above;
           else if (below + chip.offsetHeight <= visibleBottom - 56) preferred = below;
           else preferred = nodeCenter < (visibleTop + visibleBottom) / 2
-            ? Math.max(minTop, visibleBottom - chip.offsetHeight - 56)
+            ? Math.max(minTop, visibleBottom - chip.offsetHeight)
             : visibleTop;
-        } else if (previewingOnMobile) {
-          var pinnedTop = visibleTop;
-          var pinnedBottom = Math.max(minTop, visibleBottom - chip.offsetHeight - 56);
-          preferred = nodeCenter < (visibleTop + visibleBottom) / 2 ? pinnedBottom : pinnedTop;
         } else {
           preferred = nodeCenter - chip.offsetHeight / 2;
         }
         var top = Math.max(minTop, Math.min(maxTop, preferred));
         var chipRect = chip.getBoundingClientRect();
         var safeGap = 10;
-        var protectViewerChrome = !mobile || compactOnMobile || previewingOnMobile;
-        var protectedRects = (!positionLocked && protectViewerChrome
+        var protectViewerChrome = true;
+        var protectedRects = (protectViewerChrome
           ? [svg.querySelector('[data-legend]'), container.querySelector('.diagram-nav')]
           : [])
           .filter(function (element) {
@@ -9281,14 +9204,17 @@
       copyBtn.addEventListener('click', copyFocusLink);
       upstreamBtn.addEventListener('click', function () { applyReachability('upstream'); });
       downstreamBtn.addEventListener('click', function () { applyReachability('downstream'); });
-      relationsBtn.addEventListener('click', function () {
-        var expanded = chip.getAttribute('data-relations-expanded') === 'true';
-        if (expanded) chip.removeAttribute('data-relations-expanded');
-        else chip.setAttribute('data-relations-expanded', 'true');
-        relationsBtn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      function setRelationshipListExpanded(expanded) {
+        if (expanded) chip.setAttribute('data-relations-expanded', 'true');
+        else chip.removeAttribute('data-relations-expanded');
+        relationsBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         relationsBtn.setAttribute('aria-label', viewerText(expanded
-          ? 'viewer.passport.relations.show'
-          : 'viewer.passport.relations.hide'));
+          ? 'viewer.passport.relations.hide'
+          : 'viewer.passport.relations.show'));
+      }
+      relationsBtn.addEventListener('click', function () {
+        var expanded = chip.getAttribute('data-relations-expanded') !== 'true';
+        setRelationshipListExpanded(expanded);
         requestRelationshipScrollState();
         requestLensPlacement();
       });
@@ -9303,16 +9229,29 @@
         if (!button) return;
         var id = button.getAttribute('data-relationship-target');
         if (Archify.guidedViews && typeof Archify.guidedViews.showAll === 'function') {
-          Archify.guidedViews.showAll({ clearFocus: false, updateUrl: false });
+          Archify.guidedViews.showAll({ clearFocus: false, updateUrl: false, resetView: false });
         }
+        if (window.innerWidth <= 720) setRelationshipListExpanded(false);
         set(id, { toggle: false });
         if (Archify.view && typeof Archify.view.reveal === 'function') {
-          Archify.view.reveal([id], { includeNeighbors: true, reason: 'relationship' });
+          Archify.view.reveal([id], {
+            includeNeighbors: true,
+            avoidPassport: true,
+            reason: 'relationship'
+          });
         }
         var node = svg.querySelector('[data-node-id="' + id + '"]');
         if (node) {
           try { node.focus({ preventScroll: true }); } catch (_) { try { node.focus(); } catch (_) {} }
         }
+      });
+      relationshipList.addEventListener('pointerdown', function (event) {
+        if (event.pointerType === 'touch') return;
+        var control = event.target.closest('[data-relationship-group-toggle], [data-relationship-target]');
+        if (!control || !relationshipList.contains(control)) return;
+        event.preventDefault();
+        try { control.focus({ preventScroll: true }); }
+        catch (_) { try { control.focus(); } catch (_) {} }
       });
       relationshipList.addEventListener('pointerover', function (event) {
         if (event.pointerType === 'touch') return;
@@ -9346,6 +9285,13 @@
         syncRelationshipPreview();
       });
       relationshipList.addEventListener('keydown', function (event) {
+        if ((event.key === 'Enter' || event.key === ' ') && !event.repeat) {
+          var activationControl = event.target.closest('[data-relationship-group-toggle], [data-relationship-target]');
+          if (!activationControl) return;
+          event.preventDefault();
+          activationControl.click();
+          return;
+        }
         if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Home' && event.key !== 'End') return;
         var activeRow = event.target.closest('[data-relationship-target]');
         if (!activeRow) return;
@@ -9403,7 +9349,11 @@
           var reach = params.get('reach');
           if (relation) {
             if (html.getAttribute('data-embed') === 'true' ||
-                !inspectRelationshipById(relation, { updateUrl: false, toggle: false })) clear({ updateUrl: false });
+                !inspectRelationshipById(relation, {
+                  updateUrl: false,
+                  toggle: false,
+                  reveal: false
+                })) clear({ updateUrl: false });
           }
           else if (initial) {
             if (set(initial, { updateUrl: false, toggle: false }) &&
@@ -12395,10 +12345,8 @@
         var compactExploration = chip && !chip.hidden &&
           chip.getAttribute('data-exploration-compact') === 'true' &&
           chip.getAttribute('data-exploration-expanded') !== 'true';
-        var relationshipPreviewing = chip && !chip.hidden &&
-          chip.getAttribute('data-relationship-previewing') === 'true';
         var explorationMode = chip && chip.getAttribute('data-exploration-mode');
-        if (!compactExploration && !relationshipPreviewing &&
+        if (options.avoidPassport !== true && !compactExploration &&
             explorationMode !== 'reach' && explorationMode !== 'relationship') return false;
         var boxes = boxesFor(ids, options.includeNeighbors === true);
         var metrics = contentMetrics();
@@ -12417,12 +12365,12 @@
         };
         var padding = 12;
         var top = padding;
-        var bottom = height - 64;
+        var bottom = height - padding;
         var containerRect = container.getBoundingClientRect();
         var visibleTop = Math.max(0, -containerRect.top);
         var visibleBottom = Math.min(height, window.innerHeight - containerRect.top);
         top = Math.max(top, visibleTop + padding);
-        bottom = Math.min(bottom, visibleBottom - 64);
+        bottom = Math.min(bottom, visibleBottom - padding);
         var nav = container.querySelector('.diagram-nav');
         if (nav && !nav.hidden) bottom = Math.min(bottom, nav.offsetTop - 16 - (svg.offsetTop || 0));
         var chipTop = chip.offsetTop - (svg.offsetTop || 0);
