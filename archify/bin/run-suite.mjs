@@ -71,6 +71,29 @@ function parseArguments(argv) {
   return options;
 }
 
+function failureDiagnostics(error, options) {
+  if (Array.isArray(error?.archifyDiagnostics) && error.archifyDiagnostics.length > 0) {
+    return error.archifyDiagnostics;
+  }
+  return [{
+    code: 'run-suite/failed',
+    severity: 'error',
+    message: error?.message || 'Suite execution failed.',
+    subject: {
+      ...(options?.manifestPath ? { manifest: path.resolve(options.manifestPath) } : {}),
+      ...(options?.repoRoot ? { repoRoot: path.resolve(options.repoRoot) } : {}),
+      ...(options?.outputRoot ? { output: path.resolve(options.outputRoot) } : {}),
+    },
+    evidence: {
+      errorName: error?.name || 'Error',
+      ...(error?.code ? { errorCode: error.code } : {}),
+    },
+    supportedFixes: [
+      'correct the reported manifest, repository, command, or environment problem and rerun the suite',
+    ],
+  }];
+}
+
 export async function main(argv = process.argv.slice(2)) {
   let options;
   try {
@@ -93,6 +116,7 @@ export async function main(argv = process.argv.slice(2)) {
         ok: false,
         command: 'run-suite',
         error: error.message,
+        diagnostics: failureDiagnostics(error, options),
       }, null, 2));
     } else {
       console.error(`run-suite failed: ${error.message}`);

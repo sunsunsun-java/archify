@@ -138,3 +138,88 @@ test('dataflow: aligned automatic flow emits one canonical segment without dupli
   assert.deepEqual(relationshipPoints(html, 'tool-calls'), [[100, 186], [100, 356]]);
   assert.equal(relationshipPath(html, 'tool-calls'), 'M 100 186 L 100 352.85');
 });
+
+test('dataflow: vertical-channel uses side ports facing its vertical corridor', () => {
+  const html = renderDiagram('dataflow', {
+    schema_version: 1,
+    diagram_type: 'dataflow',
+    meta: { title: 'Vertical corridor endpoint defaults' },
+    stages: [{ label: 'Messages' }, { label: 'Unused' }],
+    nodes: [
+      { id: 'source', type: 'backend', label: 'Source', stage: 0, row: 0 },
+      { id: 'target', type: 'messagebus', label: 'Target', stage: 0, row: 2 },
+    ],
+    flows: [{ id: 'channel', from: 'source', to: 'target', label: 'channel', route: 'vertical-channel', channelX: 180 }],
+  });
+  const source = nodeRect(html, 'source');
+  const target = nodeRect(html, 'target');
+  const points = relationshipPoints(html, 'channel');
+  assert.deepEqual(points[0], [source.x + source.width, source.y + source.height / 2]);
+  assert.deepEqual(points.at(-1), [target.x + target.width, target.y + target.height / 2]);
+  assert.deepEqual(points.slice(1, -1).map(([x]) => x), [180, 180]);
+});
+
+test('explicit collinear via points remain addressable by labelSegment', () => {
+  const dataflowHtml = renderDiagram('dataflow', {
+    schema_version: 1,
+    diagram_type: 'dataflow',
+    meta: { title: 'Authored data-flow route' },
+    stages: [{ label: 'Messages' }, { label: 'Unused' }],
+    nodes: [
+      { id: 'source', type: 'backend', label: 'Source', stage: 0, row: 0 },
+      { id: 'target', type: 'messagebus', label: 'Target', stage: 0, row: 2 },
+    ],
+    flows: [{
+      id: 'authored',
+      from: 'source',
+      to: 'target',
+      fromSide: 'bottom',
+      toSide: 'top',
+      via: [[100, 242]],
+      label: 'second segment',
+      labelSegment: 1,
+    }],
+  });
+  assert.equal(relationshipPoints(dataflowHtml, 'authored').length, 3);
+
+  const lifecycleHtml = renderDiagram('lifecycle', {
+    schema_version: 1,
+    diagram_type: 'lifecycle',
+    meta: { title: 'Authored lifecycle route' },
+    lanes: [{ id: 'main', label: 'Main' }, { id: 'waiting', label: 'Waiting' }],
+    states: [
+      { id: 'source', lane: 'main', col: 2, type: 'active', label: 'Source' },
+      { id: 'target', lane: 'waiting', col: 0, type: 'waiting', label: 'Target' },
+    ],
+    transitions: [{
+      id: 'authored',
+      from: 'source',
+      to: 'target',
+      fromSide: 'bottom',
+      toSide: 'top',
+      via: [[402, 218]],
+      label: 'second segment',
+      labelSegment: 1,
+    }],
+  });
+  assert.equal(relationshipPoints(lifecycleHtml, 'authored').length, 3);
+});
+
+test('lifecycle: drop uses bottom-to-top ports facing its horizontal corridor', () => {
+  const html = renderDiagram('lifecycle', {
+    schema_version: 1,
+    diagram_type: 'lifecycle',
+    meta: { title: 'Drop endpoint defaults' },
+    lanes: [{ id: 'main', label: 'Main' }, { id: 'waiting', label: 'Waiting' }],
+    states: [
+      { id: 'source', lane: 'main', col: 3, type: 'active', label: 'Source' },
+      { id: 'target', lane: 'waiting', col: 0, type: 'waiting', label: 'Target' },
+    ],
+    transitions: [{ id: 'drop', from: 'source', to: 'target', route: 'drop' }],
+  });
+  const source = nodeRect(html, 'source');
+  const target = nodeRect(html, 'target');
+  const points = relationshipPoints(html, 'drop');
+  assert.deepEqual(points[0], [source.x + source.width / 2, source.y + source.height]);
+  assert.deepEqual(points.at(-1), [target.x + target.width / 2, target.y]);
+});

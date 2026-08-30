@@ -20,6 +20,8 @@ const authoringTypes = ['architecture', 'workflow', 'sequence', 'dataflow', 'lif
 const requiredAuthoringRuntimes = [
   path.join('authoring', 'quality-contract.mjs'),
   path.join('authoring', 'authoring-run.mjs'),
+  path.join('authoring', 'candidate-preflight.mjs'),
+  path.join('authoring', 'repair-plan.mjs'),
 ];
 
 function requireAbsent(relative) {
@@ -202,6 +204,18 @@ try {
   if (typeof authoringRunRuntime.AuthoringRun !== 'function') {
     throw new Error('packaged authoring runtime did not export AuthoringRun');
   }
+  const candidatePreflightRuntime = await importAuthoringRuntime(
+    path.join('authoring', 'candidate-preflight.mjs'),
+  );
+  if (typeof candidatePreflightRuntime.runCandidatePreflightBatch !== 'function') {
+    throw new Error('packaged candidate preflight runtime did not export runCandidatePreflightBatch');
+  }
+  const repairPlanRuntime = await importAuthoringRuntime(
+    path.join('authoring', 'repair-plan.mjs'),
+  );
+  if (typeof repairPlanRuntime.createRepairPlan !== 'function') {
+    throw new Error('packaged repair-plan runtime did not export createRepairPlan');
+  }
   const skillReferences = [...skill.matchAll(
     /`((?:assets|bin|examples|recipes|references|renderers|schemas|scripts)\/[^`\s]+)`/g,
   )]
@@ -365,6 +379,16 @@ try {
   const failure = JSON.parse(runExpectFailure(['validate', 'workflow', invalidPath, '--json']));
   if (failure.ok || !failure.diagnostics?.some((diagnostic) => diagnostic.code === 'schema/additionalProperties')) {
     throw new Error('packaged skill did not return the expected unknown-field diagnostic');
+  }
+  const batchManifestPath = path.join(scratch, 'validate-batch.json');
+  fs.writeFileSync(batchManifestPath, JSON.stringify({
+    schemaVersion: 1,
+    candidates: [{ id: 'invalid-workflow', type: 'workflow', input: invalidPath }],
+  }));
+  const batchFailure = JSON.parse(runExpectFailure(['validate-batch', batchManifestPath, '--json']));
+  if (batchFailure.command !== 'validate-batch'
+    || batchFailure.candidates?.[0]?.repairPlan?.schemaVersion !== 1) {
+    throw new Error('packaged validate-batch did not execute candidate preflight and repair-plan runtimes');
   }
 
   const tangentEndpoint = {

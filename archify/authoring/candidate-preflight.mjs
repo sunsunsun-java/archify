@@ -145,7 +145,7 @@ function exactPreflightMatrix(entries, keyFor) {
   return actual.size === expected.size && [...expected].every((key) => actual.has(key));
 }
 
-function successfulPreflightReceiptProblems(receipt, { artifactPath, artifactReceipt }) {
+export function successfulPreflightReceiptProblems(receipt, { artifactPath, artifactReceipt }) {
   if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) {
     return ['receipt must be an object'];
   }
@@ -163,7 +163,12 @@ function successfulPreflightReceiptProblems(receipt, { artifactPath, artifactRec
   }
 
   const artifact = receipt.artifact;
-  const expectedArtifactPath = path.resolve(artifactPath);
+  let expectedArtifactPath = null;
+  try {
+    if (typeof artifactPath === 'string') expectedArtifactPath = path.resolve(artifactPath);
+  } catch {
+    expectedArtifactPath = null;
+  }
   let reportedArtifactPath = null;
   try {
     if (typeof artifact?.path === 'string') reportedArtifactPath = path.resolve(artifact.path);
@@ -255,6 +260,7 @@ export async function runCandidatePreflightBatch({
   const receipts = [];
   let activeSession = session;
   const ownsSession = !session;
+  let browserRestarts = 0;
   try {
     for (const candidate of normalized) {
       const timing = { source: 'candidate-preflight', inputMs: 0, renderMs: 0, checkMs: 0, preflightMs: 0 };
@@ -381,11 +387,17 @@ export async function runCandidatePreflightBatch({
     if (prepared.length > 0) {
       activeSession ||= sessionFactory();
       for (const [index, entry] of prepared.entries()) {
+        activeSession ||= sessionFactory();
         const preflightStarted = performance.now();
         const result = await activeSession.preflight({
           artifactPath: entry.artifactPath,
           finalArtifact: index === prepared.length - 1,
         });
+        if (ownsSession && activeSession?.poisoned && index < prepared.length - 1) {
+          await activeSession.close().catch(() => {});
+          activeSession = null;
+          browserRestarts += 1;
+        }
         entry.timing.preflightMs = elapsed(preflightStarted);
         const timing = finishCandidateTiming(entry.timing);
         const preflight = ephemeralPreflight(result?.receipt);
@@ -491,6 +503,7 @@ export async function runCandidatePreflightBatch({
           shared: true,
           candidates: normalized.length,
           expectedBrowserResets: Math.max(0, normalized.length - 1),
+          browserRestarts,
         },
         timing: {
           source: 'validate-batch',

@@ -320,6 +320,31 @@ test('source packets fail closed for tampered origin, revision, index digest, an
   );
 });
 
+test('source search and inspect redact likely credentials while hashing the original pinned range', () => {
+  const data = fixture();
+  const secret = 'archify-super-secret-value';
+  fs.writeFileSync(path.join(data.root, 'src', 'secrets.ts'), `export const API_TOKEN = "${secret}";\n`);
+  git(data.root, 'add', 'src/secrets.ts');
+  git(data.root, 'commit', '-m', 'secret redaction fixture');
+  const revision = git(data.root, 'rev-parse', 'HEAD');
+  const index = buildProjectIndex({ repoRoot: data.root, revision });
+
+  const searched = searchProjectSource(index, { terms: ['API_TOKEN'], paths: ['src/secrets.ts'], contextLines: 0 });
+  const inspected = inspectProjectSource(index, {
+    ranges: [{ path: 'src/secrets.ts', line: 1, endLine: 1 }],
+  });
+  for (const receipt of [searched, inspected]) {
+    assert.doesNotMatch(JSON.stringify(receipt), new RegExp(secret));
+  }
+  assert.equal(searched.matches[0].sourceLines[0].text, 'export const API_TOKEN = "[REDACTED]";');
+  assert.equal(searched.matches[0].redactions, 1);
+  assert.equal(inspected.ranges[0].redactions, 1);
+  assert.equal(
+    inspected.ranges[0].rangeSha256,
+    createHash('sha256').update(`export const API_TOKEN = "${secret}";`).digest('hex'),
+  );
+});
+
 test('source packet queries reject unbounded term, path, and inspect-range inputs', () => {
   const data = fixture();
   const index = buildProjectIndex({ repoRoot: data.root, revision: data.revision });

@@ -71,7 +71,12 @@ function suiteStatus(suite, results) {
  * receipt, its final command receipts, or an independent visual-review record.
  */
 export function renderSuiteReport({ suite, results, outputRoot }) {
-  const totalMs = results.reduce((sum, result) => sum + (result.timing.durationMs || 0), 0);
+  const activeDiagramMs = results.reduce((sum, result) => sum + result.timing.stages.reduce(
+    (stageSum, stage) => stageSum + (stage.metadata?.sharedBatch ? 0 : (stage.durationMs || 0)),
+    0,
+  ), 0);
+  const sharedVisualMs = suite.visualCheckBatch?.durationMs || 0;
+  const aggregateWorkMs = activeDiagramMs + sharedVisualMs;
   const status = suiteStatus(suite, results);
   const lines = [
     `# ${suite.id} Archify suite report`,
@@ -97,7 +102,7 @@ export function renderSuiteReport({ suite, results, outputRoot }) {
     ...(suite.projectIndexReceipt
       ? [`- Shared project index: ${relativeLink(outputRoot, suite.projectIndexReceipt.path)} (\`${suite.projectIndexReceipt.digest}\`; ${suite.projectIndexReceipt.files} files, ${suite.projectIndexReceipt.filesAnalyzed} analyzed)`]
       : []),
-    `- Aggregate diagram work: ${seconds(totalMs)}`,
+    `- Aggregate active diagram work: ${seconds(aggregateWorkMs)} (per-diagram active stages ${seconds(activeDiagramMs)} + shared final visual-check once ${seconds(sharedVisualMs)})`,
     `- Suite timing receipt: ${relativeLink(outputRoot, suite.suiteTimingPath)}`,
     `- Suite durable event log: ${relativeLink(outputRoot, suite.suiteEventsPath)}`,
     '',

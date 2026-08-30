@@ -32,6 +32,7 @@ import {
   cleanLabelRouteClearanceProblems,
   anchor,
   automaticPortSpread,
+  dedupeRoutePoints,
   normalizeRoutePoints,
   markerSafeRoutePoints,
   markerEndpointSetback,
@@ -413,13 +414,31 @@ function validateDataflow() {
   }
 }
 
+function verticalChannelX(flow, from, to) {
+  if (Number.isFinite(flow.channelX)) return flow.channelX;
+  const fromCx = from.x + from.width / 2;
+  const toCx = to.x + to.width / 2;
+  const direction = toCx >= fromCx ? 1 : -1;
+  return fromCx + direction * (from.width / 2 + 44);
+}
+
+function sideFacingPoint(rect, point, fallback) {
+  if (!Array.isArray(point) || point.length !== 2) return fallback;
+  const cx = rect.x + rect.width / 2;
+  const cy = rect.y + rect.height / 2;
+  const dx = point[0] - cx;
+  const dy = point[1] - cy;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 'right' : 'left';
+  return dy >= 0 ? 'bottom' : 'top';
+}
+
 function routeVia(flow, from, to, start, end) {
   if (flow.via) return flow.via;
   switch (flow.route || 'auto') {
     case 'straight':
       return [];
     case 'vertical-channel': {
-      const x = flow.channelX ?? start[0] + (end[0] > start[0] ? 44 : -44);
+      const x = verticalChannelX(flow, from, to);
       return [[x, start[1]], [x, end[1]]];
     }
     case 'bottom-channel': {
@@ -444,6 +463,20 @@ const pathCache = new Map();
 function flowSides(flow) {
   const from = nodes.get(flow.from);
   const to = nodes.get(flow.to);
+  const explicitVia = asArray(flow.via);
+  if (explicitVia.length) {
+    return {
+      fromSide: chosenSide(flow.fromSide, sideFacingPoint(from, explicitVia[0], defaultFromSide(from, to))),
+      toSide: chosenSide(flow.toSide, sideFacingPoint(to, explicitVia.at(-1), defaultToSide(from, to))),
+    };
+  }
+  if (flow.route === 'vertical-channel') {
+    const channelX = verticalChannelX(flow, from, to);
+    return {
+      fromSide: chosenSide(flow.fromSide, channelX >= from.x + from.width / 2 ? 'right' : 'left'),
+      toSide: chosenSide(flow.toSide, channelX >= to.x + to.width / 2 ? 'right' : 'left'),
+    };
+  }
   const channelSide = flow.route === 'bottom-channel'
     ? 'bottom'
     : flow.route === 'top-channel'
@@ -467,7 +500,8 @@ function pathFor(flow) {
   const { fromSide, toSide } = flowSides(flow);
   const start = ports?.from || anchor(from, fromSide);
   const end = ports?.to || anchor(to, toSide);
-  const points = normalizeRoutePoints([start, ...routeVia(flow, from, to, start, end), end]);
+  const rawPoints = [start, ...routeVia(flow, from, to, start, end), end];
+  const points = flow.via ? dedupeRoutePoints(rawPoints) : normalizeRoutePoints(rawPoints);
   const strokeWidth = flow.width || (flow.variant === 'emphasis' ? 1.8 : 1.4);
   const routed = { d: polylinePath(markerSafeRoutePoints(points, { strokeWidth })), points };
   pathCache.set(flow, routed);

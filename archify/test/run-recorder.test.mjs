@@ -280,3 +280,28 @@ test('run recorder: parent lifetime contains unawaited children and escaped scop
   assert.ok(child.startOffsetMs >= timing.stages[0].startOffsetMs);
   assert.ok(child.endOffsetMs <= timing.stages[0].endOffsetMs);
 });
+
+test('run recorder: a failed durable scope-start append rolls back live registrations without hanging', async (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-run-recorder-append-failure-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const paths = files(tmp);
+  const recorder = RunRecorder.open({ run: { id: 'pi/append-failure' }, ...paths, clock: fakeClock() });
+  const originalFsyncSync = fs.fsyncSync;
+  fs.fsyncSync = () => {
+    const error = new Error('simulated fsync failure');
+    error.code = 'EIO';
+    throw error;
+  };
+  t.after(() => { fs.fsyncSync = originalFsyncSync; });
+
+  await assert.rejects(
+    Promise.race([
+      recorder.stage('validation', async () => {}),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('scope registration hung')), 250)),
+    ]),
+    /simulated fsync failure/,
+  );
+  fs.fsyncSync = originalFsyncSync;
+  await assert.rejects(recorder.stage('retry', async () => {}), /unusable after an append failure/);
+  assert.throws(() => recorder.finalize(), /unusable after an append failure/);
+});

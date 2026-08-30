@@ -15,6 +15,7 @@ const SAFE_ID = /^[a-z0-9][a-z0-9._-]*$/;
 const PINNED_REVISION = /^[0-9a-f]{40,64}$/i;
 const SHA256 = /^[0-9a-f]{64}$/i;
 const MAX_COMMAND_OUTPUT_BYTES = 16 * 1024 * 1024;
+const DEFAULT_COMMAND_TIMEOUT_MS = 120_000;
 const QUALITY_GUARDS = QUALITY_CONTRACT.guards;
 const PREFLIGHT_VIEWPORTS = QUALITY_GUARDS.desktopViewports;
 const CAPTURE_VIEWPORTS = QUALITY_GUARDS.captureViewports;
@@ -75,6 +76,14 @@ function outputChild(root, relative, label) {
     throw new Error(`${label} escapes its isolated diagram directory.`);
   }
   return resolved;
+}
+
+function isPathInside(root, file) {
+  const relative = path.relative(path.resolve(root), path.resolve(file));
+  return relative !== ''
+    && relative !== '..'
+    && !relative.startsWith(`..${path.sep}`)
+    && !path.isAbsolute(relative);
 }
 
 function portablePathKey(file) {
@@ -228,6 +237,10 @@ function normalizeManifest(manifest, manifestPath, outputRoot) {
   if (!Array.isArray(manifest.diagrams) || manifest.diagrams.length === 0) {
     throw new Error('manifest.diagrams must contain at least one diagram.');
   }
+  const authoredLanguage = manifest.authoredLanguage ?? null;
+  if (authoredLanguage !== null && !['en', 'zh-CN'].includes(authoredLanguage)) {
+    throw new Error('manifest.authoredLanguage must be "en" or "zh-CN" when specified.');
+  }
   if (manifest.projectIndex !== undefined && typeof manifest.projectIndex !== 'boolean') {
     throw new Error('manifest.projectIndex must be boolean when specified.');
   }
@@ -371,7 +384,7 @@ function normalizeManifest(manifest, manifestPath, outputRoot) {
         kind,
         ...(kind === 'exec' ? {
           argv: [...command.argv],
-          cwd: command.cwd ?? 'repository',
+          cwd: command.cwd ?? 'diagram',
           receipt: command.receipt ?? null,
         } : {}),
       };
@@ -397,6 +410,12 @@ function normalizeManifest(manifest, manifestPath, outputRoot) {
   if (sharedViewportPreflight && diagrams.some((diagram) => diagram.commands.some((command) => command.kind === 'exec'))) {
     throw new Error('manifest.sharedViewportPreflight requires frozen candidates and does not permit exec commands.');
   }
+  for (const diagram of diagrams) {
+    if (diagram.commands.some((command) => command.kind === 'exec')
+      && !isPathInside(diagram.outputDirectory, diagram.candidatePath)) {
+      throw new Error(`diagram ${diagram.id} mutable candidate must stay inside its isolated diagram directory.`);
+    }
+  }
   if (diagrams.some((diagram) => diagram.evidenceLedgerPath) && manifest.projectIndex !== true) {
     throw new Error('diagram evidenceLedger requires manifest.projectIndex to be enabled.');
   }
@@ -405,6 +424,7 @@ function normalizeManifest(manifest, manifestPath, outputRoot) {
   return {
     id,
     qualityProfile,
+    authoredLanguage,
     projectIndex: manifest.projectIndex === true,
     viewportPreflight: manifest.viewportPreflight !== false,
     sharedViewportPreflight,
@@ -464,6 +484,7 @@ function commandRequest({ command, diagram, suite, archifyCli }) {
         suite.qualityProfile,
         ...(diagram.type === 'architecture' ? ['--repo-root', suite.repository.root] : []),
         ...(suite.viewportPreflight && !suite.sharedViewportPreflight ? ['--preflight'] : []),
+        ...(suite.authoredLanguage ? ['--require-authored-language', suite.authoredLanguage] : []),
         '--json',
       ],
       cwd: diagram.outputDirectory,
@@ -485,6 +506,7 @@ function commandRequest({ command, diagram, suite, archifyCli }) {
         '--quality',
         suite.qualityProfile,
         ...(diagram.type === 'architecture' ? ['--repo-root', suite.repository.root] : []),
+        ...(suite.authoredLanguage ? ['--require-authored-language', suite.authoredLanguage] : []),
         '--json',
       ],
       cwd: diagram.outputDirectory,
@@ -493,6 +515,15 @@ function commandRequest({ command, diagram, suite, archifyCli }) {
   }
 
   throw new Error('Per-diagram visual-check commands must be executed through the shared batch seam.');
+}
+
+function serialGate() {
+  let tail = Promise.resolve();
+  return (operation) => {
+    const current = tail.then(operation, operation);
+    tail = current.catch(() => {});
+    return current;
+  };
 }
 
 function capabilityRequest(suite, archifyCli) {
@@ -800,9 +831,31 @@ function pngIhdrDimensions(bytes) {
   return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
 }
 
-function verifyQualityReceipt(diagram, command, receipt, qualityProfile, viewportPreflight) {
+function verifyQualityReceipt(
+  diagram,
+  command,
+  receipt,
+  qualityProfile,
+  viewportPreflight,
+  authoredLanguage,
+) {
   if (!receipt?.ok || command.kind === 'exec') return;
+  if (authoredLanguage && ['validate', 'deliver'].includes(command.kind)) {
+    if (receipt.authoredLanguage?.required !== authoredLanguage
+      || receipt.authoredLanguage?.violations !== 0) {
+      throw new Error(`${command.kind} success receipt does not preserve the required authored language ${authoredLanguage}.`);
+    }
+  }
   if (command.kind === 'validate') {
+    if (receipt.type !== diagram.type || receipt.specification?.type !== diagram.type) {
+      throw new Error('validate success receipt diagram type does not match the suite diagram.');
+    }
+    const candidate = fs.readFileSync(diagram.candidatePath);
+    const candidateSha256 = createHash('sha256').update(candidate).digest('hex');
+    if (receipt.specification?.bytes !== candidate.byteLength
+      || receipt.specification?.sha256 !== candidateSha256) {
+      throw new Error('validate specification digest does not match the current candidate bytes.');
+    }
     if (!hasCanonicalDeterministicChecks(receipt.checks)) {
       throw new Error('validate success receipt does not preserve the canonical 9/9 deterministic checks.');
     }
@@ -1274,6 +1327,7 @@ function finalReceipt({
     repository: suite.repository,
     quality: {
       profile: suite.qualityProfile,
+      authoredLanguage: suite.authoredLanguage,
       viewportPreflight: suite.viewportPreflight,
       sharedViewportPreflight: suite.sharedViewportPreflight,
     },
@@ -1398,7 +1452,12 @@ async function runDiagramUntilVisual({ suite, diagram, archifyCli, commandRunner
               }
             }
           }
-          const result = await attempt.span('command', async () => commandRunner(request));
+          const runCommand = () => commandRunner(request);
+          const result = await attempt.span('command', async () => (
+            command.kind === 'validate' && request.args.includes('--preflight')
+              ? suite.browserPreflightGate(runCommand)
+              : runCommand()
+          ));
           let receipt = await attempt.span('receipt', async () => parseCommandReceipt(command, result));
           if (command.kind === 'validate' && suite.sharedViewportPreflight) {
             const shared = suite.sharedPreflightReceipts?.[diagram.id];
@@ -1418,6 +1477,7 @@ async function runDiagramUntilVisual({ suite, diagram, archifyCli, commandRunner
             receipt,
             suite.qualityProfile,
             suite.viewportPreflight,
+            suite.authoredLanguage,
           );
           if (command.kind === 'deliver') {
             verifyDeliverySpecification(
@@ -1467,6 +1527,7 @@ async function completeDiagramVisual(context, {
             receipt,
             suite.qualityProfile,
             suite.viewportPreflight,
+            suite.authoredLanguage,
           );
           const failure = commandFailure(visualCommand, { exitCode }, receipt);
           if (failure) throw failure;
@@ -1501,21 +1562,38 @@ async function completeDiagramVisual(context, {
 async function mapWithConcurrency(items, concurrency, worker) {
   const results = new Array(items.length);
   let cursor = 0;
+  let firstError = null;
   async function consume() {
-    while (true) {
+    while (!firstError) {
       const index = cursor;
       cursor += 1;
       if (index >= items.length) return;
-      results[index] = await worker(items[index], index);
+      try {
+        results[index] = await worker(items[index], index);
+      } catch (error) {
+        if (!firstError) firstError = error;
+      }
     }
   }
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, consume));
+  if (firstError) throw firstError;
   return results;
 }
 
 /** Production adapter for the injected command-runner seam. */
 export function spawnCommandRunner(request) {
   return new Promise((resolve, reject) => {
+    const timeoutMs = request.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS;
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 1) {
+      reject(new TypeError('command timeoutMs must be a positive integer.'));
+      return;
+    }
+    if (request.signal?.aborted) {
+      const error = new Error(`Command ${request.id || request.executable} was aborted before start.`);
+      error.code = 'ARCHIFY_COMMAND_ABORTED';
+      reject(error);
+      return;
+    }
     const startedAt = new Date().toISOString();
     const startedMonotonicMs = performance.now();
     const child = spawn(request.executable, request.args, {
@@ -1523,24 +1601,77 @@ export function spawnCommandRunner(request) {
       env: { ...process.env, ...request.env },
       shell: false,
       stdio: ['ignore', 'pipe', 'pipe'],
+      detached: process.platform !== 'win32',
+      windowsHide: true,
     });
     const stdout = [];
     const stderr = [];
     let outputBytes = 0;
+    let failure = null;
+    let settled = false;
+    const terminateTree = () => {
+      if (!child.pid) return;
+      if (process.platform === 'win32') {
+        const killer = spawn('taskkill', ['/pid', String(child.pid), '/t', '/f'], {
+          shell: false,
+          stdio: 'ignore',
+          windowsHide: true,
+        });
+        killer.once('error', () => {});
+      } else {
+        try {
+          process.kill(-child.pid, 'SIGKILL');
+        } catch (error) {
+          if (error?.code !== 'ESRCH') child.kill('SIGKILL');
+        }
+      }
+    };
+    const timeout = setTimeout(() => {
+      failure = new Error(`Command ${request.id || request.executable} timed out after ${timeoutMs}ms.`);
+      failure.code = 'ARCHIFY_COMMAND_TIMEOUT';
+      terminateTree();
+    }, timeoutMs);
+    timeout.unref?.();
+    const onAbort = () => {
+      failure = new Error(`Command ${request.id || request.executable} was aborted.`);
+      failure.code = 'ARCHIFY_COMMAND_ABORTED';
+      terminateTree();
+    };
+    request.signal?.addEventListener('abort', onAbort, { once: true });
+    const cleanup = () => {
+      clearTimeout(timeout);
+      request.signal?.removeEventListener('abort', onAbort);
+    };
     const collect = (target) => (chunk) => {
       outputBytes += chunk.byteLength;
       if (outputBytes > MAX_COMMAND_OUTPUT_BYTES) {
-        child.kill('SIGKILL');
+        failure = new Error(`Command ${request.id || request.executable} exceeded ${MAX_COMMAND_OUTPUT_BYTES} output bytes.`);
+        failure.code = 'ARCHIFY_COMMAND_OUTPUT_LIMIT';
+        terminateTree();
         return;
       }
       target.push(chunk);
     };
     child.stdout.on('data', collect(stdout));
     child.stderr.on('data', collect(stderr));
-    child.once('error', reject);
+    child.once('error', (error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    });
     child.once('close', (exitCode, signal) => {
-      if (outputBytes > MAX_COMMAND_OUTPUT_BYTES) {
-        reject(new Error(`Command ${request.id} exceeded ${MAX_COMMAND_OUTPUT_BYTES} output bytes.`));
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (failure) {
+        failure.timing = {
+          source: 'child-process',
+          startedAt,
+          endedAt: new Date().toISOString(),
+          durationMs: Math.round((performance.now() - startedMonotonicMs) * 1000) / 1000,
+        };
+        reject(failure);
         return;
       }
       resolve({
@@ -1632,6 +1763,7 @@ export async function runSuite({
     ...normalized,
     outputRoot: absoluteOutput,
     repository: { root: absoluteRepo, revision: pinnedRevision },
+    browserPreflightGate: serialGate(),
   };
   ensureFreshOutput(absoluteOutput, suite.diagrams);
   const suiteEventsPath = path.join(absoluteOutput, 'suite-timing.events.jsonl');
@@ -1803,6 +1935,18 @@ export async function runSuite({
     writeNewFile(path.join(absoluteOutput, 'README.md'), report.markdown);
   });
 
+  const activeDiagramMs = results.reduce((sum, result) => sum + result.timing.stages.reduce(
+    (stageSum, stage) => stageSum + (stage.metadata?.sharedBatch ? 0 : (stage.durationMs || 0)),
+    0,
+  ), 0);
+  const sharedVisualCheckMs = suite.visualCheckBatch?.durationMs || 0;
+  const accounting = {
+    activeDiagramMs,
+    sharedVisualCheckMs,
+    aggregateWorkMs: activeDiagramMs + sharedVisualCheckMs,
+    sharedVisualCountedOnce: true,
+  };
+
   const finalReceipt = {
     schemaVersion: 1,
     kind: 'archify.suite-run',
@@ -1812,6 +1956,7 @@ export async function runSuite({
     repository: suite.repository,
     quality: {
       profile: suite.qualityProfile,
+      authoredLanguage: suite.authoredLanguage,
       viewportPreflight: suite.viewportPreflight,
       sharedViewportPreflight: suite.sharedViewportPreflight,
     },
@@ -1822,6 +1967,7 @@ export async function runSuite({
     ...(suite.visualCheckBatch ? { visualCheckBatch: suite.visualCheckBatch } : {}),
     ...(suite.projectIndexReceipt ? { projectIndex: suite.projectIndexReceipt } : {}),
     plannedDiagrams: suite.diagrams.map((diagram) => ({ id: diagram.id, type: diagram.type })),
+    accounting,
     diagrams: results.map((result) => ({
       id: result.diagram.id,
       type: result.diagram.type,
@@ -1842,6 +1988,7 @@ export async function runSuite({
     status: report.status,
     repository: suite.repository,
     qualityProfile: suite.qualityProfile,
+    authoredLanguage: suite.authoredLanguage,
     viewportPreflight: suite.viewportPreflight,
     sharedViewportPreflight: suite.sharedViewportPreflight,
     chromeCapability: suite.chromeCapability,
@@ -1862,6 +2009,7 @@ export async function runSuite({
       artifact: result.artifactPath,
       visualReview: result.visualReviewPath,
     })),
+    accounting,
     finalReceipt: suiteTiming.finalReceipt,
   };
   writeNewJson(path.join(absoluteOutput, 'suite-result.json'), summary);

@@ -198,6 +198,21 @@ test('repair progress does not let an unclassified infrastructure failure hide r
   assert.equal(progress.ignoredInfrastructureAttempts, 1);
 });
 
+test('repair progress ignores classified Chrome and renderer process infrastructure failures', () => {
+  const attempts = [
+    { stage: 'render', diagnostics: [{ code: 'internal/renderer-process' }] },
+    { stage: 'preflight', diagnostics: [{ code: 'viewer/chrome-capability' }] },
+    { stage: 'preflight', diagnostics: [{ code: 'viewer/visual-check-runtime' }] },
+    { stage: 'check', errorCount: 3, diagnostics: [{ code: 'composition/proper-crossing' }] },
+    { stage: 'check', errorCount: 1, diagnostics: [{ code: 'composition/proper-crossing' }] },
+  ];
+  const progress = evaluateRepairProgress(attempts);
+
+  assert.equal(progress.ignoredInfrastructureAttempts, 3);
+  assert.equal(progress.best.errorCount, 1);
+  assert.equal(progress.shouldStop, false);
+});
+
 test('repair plan carries structural-reflow progress without treating unresolved errors as success', () => {
   const diagnostic = {
     code: 'composition/label-route-clearance',

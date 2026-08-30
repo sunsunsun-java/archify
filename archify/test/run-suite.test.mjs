@@ -7,6 +7,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { QUALITY_CONTRACT } from '../authoring/quality-contract.mjs';
+import { runCandidatePreflightBatch } from '../authoring/candidate-preflight.mjs';
 import { buildProjectIndex, createEvidenceLedger } from '../evidence/project-index.mjs';
 import { runSuite, spawnCommandRunner } from '../orchestration/suite-runner.mjs';
 
@@ -21,6 +22,7 @@ function jsonResult(receipt, exitCode = 0) {
 }
 
 function validationReceipt(type, input, ok = true) {
+  const candidate = fs.readFileSync(input);
   const preflightViewports = [
     visualObservation(1440, 900),
     visualObservation(1600, 1000),
@@ -33,6 +35,11 @@ function validationReceipt(type, input, ok = true) {
     command: 'validate',
     type,
     input,
+    specification: {
+      type,
+      bytes: candidate.byteLength,
+      sha256: createHash('sha256').update(candidate).digest('hex'),
+    },
     checks: QUALITY_CONTRACT.guards.deterministicCheckNames.map((name) => ({ name, ok })),
     composition: { profile: 'showcase', summary: { errors: ok ? 0 : 1, warnings: 0 } },
     ...(ok ? {
@@ -87,6 +94,43 @@ function stateObservation(observation) {
   };
 }
 
+function validPreflightReceiptForSuite(artifactPath, artifact) {
+  const identity = {
+    path: artifactPath,
+    bytes: artifact.byteLength,
+    sha256: createHash('sha256').update(artifact).digest('hex'),
+  };
+  const viewports = QUALITY_CONTRACT.guards.desktopViewports.map(({ width, height }) => (
+    visualObservation(width, height)
+  ));
+  return {
+    schemaVersion: 2,
+    command: 'visual-preflight',
+    ok: true,
+    status: 'pass',
+    automatedChecks: ['containment'],
+    artifact: {
+      ...identity,
+      verification: {
+        unchanged: true,
+        before: { bytes: identity.bytes, sha256: identity.sha256 },
+        after: { bytes: identity.bytes, sha256: identity.sha256 },
+      },
+    },
+    state: {
+      status: 'pass',
+      detail: 'read',
+      motion: 'still',
+      theme: 'light',
+      observations: viewports.map(stateObservation),
+    },
+    containment: { status: 'pass', viewports },
+    captures: { status: 'not-requested', screenshots: [], contactSheet: null },
+    sidecars: { receipt: 'temporary.json' },
+    diagnostics: [],
+  };
+}
+
 function fakePng(width, height) {
   const png = Buffer.alloc(24);
   Buffer.from('89504e470d0a1a0a', 'hex').copy(png, 0);
@@ -102,9 +146,12 @@ function fakeRunner({
   visualReceiptClaimsHumanPass = false,
   revisionValue = revision,
   capabilityStatus = 'pass',
+  tamperValidationSpecification = false,
 } = {}) {
   let activeTypedCommands = 0;
   let maximumConcurrency = 0;
+  const activeByKind = new Map();
+  const maximumByKind = new Map();
   const requests = [];
   const runner = async (request) => {
     requests.push(request);
@@ -130,6 +177,11 @@ function fakeRunner({
     }
     activeTypedCommands += 1;
     maximumConcurrency = Math.max(maximumConcurrency, activeTypedCommands);
+    activeByKind.set(request.kind, (activeByKind.get(request.kind) || 0) + 1);
+    maximumByKind.set(request.kind, Math.max(
+      maximumByKind.get(request.kind) || 0,
+      activeByKind.get(request.kind),
+    ));
     await new Promise((resolve) => setTimeout(resolve, 3));
     try {
       if (request.kind === 'exec') {
@@ -145,7 +197,20 @@ function fakeRunner({
         const type = request.args[2];
         const input = request.args[3];
         const shouldFail = request.env.ARCHIFY_SUITE_DIAGRAM_ID === failDiagram;
-        return jsonResult(validationReceipt(type, input, !shouldFail), shouldFail ? 1 : 0);
+        const receipt = validationReceipt(type, input, !shouldFail);
+        if (tamperValidationSpecification) receipt.specification.sha256 = '0'.repeat(64);
+        const languageIndex = request.args.indexOf('--require-authored-language');
+        if (languageIndex >= 0) {
+          receipt.authoredLanguage = {
+            required: request.args[languageIndex + 1],
+            locale: request.args[languageIndex + 1],
+            inspected: 1,
+            proseInspected: 1,
+            technicalIdentifiersPreserved: 0,
+            violations: 0,
+          };
+        }
+        return jsonResult(receipt, shouldFail ? 1 : 0);
       }
       if (request.kind === 'deliver') {
         const type = request.args[2];
@@ -154,7 +219,7 @@ function fakeRunner({
         const specification = fs.readFileSync(input);
         const artifact = `<!doctype html><title>${type}</title>\n`;
         fs.writeFileSync(output, artifact);
-        return jsonResult({
+        const receipt = {
           schemaVersion: 1,
           ok: true,
           command: 'deliver',
@@ -176,7 +241,19 @@ function fakeRunner({
             errors: 0,
             warnings: 0,
           },
-        });
+        };
+        const languageIndex = request.args.indexOf('--require-authored-language');
+        if (languageIndex >= 0) {
+          receipt.authoredLanguage = {
+            required: request.args[languageIndex + 1],
+            locale: request.args[languageIndex + 1],
+            inspected: 1,
+            proseInspected: 1,
+            technicalIdentifiersPreserved: 0,
+            violations: 0,
+          };
+        }
+        return jsonResult(receipt);
       }
       if (request.kind === 'visual-check-batch') {
         const artifactPaths = request.args.slice(2, -1);
@@ -254,10 +331,12 @@ function fakeRunner({
       throw new Error(`Unexpected command kind ${request.kind}`);
     } finally {
       activeTypedCommands -= 1;
+      activeByKind.set(request.kind, activeByKind.get(request.kind) - 1);
     }
   };
   runner.requests = requests;
   runner.maximumConcurrency = () => maximumConcurrency;
+  runner.maximumConcurrencyFor = (kind) => maximumByKind.get(kind) || 0;
   return runner;
 }
 
@@ -339,6 +418,21 @@ test('suite runner CLI: documents explicit repository, revision, output, and no-
   assert.match(result.stdout, /manifest\.projectIndex/);
 });
 
+test('suite runner CLI: every JSON failure carries actionable diagnostics', () => {
+  const result = spawnSync(process.execPath, [suiteCli, '--unknown', '--json'], {
+    cwd: skillRoot,
+    encoding: 'utf8',
+  });
+  assert.equal(result.status, 1);
+  const receipt = JSON.parse(result.stdout);
+  assert.equal(receipt.ok, false);
+  assert.equal(receipt.command, 'run-suite');
+  assert.equal(receipt.diagnostics.length, 1);
+  assert.equal(receipt.diagnostics[0].code, 'run-suite/failed');
+  assert.equal(receipt.diagnostics[0].severity, 'error');
+  assert.ok(receipt.diagnostics[0].supportedFixes.length > 0);
+});
+
 test('production command runner reports child-process time without agent marker gaps', async () => {
   const result = await spawnCommandRunner({
     executable: process.execPath,
@@ -352,6 +446,68 @@ test('production command runner reports child-process time without agent marker 
   assert.ok(result.timing.durationMs >= 0);
   assert.match(result.timing.startedAt, /^\d{4}-\d{2}-\d{2}T/);
   assert.match(result.timing.endedAt, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test('production command runner times out and terminates a hung process tree', async () => {
+  await assert.rejects(spawnCommandRunner({
+    id: 'hung-command',
+    executable: process.execPath,
+    args: ['-e', 'setInterval(() => {}, 1000)'],
+    cwd: skillRoot,
+    env: {},
+    timeoutMs: 40,
+  }), (error) => {
+    assert.equal(error.code, 'ARCHIFY_COMMAND_TIMEOUT');
+    assert.match(error.message, /hung-command timed out after 40ms/);
+    return true;
+  });
+});
+
+test('suite runner integration: real packaged validate and deliver CLIs complete the trusted chain', async (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-suite-real-cli-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const repoRoot = path.join(tmp, 'repo');
+  fs.mkdirSync(repoRoot);
+  execFileSync('git', ['init', '-q'], { cwd: repoRoot });
+  execFileSync('git', ['config', 'user.email', 'archify@example.test'], { cwd: repoRoot });
+  execFileSync('git', ['config', 'user.name', 'Archify Test'], { cwd: repoRoot });
+  fs.writeFileSync(path.join(repoRoot, 'README.md'), 'fixture\n');
+  execFileSync('git', ['add', 'README.md'], { cwd: repoRoot });
+  execFileSync('git', ['commit', '-qm', 'fixture'], { cwd: repoRoot });
+  const pinned = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+  const candidate = path.join(tmp, 'workflow.json');
+  fs.copyFileSync(path.join(skillRoot, 'examples', 'agent-tool-call.workflow.json'), candidate);
+  const manifestPath = writeManifest(tmp, [{ type: 'workflow', candidate, commands: qualityCommands() }], {
+    sharedViewportPreflight: true,
+  });
+  const browserRunner = fakeRunner({ revisionValue: pinned });
+  const commandRunner = (request) => (
+    ['chrome-capability', 'visual-check-batch'].includes(request.kind)
+      ? browserRunner(request)
+      : spawnCommandRunner(request)
+  );
+  const session = {
+    async preflight({ artifactPath }) {
+      const artifact = fs.readFileSync(artifactPath);
+      return { exitCode: 0, receipt: validPreflightReceiptForSuite(artifactPath, artifact) };
+    },
+  };
+
+  const summary = await runSuite({
+    manifestPath,
+    repoRoot,
+    revision: pinned,
+    outputRoot: path.join(tmp, 'output'),
+    archifyCli,
+    commandRunner,
+    candidatePreflightRunner: (request) => runCandidatePreflightBatch({ ...request, session }),
+  });
+
+  assert.equal(summary.status, 'automated-pass-awaiting-human-review');
+  const timing = JSON.parse(fs.readFileSync(summary.diagrams[0].timing, 'utf8'));
+  assert.deepEqual(timing.finalReceipt.commands.slice(0, 2).map((entry) => entry.kind), ['validate', 'deliver']);
+  assert.equal(timing.finalReceipt.commands[0].receipt.ok, true);
+  assert.equal(timing.finalReceipt.commands[1].receipt.ok, true);
 });
 
 test('suite runner: pins the repository once, isolates diagrams, and generates timing/report receipts', async (t) => {
@@ -375,7 +531,7 @@ test('suite runner: pins the repository once, isolates diagrams, and generates t
       candidate: '{diagramOutput}/candidate.json',
       artifact: 'sequence.html',
       commands: [
-        { id: 'prepare', kind: 'exec', argv: ['prepare-candidate', '{candidate}'], receipt: 'json', cwd: 'diagram' },
+        { id: 'prepare', kind: 'exec', argv: ['prepare-candidate', '{candidate}'], receipt: 'json' },
         ...qualityCommands(),
       ],
     },
@@ -395,6 +551,11 @@ test('suite runner: pins the repository once, isolates diagrams, and generates t
   assert.equal(summary.status, 'automated-pass-awaiting-human-review');
   assert.deepEqual(summary.diagrams.map((diagram) => diagram.status), ['completed', 'completed']);
   assert.equal(commandRunner.requests.filter((request) => request.kind === 'repository-revision').length, 1);
+  assert.equal(
+    commandRunner.requests.find((request) => request.kind === 'exec').cwd,
+    path.join(outputRoot, 'sequence'),
+    'exec commands default to the isolated diagram directory',
+  );
   assert.equal(commandRunner.requests.filter((request) => request.kind === 'chrome-capability').length, 1);
   assert.equal(Object.hasOwn(commandRunner.requests.find((request) => request.kind === 'chrome-capability').env, 'ARCHIFY_CHROME_NO_SANDBOX'), false);
   assert.equal(commandRunner.requests.filter((request) => request.kind === 'validate').every((request) => request.args.includes('--preflight')), true);
@@ -402,6 +563,7 @@ test('suite runner: pins the repository once, isolates diagrams, and generates t
   assert.equal(visualBatchRequests.length, 1);
   assert.equal(commandRunner.requests.filter((request) => request.kind === 'visual-check').length, 0);
   assert.ok(commandRunner.maximumConcurrency() >= 2, 'diagram command execution should overlap at concurrency 2');
+  assert.equal(commandRunner.maximumConcurrencyFor('validate'), 1, 'Chrome-backed validate preflights must be serialized');
   for (const diagram of summary.diagrams) {
     assert.ok(visualBatchRequests[0].args.includes(diagram.artifact));
     assert.equal(path.dirname(diagram.timing), path.join(outputRoot, diagram.id));
@@ -447,6 +609,49 @@ test('suite runner: pins the repository once, isolates diagrams, and generates t
   assert.equal(suiteTiming.stages.find((stage) => stage.name === 'visualCheckBatch').status, 'passed');
   assert.equal(suiteTiming.finalReceipt.chromeCapability.receipt.status, 'pass');
   assert.equal(suiteTiming.finalReceipt.visualCheckBatch.artifacts.length, 2);
+  const activeDiagramMs = summary.diagrams.reduce((sum, diagram) => {
+    const timing = JSON.parse(fs.readFileSync(diagram.timing, 'utf8'));
+    return sum + timing.stages.reduce(
+      (stageSum, stage) => stageSum + (stage.metadata.sharedBatch ? 0 : stage.durationMs),
+      0,
+    );
+  }, 0);
+  assert.deepEqual(summary.accounting, {
+    activeDiagramMs,
+    sharedVisualCheckMs: summary.visualCheckBatch.durationMs,
+    aggregateWorkMs: activeDiagramMs + summary.visualCheckBatch.durationMs,
+    sharedVisualCountedOnce: true,
+  });
+  assert.deepEqual(suiteTiming.finalReceipt.accounting, summary.accounting);
+  assert.match(report, /shared final visual-check once/);
+});
+
+test('suite runner: propagates and verifies one authored-language contract across validate and deliver', async (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-suite-language-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const repoRoot = path.join(tmp, 'repo');
+  fs.mkdirSync(repoRoot);
+  const commandRunner = fakeRunner();
+  const manifestPath = writeManifest(tmp, [{
+    id: 'workflow',
+    type: 'workflow',
+    candidate: staticCandidate(tmp, 'workflow'),
+    commands: qualityCommands(),
+  }], { authoredLanguage: 'zh-CN' });
+
+  const summary = await runSuite({
+    manifestPath,
+    repoRoot,
+    revision,
+    outputRoot: path.join(tmp, 'output'),
+    archifyCli,
+    commandRunner,
+  });
+
+  assert.equal(summary.finalReceipt.quality.authoredLanguage, 'zh-CN');
+  for (const request of commandRunner.requests.filter((entry) => ['validate', 'deliver'].includes(entry.kind))) {
+    assert.deepEqual(request.args.slice(-3), ['--require-authored-language', 'zh-CN', '--json']);
+  }
 });
 
 test('suite runner: frozen candidates share one pre-delivery browser session', async (t) => {
@@ -498,6 +703,25 @@ test('suite runner: specification and artifact digests form one end-to-end chain
   const repoRoot = path.join(tmp, 'repo');
   fs.mkdirSync(repoRoot);
   const candidate = staticCandidate(tmp, 'workflow');
+
+  await t.test('validate specification must match the current candidate', async () => {
+    const manifestPath = writeManifest(tmp, [{
+      type: 'workflow',
+      candidate,
+      commands: qualityCommands(),
+    }]);
+    const summary = await runSuite({
+      manifestPath,
+      repoRoot,
+      revision,
+      outputRoot: path.join(tmp, 'validate-spec-output'),
+      archifyCli,
+      commandRunner: fakeRunner({ tamperValidationSpecification: true }),
+    });
+    assert.equal(summary.status, 'automated-failure');
+    const timing = JSON.parse(fs.readFileSync(summary.diagrams[0].timing, 'utf8'));
+    assert.match(timing.finalReceipt.error.message, /validate specification digest does not match/);
+  });
 
   await t.test('deliver specification must match shared preflight', async () => {
     const manifestPath = writeManifest(tmp, [{
@@ -840,6 +1064,31 @@ test('suite runner: shared candidate preflight rejects mutable exec candidates',
     archifyCli,
     commandRunner: fakeRunner(),
   }), /requires frozen candidates and does not permit exec commands/);
+});
+
+test('suite runner: mutable exec candidates cannot escape their isolated diagram directory', async (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-suite-exec-isolation-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const repoRoot = path.join(tmp, 'repo');
+  fs.mkdirSync(repoRoot);
+  const manifestPath = writeManifest(tmp, [{
+    type: 'workflow',
+    candidate: staticCandidate(tmp, 'workflow'),
+    commands: [
+      { id: 'prepare', kind: 'exec', argv: ['prepare-candidate', '{candidate}'] },
+      ...qualityCommands(),
+    ],
+  }]);
+  const commandRunner = fakeRunner();
+  await assert.rejects(runSuite({
+    manifestPath,
+    repoRoot,
+    revision,
+    outputRoot: path.join(tmp, 'output'),
+    archifyCli,
+    commandRunner,
+  }), /mutable candidate must stay inside its isolated diagram directory/);
+  assert.equal(commandRunner.requests.length, 0);
 });
 
 test('suite runner: rejects control-file and candidate/artifact aliases before execution', async (t) => {

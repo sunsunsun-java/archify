@@ -16,6 +16,15 @@ function canonicalJson(value) {
   return JSON.stringify(value);
 }
 
+function infrastructureDiagnostic(diagnostic) {
+  const code = diagnostic?.code || 'internal/unclassified';
+  return code.startsWith('internal/')
+    || code === 'viewer/chrome-unavailable'
+    || code === 'viewer/chrome-capability'
+    || code === 'viewer/visual-check-runtime'
+    || code === 'preflight/receipt-invalid';
+}
+
 export function diagnosticFingerprint(diagnostics = []) {
   const normalized = (Array.isArray(diagnostics) ? diagnostics : []).map((diagnostic) => ({
     code: diagnostic?.code || 'internal/unclassified',
@@ -38,7 +47,7 @@ function progressAttempt(attempt, stageOrder) {
     diagnosticFingerprint: attempt?.diagnosticFingerprint || diagnosticFingerprint(diagnostics),
     repairMode: attempt?.repairMode === 'structural-reflow' ? 'structural-reflow' : 'focused',
     infrastructureFailure: diagnostics.length > 0
-      && diagnostics.every((diagnostic) => diagnostic?.code === 'internal/unclassified'),
+      && diagnostics.every(infrastructureDiagnostic),
   };
 }
 

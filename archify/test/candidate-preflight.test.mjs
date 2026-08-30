@@ -120,6 +120,32 @@ class CloseThrowingSession extends FakeSession {
   }
 }
 
+class PoisonedSession extends FakeSession {
+  constructor() {
+    super();
+    this.poisoned = new Error('synthetic reset failure');
+    this.closed = false;
+  }
+
+  async preflight({ artifactPath, finalArtifact }) {
+    const artifact = fs.readFileSync(artifactPath);
+    this.calls.push({ artifactPath, finalArtifact, html: artifact.toString('utf8') });
+    const receipt = validPreflightReceipt(artifactPath, artifact);
+    receipt.ok = false;
+    receipt.status = 'fail';
+    receipt.diagnostics = [{ code: 'viewer/visual-check-runtime', severity: 'error', message: this.poisoned.message }];
+    return { exitCode: 1, receipt };
+  }
+
+  async close() {
+    this.closed = true;
+  }
+}
+
+class ClosableFakeSession extends FakeSession {
+  async close() {}
+}
+
 class StaticResultSession {
   calls = [];
 
@@ -403,6 +429,7 @@ test('candidate preflight renders and checks several candidates before reusing o
     shared: true,
     candidates: 2,
     expectedBrowserResets: 1,
+    browserRestarts: 0,
   });
   assert.equal(result.receipt.timing.source, 'validate-batch');
   assert.ok(result.receipt.timing.durationMs >= 0);
@@ -422,6 +449,22 @@ test('candidate preflight renders and checks several candidates before reusing o
     );
   }
   assert.equal(session.calls.every((call) => !fs.existsSync(call.artifactPath)), true);
+});
+
+test('candidate preflight replaces an owned poisoned browser session so later candidates still run', async () => {
+  const sessions = [new PoisonedSession(), new ClosableFakeSession()];
+  const result = await runCandidatePreflightBatch({
+    skillRoot,
+    sessionFactory: () => sessions.shift(),
+    candidates: [
+      { id: 'workflow', type: 'workflow', input: path.join(skillRoot, 'examples', 'agent-tool-call.workflow.json') },
+      { id: 'sequence', type: 'sequence', input: path.join(skillRoot, 'examples', 'cache-miss-request.sequence.json') },
+    ],
+  });
+
+  assert.equal(result.receipt.candidates[0].ok, false);
+  assert.equal(result.receipt.candidates[1].ok, true);
+  assert.equal(result.receipt.session.browserRestarts, 1);
 });
 
 test('candidate preflight keeps deterministic failures structured and does not skip valid peers', async () => {

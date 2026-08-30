@@ -1255,13 +1255,18 @@ function segmentPosition(index, segmentCount) {
   return 'interior';
 }
 
-export function normalizeRoutePoints(points) {
+export function dedupeRoutePoints(points) {
   const finite = asArray(points).filter((point) => Array.isArray(point) && point.length === 2 && isFinitePoint(...point));
   const deduped = [];
   for (const point of finite) {
     const previous = deduped.at(-1);
     if (!previous || Math.abs(point[0] - previous[0]) > 0.0001 || Math.abs(point[1] - previous[1]) > 0.0001) deduped.push(point);
   }
+  return deduped;
+}
+
+export function normalizeRoutePoints(points) {
+  const deduped = dedupeRoutePoints(points);
   const normalized = [];
   for (const point of deduped) {
     while (normalized.length >= 2 && collinearForward(normalized.at(-2), normalized.at(-1), point)) normalized.pop();

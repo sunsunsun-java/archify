@@ -26,7 +26,7 @@ function usage() {
   archify visual-check <output.html>... [--preflight] [--json]
   archify visual-check --probe [--json]
   archify authoring-kit <type> [--json] [--context-json] [--expect-contract sha256]
-  archify authoring-run start <type> --run-id id --output directory [--json]
+  archify authoring-run start <type> --run-id id --output directory --repo-root path --project-index file [--json]
   archify authoring-run finalize <authoring-run.json> --candidate path --evidence path --validation path [--json]
   archify project-index <repo-root> [--revision ref] [--output path] [--json]
   archify project-index query <index.json> [--symbol name] [--import specifier] [--path prefix] [--language name] [--package name] [--max-results n] [--output path] [--json]
@@ -159,29 +159,119 @@ function extractEnumOption(args, name, allowed) {
   return { rest, value };
 }
 
-function authoredLanguageDiagnostics(diagram, requiredLanguage) {
-  if (!requiredLanguage) return [];
+const AUTHORED_LANGUAGE_COLLECTIONS = Object.freeze({
+  architecture: Object.freeze([
+    ['components', ['label', 'sublabel', 'tag']],
+    ['boundaries', ['label']],
+    ['connections', ['label']],
+  ]),
+  workflow: Object.freeze([
+    ['lanes', ['label']],
+    ['phases', ['label']],
+    ['groups', ['label']],
+    ['nodes', ['label', 'sublabel', 'tag']],
+    ['edges', ['label']],
+  ]),
+  sequence: Object.freeze([
+    ['participants', ['label', 'sublabel']],
+    ['segments', ['label']],
+    ['messages', ['label', 'note']],
+  ]),
+  dataflow: Object.freeze([
+    ['stages', ['label']],
+    ['nodes', ['label', 'sublabel', 'tag']],
+    ['flows', ['label']],
+  ]),
+  lifecycle: Object.freeze([
+    ['lanes', ['label']],
+    ['states', ['label', 'sublabel', 'tag']],
+    ['transitions', ['label', 'note']],
+  ]),
+});
+
+function authoredLanguageEntries(diagram) {
+  const entries = [];
+  const add = (pathValue, value) => {
+    if (typeof value !== 'string' || !value.trim()) return;
+    entries.push({ path: pathValue, text: value.trim() });
+  };
+  add('/meta/title', diagram?.meta?.title);
+  add('/meta/subtitle', diagram?.meta?.subtitle);
+  for (const [index, view] of (diagram?.meta?.views || []).entries()) {
+    add(`/meta/views/${index}/label`, view?.label);
+    add(`/meta/views/${index}/note`, view?.note);
+  }
+  for (const [kind, entry] of Object.entries(diagram?.meta?.legend?.entries || {})) {
+    add(`/meta/legend/entries/${kind}/label`, entry?.label);
+  }
+  for (const [index, card] of (diagram?.cards || []).entries()) {
+    add(`/cards/${index}/title`, card?.title);
+    for (const [itemIndex, item] of (card?.items || []).entries()) {
+      add(`/cards/${index}/items/${itemIndex}`, item);
+    }
+  }
+  for (const [collection, fields] of AUTHORED_LANGUAGE_COLLECTIONS[diagram?.diagram_type] || []) {
+    for (const [index, item] of (diagram?.[collection] || []).entries()) {
+      for (const field of fields) add(`/${collection}/${index}/${field}`, item?.[field]);
+    }
+  }
+  return entries;
+}
+
+function isTechnicalAuthoredText(text) {
+  if (/\s/u.test(text)) return false;
+  return /[\[\]()._/:@{}<>#+]/u.test(text)
+    || /[a-z][A-Z]/u.test(text)
+    || /^[A-Z0-9-]{2,}$/u.test(text)
+    || /^https?:\/\//iu.test(text);
+}
+
+function authoredLanguageAssessment(diagram, requiredLanguage) {
+  if (!requiredLanguage) return { diagnostics: [], receipt: null };
   const locale = diagram?.meta?.locale;
-  const title = typeof diagram?.meta?.title === 'string' ? diagram.meta.title.trim() : '';
+  const entries = authoredLanguageEntries(diagram);
+  const title = entries.find((entry) => entry.path === '/meta/title')?.text || '';
   const hasCjk = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u.test(title);
   const hasLatin = /[A-Za-z]/u.test(title);
   const localeMatches = locale === requiredLanguage;
   const titleMatches = requiredLanguage === 'zh-CN' ? hasCjk : hasLatin && !hasCjk;
-  if (localeMatches && titleMatches) return [];
+  const technicalIdentifiers = entries.filter((entry) => isTechnicalAuthoredText(entry.text));
+  const proseEntries = entries.filter((entry) => !isTechnicalAuthoredText(entry.text));
+  const proseViolations = requiredLanguage === 'zh-CN'
+    ? proseEntries.filter((entry) => !/[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u.test(entry.text))
+    : [];
+  const violations = [
+    ...(!localeMatches ? [{ path: '/meta/locale', text: locale ?? null, reason: `must equal ${requiredLanguage}` }] : []),
+    ...(!titleMatches ? [{ path: '/meta/title', text: title, reason: `must visibly use ${requiredLanguage}` }] : []),
+    ...proseViolations.map((entry) => ({ ...entry, reason: 'reader-facing prose does not use Simplified Chinese' })),
+  ];
+  const receipt = {
+    required: requiredLanguage,
+    locale: locale ?? null,
+    inspected: entries.length,
+    proseInspected: proseEntries.length,
+    technicalIdentifiersPreserved: technicalIdentifiers.length,
+    violations: violations.length,
+  };
+  if (violations.length === 0) return { diagnostics: [], receipt };
   const problems = [
     ...(!localeMatches ? [`meta.locale must be "${requiredLanguage}"`] : []),
     ...(!titleMatches ? [`meta.title must visibly use ${requiredLanguage === 'zh-CN' ? 'Simplified Chinese' : 'English'}`] : []),
+    ...(proseViolations.length ? [`${proseViolations.length} reader-facing prose field(s) must use Simplified Chinese`] : []),
   ];
-  return [diagnostic({
-    code: 'content/authored-language',
-    message: `Authored language gate failed: ${problems.join('; ')}.`,
-    subject: { path: '/meta', requiredLanguage },
-    evidence: { locale: locale ?? null, title },
-    supportedFixes: [
-      `set meta.locale to "${requiredLanguage}"`,
-      `author the title and surrounding explanatory copy in ${requiredLanguage === 'zh-CN' ? 'Simplified Chinese' : 'English'} while preserving exact product and code identifiers`,
-    ],
-  })];
+  return {
+    receipt,
+    diagnostics: [diagnostic({
+      code: 'content/authored-language',
+      message: `Authored language gate failed: ${problems.join('; ')}.`,
+      subject: { path: '/', requiredLanguage },
+      evidence: { ...receipt, title, violations },
+      supportedFixes: [
+        `set meta.locale to "${requiredLanguage}"`,
+        `author every reader-facing title, node, relationship, lane, group, guided view, legend override, and card in ${requiredLanguage === 'zh-CN' ? 'Simplified Chinese' : 'English'} while preserving exact product and code identifiers`,
+      ],
+    })],
+  };
 }
 
 function rendererEnv(quality, repoRoot, diagnosticJson = false) {
@@ -978,8 +1068,8 @@ async function commandDeliver(args) {
     return;
   }
 
-  const languageDiagnostics = authoredLanguageDiagnostics(diagram, languageArgs.value);
-  if (languageDiagnostics.length) {
+  const languageAssessment = authoredLanguageAssessment(diagram, languageArgs.value);
+  if (languageAssessment.diagnostics.length) {
     reportDeliveryFailure({
       json,
       stage: 'language',
@@ -987,7 +1077,7 @@ async function commandDeliver(args) {
       input: inputPath,
       output: path.resolve(requestedOutput || `${type}.html`),
       error: 'Authored language validation failed.',
-      diagnostics: languageDiagnostics,
+      diagnostics: languageAssessment.diagnostics,
     });
     return;
   }
@@ -1220,6 +1310,7 @@ async function commandDeliver(args) {
         sha256: createHash('sha256').update(artifact).digest('hex'),
         bytes: artifact.byteLength,
       },
+      ...(languageAssessment.receipt ? { authoredLanguage: languageAssessment.receipt } : {}),
       validation: {
         checksPassed: result.checks.filter((checkItem) => checkItem.ok).length,
         checkCount: result.checks.length,
@@ -1529,7 +1620,7 @@ function writeJsonAtomic(targetInput, value) {
   fs.mkdirSync(directory, { recursive: true });
   const temporary = path.join(directory, `.${path.basename(target)}.${process.pid}.${Date.now()}.tmp`);
   try {
-    fs.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' });
+    fs.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
     fs.renameSync(temporary, target);
   } catch (error) {
     fs.rmSync(temporary, { force: true });
@@ -1611,7 +1702,7 @@ async function commandAuthoringRun(args) {
   const values = {};
   let json = false;
   const allowed = action === 'start'
-    ? new Set(['--run-id', '--output'])
+    ? new Set(['--run-id', '--output', '--repo-root', '--project-index'])
     : action === 'finalize'
       ? new Set(['--candidate', '--evidence', '--validation'])
       : null;
@@ -1638,10 +1729,13 @@ async function commandAuthoringRun(args) {
     const module = await import('../authoring/authoring-run.mjs');
     if (action === 'start') {
       if (positional.length !== 1 || !TYPES.has(positional[0])
-        || !values['--run-id'] || !values['--output']) fail(usage());
+        || !values['--run-id'] || !values['--output']
+        || !values['--repo-root'] || !values['--project-index']) fail(usage());
       const started = module.startAuthoringRun({
         run: { id: values['--run-id'], diagramType: positional[0] },
         outputDirectory: values['--output'],
+        repoRoot: values['--repo-root'],
+        projectIndexPath: values['--project-index'],
       });
       const receipt = {
         schemaVersion: 1,
@@ -2019,6 +2113,8 @@ async function commandDoctor() {
   const optimizationRuntimes = [
     path.join(skillRoot, 'authoring', 'authoring-kit.mjs'),
     path.join(skillRoot, 'authoring', 'authoring-run.mjs'),
+    path.join(skillRoot, 'authoring', 'candidate-preflight.mjs'),
+    path.join(skillRoot, 'authoring', 'repair-plan.mjs'),
     path.join(skillRoot, 'authoring', 'quality-contract.mjs'),
     path.join(skillRoot, 'evidence', 'project-index.mjs'),
     path.join(skillRoot, 'orchestration', 'suite-runner.mjs'),
@@ -2632,26 +2728,47 @@ async function commandValidate(args) {
   if (!type || !input || rest.length !== 2) fail(usage());
   assertEvidenceType(type, repoRoot);
   const renderer = rendererPath(type);
+  const inputPath = path.resolve(input);
+  let specification;
+  let diagram;
+  try {
+    specification = fs.readFileSync(inputPath);
+    diagram = JSON.parse(specification.toString('utf8'));
+  } catch (error) {
+    await reportValidateFailure({
+      json,
+      stage: 'input',
+      type,
+      input: inputPath,
+      error: `Could not read validation input "${inputPath}": ${error.message}`,
+      diagnostics: [inputDiagnostic(error, inputPath)],
+      repairHistory,
+      repairMode,
+    });
+    return;
+  }
+  const specificationReceipt = {
+    type,
+    bytes: specification.byteLength,
+    sha256: createHash('sha256').update(specification).digest('hex'),
+  };
+  let languageReceipt = null;
 
   if (languageArgs.value) {
-    try {
-      const diagram = JSON.parse(fs.readFileSync(path.resolve(input), 'utf8'));
-      const diagnostics = authoredLanguageDiagnostics(diagram, languageArgs.value);
-      if (diagnostics.length) {
-        await reportValidateFailure({
-          json,
-          stage: 'language',
-          type,
-          input: path.resolve(input),
-          error: 'Authored language validation failed.',
-          diagnostics,
-          repairHistory,
-          repairMode,
-        });
-        return;
-      }
-    } catch {
-      // The existing input/renderer path emits the authoritative parse diagnostic.
+    const assessment = authoredLanguageAssessment(diagram, languageArgs.value);
+    languageReceipt = assessment.receipt;
+    if (assessment.diagnostics.length) {
+      await reportValidateFailure({
+        json,
+        stage: 'language',
+        type,
+        input: inputPath,
+        error: 'Authored language validation failed.',
+        diagnostics: assessment.diagnostics,
+        repairHistory,
+        repairMode,
+      });
+      return;
     }
   }
 
@@ -2696,10 +2813,12 @@ async function commandValidate(args) {
 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-validate-'));
   const out = path.join(tmp, `${type}.html`);
+  const frozenInput = path.join(tmp, 'specification.snapshot.json');
   let exitCode = 0;
 
   try {
-    const render = runNode([renderer, input, out], {
+    fs.writeFileSync(frozenInput, specification, { flag: 'wx', mode: 0o400 });
+    const render = runNode([renderer, frozenInput, out], {
       stdio: 'pipe',
       env: rendererEnv(quality, repoRoot, true),
     });
@@ -2742,7 +2861,13 @@ async function commandValidate(args) {
         exitCode = check.status ?? 1;
       } else {
         const result = JSON.parse(check.stdout);
-        const engineeringProfile = engineeringProfileFromArtifact(fs.readFileSync(out));
+        const artifact = fs.readFileSync(out);
+        const artifactReceipt = {
+          bytes: artifact.byteLength,
+          sha256: createHash('sha256').update(artifact).digest('hex'),
+          ephemeral: true,
+        };
+        const engineeringProfile = engineeringProfileFromArtifact(artifact);
         let preflightReceipt = null;
         if (preflight) {
           const { runVisualPreflight } = await import('./visual-check.mjs');
@@ -2771,9 +2896,12 @@ async function commandValidate(args) {
             ok: true,
             command: 'validate',
             type,
-            input: path.resolve(input),
+            input: inputPath,
+            specification: specificationReceipt,
+            artifact: artifactReceipt,
             checks: result.checks,
             composition: result.composition,
+            ...(languageReceipt ? { authoredLanguage: languageReceipt } : {}),
             ...(engineeringProfile ? { engineeringProfile } : {}),
             ...(preflightReceipt ? { preflight: preflightReceipt } : {}),
           }, null, 2));

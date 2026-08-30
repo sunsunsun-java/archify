@@ -8,6 +8,11 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { AuthoringRun } from '../authoring/authoring-run.mjs';
 import {
+  buildProjectIndex,
+  createEvidenceLedger,
+} from '../evidence/project-index.mjs';
+import {
+  QUALITY_CONTRACT,
   QUALITY_CONTRACT_DIGEST,
   qualityContractIdentity,
 } from '../authoring/quality-contract.mjs';
@@ -35,36 +40,129 @@ function sha256(file) {
   return createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 }
 
+function git(repoRoot, args) {
+  const result = spawnSync('git', args, { cwd: repoRoot, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+}
+
+function evidenceFixture(root) {
+  const repoRoot = path.join(root, 'repository');
+  fs.mkdirSync(path.join(repoRoot, 'src'), { recursive: true });
+  git(repoRoot, ['init', '-q']);
+  git(repoRoot, ['config', 'user.email', 'archify@example.test']);
+  git(repoRoot, ['config', 'user.name', 'Archify Test']);
+  git(repoRoot, ['remote', 'add', 'origin', 'https://github.com/example/authoring-fixture.git']);
+  fs.writeFileSync(path.join(repoRoot, 'src', 'index.ts'), 'export const ready = true;\n', 'utf8');
+  git(repoRoot, ['add', 'src/index.ts']);
+  git(repoRoot, ['commit', '-qm', 'fixture']);
+  const revision = git(repoRoot, ['rev-parse', 'HEAD']);
+  const projectIndex = buildProjectIndex({ repoRoot, revision });
+  const ledger = createEvidenceLedger(projectIndex, [{
+    claimId: 'entry',
+    path: 'src/index.ts',
+    line: 1,
+    endLine: 1,
+    summary: 'Entry point',
+  }]);
+  const projectIndexPath = path.join(root, 'project-index.json');
+  const evidencePath = path.join(root, 'evidence-ledger.json');
+  writeJson(projectIndexPath, projectIndex);
+  writeJson(evidencePath, ledger);
+  return { repoRoot, revision, projectIndexPath, evidencePath, ledger };
+}
+
+function passingValidation(candidatePath, type = 'workflow') {
+  const candidate = fs.readFileSync(candidatePath);
+  const artifact = Buffer.from('<!doctype html><title>candidate</title>\n');
+  const artifactReceipt = {
+    path: path.join(path.dirname(candidatePath), 'ephemeral.html'),
+    bytes: artifact.byteLength,
+    sha256: createHash('sha256').update(artifact).digest('hex'),
+  };
+  const viewports = QUALITY_CONTRACT.guards.desktopViewports.map(({ width, height }) => ({
+    width,
+    height,
+    theme: 'light',
+    requestedTheme: 'light',
+    resolvedTheme: 'light',
+    detailLevel: 'read',
+    motion: 'still',
+    themeStateOk: true,
+    detailStateOk: true,
+    motionStateOk: true,
+    stateOk: true,
+    ok: true,
+  }));
+  return {
+    schemaVersion: 1,
+    command: 'validate',
+    type,
+    ok: true,
+    status: 'pass',
+    specification: {
+      type,
+      bytes: candidate.byteLength,
+      sha256: createHash('sha256').update(candidate).digest('hex'),
+    },
+    artifact: { ...artifactReceipt, ephemeral: true },
+    checks: QUALITY_CONTRACT.guards.deterministicCheckNames.map((name) => ({ name, ok: true })),
+    composition: { summary: { errors: 0, warnings: 0 }, profile: 'showcase' },
+    preflight: {
+      schemaVersion: 2,
+      command: 'visual-preflight',
+      ok: true,
+      status: 'pass',
+      automatedChecks: ['containment'],
+      artifact: {
+        ...artifactReceipt,
+        verification: {
+          unchanged: true,
+          before: { bytes: artifactReceipt.bytes, sha256: artifactReceipt.sha256 },
+          after: { bytes: artifactReceipt.bytes, sha256: artifactReceipt.sha256 },
+        },
+      },
+      state: {
+        status: 'pass',
+        detail: 'read',
+        motion: 'still',
+        theme: 'light',
+        observations: viewports.map((entry) => ({
+          width: entry.width,
+          height: entry.height,
+          requestedTheme: 'light',
+          resolvedTheme: 'light',
+          detailLevel: 'read',
+          motion: 'still',
+          ok: true,
+        })),
+      },
+      containment: { status: 'pass', viewports },
+    },
+  };
+}
+
 test('authoring run: mechanically writes digest-bound handoff, canonical timing, and receipt-derived report', async (t) => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-authoring-run-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const candidatePath = path.join(tmp, 'candidate.json');
-  const evidencePath = path.join(tmp, 'evidence-ledger.json');
+  const evidence = evidenceFixture(tmp);
+  const evidencePath = evidence.evidencePath;
   const validationPath = path.join(tmp, 'validation.json');
   const outputDirectory = path.join(tmp, 'run');
-  writeJson(candidatePath, { type: 'workflow', meta: { title: 'Agent loop' }, nodes: [] });
-  writeJson(evidencePath, {
-    schemaVersion: 1,
-    repository: { revision: 'a'.repeat(40), indexDigest: 'b'.repeat(64) },
-    ledgerDigest: 'c'.repeat(64),
-    facts: [{ id: 'fact-1' }, { id: 'fact-2' }],
-  });
-  writeJson(validationPath, {
-    command: 'validate',
-    ok: true,
-    status: 'pass',
-    checks: Array.from({ length: 9 }, (_, index) => ({ id: `check-${index + 1}`, ok: true })),
-    composition: { summary: { errors: 0, warnings: 0 }, profile: 'showcase' },
-  });
+  writeJson(candidatePath, { schema_version: 1, diagram_type: 'workflow', meta: { title: 'Agent loop' }, nodes: [] });
+  writeJson(validationPath, passingValidation(candidatePath));
 
   const clock = fakeClock();
   const run = AuthoringRun.open({
     run: {
       id: 'pi/workflow',
       diagramType: 'workflow',
-      repository: { revision: 'a'.repeat(40) },
+      repository: { revision: evidence.revision },
     },
     outputDirectory,
+    repoRoot: evidence.repoRoot,
+    projectIndexPath: evidence.projectIndexPath,
     clock,
   });
   clock.advance(7);
@@ -96,8 +194,9 @@ test('authoring run: mechanically writes digest-bound handoff, canonical timing,
   assert.deepEqual(completed.handoff.contract, qualityContractIdentity({ skillRoot }));
   assert.equal(completed.handoff.candidate.sha256, sha256(candidatePath));
   assert.equal(completed.handoff.evidence.sha256, sha256(evidencePath));
-  assert.equal(completed.handoff.evidence.ledgerDigest, 'c'.repeat(64));
-  assert.equal(completed.handoff.evidence.factCount, 2);
+  assert.equal(completed.handoff.evidence.ledgerDigest, evidence.ledger.ledgerDigest);
+  assert.equal(completed.handoff.evidence.factCount, 1);
+  assert.equal(completed.handoff.evidence.verification.verified, true);
   assert.equal(completed.handoff.validation.sha256, sha256(validationPath));
   assert.equal(completed.handoff.validation.checksPassed, 9);
   assert.equal(completed.handoff.validation.checksTotal, 9);
@@ -121,10 +220,10 @@ test('authoring run: refuses an incomplete quality receipt without producing a r
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-authoring-run-failed-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const candidatePath = path.join(tmp, 'candidate.json');
-  const evidencePath = path.join(tmp, 'evidence.json');
+  const evidence = evidenceFixture(tmp);
+  const evidencePath = evidence.evidencePath;
   const validationPath = path.join(tmp, 'validation.json');
-  writeJson(candidatePath, { type: 'sequence' });
-  writeJson(evidencePath, { ledgerDigest: 'd'.repeat(64), facts: [] });
+  writeJson(candidatePath, { schema_version: 1, diagram_type: 'sequence' });
   writeJson(validationPath, {
     command: 'validate',
     ok: true,
@@ -136,6 +235,8 @@ test('authoring run: refuses an incomplete quality receipt without producing a r
   const run = AuthoringRun.open({
     run: { id: 'pi/sequence', diagramType: 'sequence' },
     outputDirectory,
+    repoRoot: evidence.repoRoot,
+    projectIndexPath: evidence.projectIndexPath,
     clock: fakeClock(),
   });
 
@@ -147,15 +248,81 @@ test('authoring run: refuses an incomplete quality receipt without producing a r
   assert.equal(fs.existsSync(path.join(outputDirectory, 'authoring-report.md')), false);
   assert.equal(fs.existsSync(path.join(outputDirectory, 'timing.json')), false);
 
-  writeJson(validationPath, {
-    command: 'validate',
-    ok: true,
-    status: 'pass',
-    checks: Array.from({ length: 9 }, (_, index) => ({ id: `check-${index + 1}`, ok: true })),
-    composition: { summary: { errors: 0, warnings: 0 }, profile: 'showcase' },
-  });
+  writeJson(validationPath, passingValidation(candidatePath, 'sequence'));
   const recovered = run.finalize({ candidatePath, evidencePath, validationPath });
   assert.equal(recovered.handoff.status, 'ready');
+});
+
+test('authoring run: refuses a passing receipt after the candidate bytes or diagram type change', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-authoring-run-binding-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const candidatePath = path.join(tmp, 'candidate.json');
+  const evidence = evidenceFixture(tmp);
+  const evidencePath = evidence.evidencePath;
+  const validationPath = path.join(tmp, 'validation.json');
+  writeJson(candidatePath, { schema_version: 1, diagram_type: 'workflow', meta: { title: 'A' } });
+  writeJson(validationPath, passingValidation(candidatePath));
+  writeJson(candidatePath, { schema_version: 1, diagram_type: 'workflow', meta: { title: 'B' } });
+  const run = AuthoringRun.open({
+    run: { id: 'pi/workflow', diagramType: 'workflow' },
+    outputDirectory: path.join(tmp, 'run'),
+    repoRoot: evidence.repoRoot,
+    projectIndexPath: evidence.projectIndexPath,
+    clock: fakeClock(),
+  });
+
+  assert.throws(
+    () => run.finalize({ candidatePath, evidencePath, validationPath }),
+    /validation specification does not match the current candidate bytes/,
+  );
+
+  writeJson(validationPath, passingValidation(candidatePath, 'sequence'));
+  assert.throws(
+    () => run.finalize({ candidatePath, evidencePath, validationPath }),
+    /validation diagram type does not match the authoring run/,
+  );
+});
+
+test('authoring run: refuses modified evidence or a changed bound ProjectIndex', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-authoring-run-evidence-binding-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const evidence = evidenceFixture(tmp);
+  const candidatePath = path.join(tmp, 'candidate.json');
+  const validationPath = path.join(tmp, 'validation.json');
+  writeJson(candidatePath, { schema_version: 1, diagram_type: 'workflow' });
+  writeJson(validationPath, passingValidation(candidatePath));
+
+  const ledger = JSON.parse(fs.readFileSync(evidence.evidencePath, 'utf8'));
+  ledger.facts[0].summary = 'modified after creation';
+  writeJson(evidence.evidencePath, ledger);
+  const run = AuthoringRun.open({
+    run: { id: 'pi/workflow', diagramType: 'workflow' },
+    outputDirectory: path.join(tmp, 'run'),
+    repoRoot: evidence.repoRoot,
+    projectIndexPath: evidence.projectIndexPath,
+    clock: fakeClock(),
+  });
+  assert.throws(
+    () => run.finalize({
+      candidatePath,
+      evidencePath: evidence.evidencePath,
+      validationPath,
+    }),
+    /ledger digest does not match/,
+  );
+
+  writeJson(evidence.evidencePath, evidence.ledger);
+  const projectIndex = JSON.parse(fs.readFileSync(evidence.projectIndexPath, 'utf8'));
+  projectIndex.generatedAt = 'changed';
+  writeJson(evidence.projectIndexPath, projectIndex);
+  assert.throws(
+    () => run.finalize({
+      candidatePath,
+      evidencePath: evidence.evidencePath,
+      validationPath,
+    }),
+    /project index no longer matches/,
+  );
 });
 
 test('authoring-run CLI measures a durable envelope and mechanically finalizes receipts', (t) => {
@@ -163,27 +330,11 @@ test('authoring-run CLI measures a durable envelope and mechanically finalizes r
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const outputDirectory = path.join(tmp, 'run');
   const candidatePath = path.join(tmp, 'candidate.json');
-  const evidencePath = path.join(tmp, 'evidence-ledger.json');
+  const evidence = evidenceFixture(tmp);
+  const evidencePath = evidence.evidencePath;
   const validationPath = path.join(tmp, 'validation.json');
-  writeJson(candidatePath, { type: 'workflow', meta: { title: 'Measured run' }, nodes: [] });
-  writeJson(evidencePath, {
-    schemaVersion: 1,
-    repository: {
-      origin: 'https://github.com/example/pi',
-      revision: 'a'.repeat(40),
-      objectFormat: 'sha1',
-      indexDigest: 'b'.repeat(64),
-    },
-    ledgerDigest: 'c'.repeat(64),
-    facts: [{ claimId: 'entry', path: 'src/index.ts', line: 1, endLine: 1 }],
-  });
-  writeJson(validationPath, {
-    command: 'validate',
-    ok: true,
-    status: 'pass',
-    checks: Array.from({ length: 9 }, (_, index) => ({ id: `check-${index + 1}`, ok: true })),
-    composition: { summary: { errors: 0, warnings: 0 }, profile: 'showcase' },
-  });
+  writeJson(candidatePath, { schema_version: 1, diagram_type: 'workflow', meta: { title: 'Measured run' }, nodes: [] });
+  writeJson(validationPath, passingValidation(candidatePath));
 
   const forgedTiming = spawnSync(process.execPath, [
     cli,
@@ -206,6 +357,8 @@ test('authoring-run CLI measures a durable envelope and mechanically finalizes r
     'workflow',
     '--run-id', 'pi/workflow',
     '--output', outputDirectory,
+    '--repo-root', evidence.repoRoot,
+    '--project-index', evidence.projectIndexPath,
     '--json',
   ], { cwd: skillRoot, encoding: 'utf8' });
   assert.equal(started.status, 0, started.stderr);
@@ -237,12 +390,12 @@ test('authoring-run CLI measures a durable envelope and mechanically finalizes r
   const finalReceipt = JSON.parse(finalized.stdout);
   assert.equal(finalReceipt.command, 'authoring-run-finalize');
   assert.equal(finalReceipt.status, 'ready');
-  assert.equal(finalReceipt.handoff.repository.revision, 'a'.repeat(40));
+  assert.equal(finalReceipt.handoff.repository.revision, evidence.revision);
   assert.equal(finalReceipt.handoff.candidate.sha256, sha256(candidatePath));
   assert.equal(finalReceipt.timing.kind, 'archify.run-timing');
   assert.equal(finalReceipt.timing.run.measurementDomain, 'agent-authoring');
-  assert.equal(finalReceipt.timing.run.repository.revision, 'a'.repeat(40));
-  assert.equal(finalReceipt.timing.run.repository.indexDigest, 'b'.repeat(64));
+  assert.equal(finalReceipt.timing.run.repository.revision, evidence.revision);
+  assert.equal(finalReceipt.timing.run.repository.indexDigest, evidence.ledger.repository.indexDigest);
   assert.equal(finalReceipt.timing.accounting.durationSource, 'monotonic-envelope-endpoints');
   assert.equal(finalReceipt.timing.durationMs,
     Date.parse(finalReceipt.timing.endedAt) - Date.parse(finalReceipt.timing.startedAt));

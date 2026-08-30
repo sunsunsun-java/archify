@@ -708,11 +708,36 @@ function pinnedSourceBlobs(index, requestedFiles, repoRoot) {
   };
 }
 
+function redactSourceLine(text) {
+  let value = text;
+  if (/-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/i.test(value)) {
+    return { text: '[REDACTED PRIVATE KEY]', redacted: true };
+  }
+  value = value.replace(
+    /(\b(?:api[_-]?(?:key|token)|access[_-]?token|auth[_-]?token|secret|password|passwd|client[_-]?secret)\b\s*[:=]\s*)(["'`])[^"'`\r\n]*\2/gi,
+    '$1$2[REDACTED]$2',
+  );
+  value = value.replace(
+    /(\b(?:api[_-]?(?:key|token)|access[_-]?token|auth[_-]?token|secret|password|passwd|client[_-]?secret)\b\s*[:=]\s*)(?!["'`])([^\s,;]+)/gi,
+    '$1[REDACTED]',
+  );
+  value = value.replace(/\b(?:gh[opusr]_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{16,}|AKIA[A-Z0-9]{16})\b/g, '[REDACTED TOKEN]');
+  value = value.replace(/(https?:\/\/)[^\s/@:]+:[^\s/@]+@/gi, '$1[REDACTED]@');
+  return { text: value, redacted: value !== text };
+}
+
 function numberedSourceRange(content, line, endLine) {
   const range = canonicalRange(content, line, endLine);
+  let redactions = 0;
+  const sourceLines = range.split('\n').map((text, offset) => {
+    const redacted = redactSourceLine(text);
+    if (redacted.redacted) redactions += 1;
+    return { line: line + offset, text: redacted.text };
+  });
   return {
-    sourceLines: range.split('\n').map((text, offset) => ({ line: line + offset, text })),
+    sourceLines,
     rangeSha256: createHash('sha256').update(range).digest('hex'),
+    ...(redactions ? { redactions } : {}),
   };
 }
 

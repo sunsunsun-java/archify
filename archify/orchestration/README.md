@@ -125,6 +125,8 @@ import { AuthoringRun } from '../authoring/authoring-run.mjs';
 const authoring = AuthoringRun.open({
   run: { id: 'repository/workflow', diagramType: 'workflow', repository },
   outputDirectory,
+  repoRoot,
+  projectIndexPath,
 });
 await authoring.stage('candidate-authoring', authorCandidate);
 await authoring.stage('deterministic-validation', validateCandidate);
@@ -134,7 +136,9 @@ const result = authoring.finalize({ candidatePath, evidencePath, validationPath 
 `finalize()` mechanically emits `timing.events.jsonl`, canonical `timing.json`,
 digest-bound `handoff.json`, and receipt-derived `authoring-report.md`. The
 handoff is only ready when the validation receipt contains exactly 9/9 passing
-checks and 0 errors/warnings. Unstaged time inside the measured authoring
+checks, 0 errors/warnings, a digest-bound four-viewport preflight, an unchanged
+candidate digest/type, and a reverified EvidenceLedger tied to the ProjectIndex
+and pinned Git revision. Unstaged time inside the measured authoring
 envelope is explicitly reported as `agent-overhead`, never as child-process
 runtime. `normalizeAuthoringTiming()` remains the migration adapter for the
 five historical handwritten timing shapes; its duration fields are always
@@ -145,7 +149,9 @@ durable envelope adapter in the same module:
 
 ```bash
 node bin/archify.mjs authoring-run start workflow \
-  --run-id repository/workflow --output ./run --json
+  --run-id repository/workflow --output ./run \
+  --repo-root /absolute/repository \
+  --project-index ./project-index.json --json
 
 node bin/archify.mjs authoring-run finalize ./run/authoring-run.json \
   --candidate ./workflow.json \
@@ -154,8 +160,9 @@ node bin/archify.mjs authoring-run finalize ./run/authoring-run.json \
   --json
 ```
 
-`start` owns the wall-clock anchor plus the host monotonic start marker and
-writes only `authoring-run.json`. `finalize` owns the monotonic end marker,
-validates the frozen receipts, and mechanically
+`start` owns the wall-clock anchor plus the host monotonic start marker, binds
+the ProjectIndex bytes and pinned repository identity, and writes only
+`authoring-run.json`. `finalize` owns the monotonic end marker, revalidates the
+bound index, EvidenceLedger, candidate, validation, and preflight receipts, and mechanically
 writes `timing.json`, `handoff.json`, and `authoring-report.md`. The CLI accepts
 no agent-supplied duration, stage timing, quality claim, or report prose.

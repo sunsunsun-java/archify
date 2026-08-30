@@ -35,6 +35,7 @@ import {
   defaultFromSide,
   defaultToSide,
   chosenSide,
+  dedupeRoutePoints,
   normalizeRoutePoints,
   markerSafeRoutePoints,
   markerEndpointSetback,
@@ -522,9 +523,34 @@ function routeVia(transition, from, to, start, end, fromSide, toSide) {
 
 const pathCache = new Map();
 
+function sideFacingPoint(rect, point, fallback) {
+  if (!Array.isArray(point) || point.length !== 2) return fallback;
+  const cx = rect.x + rect.width / 2;
+  const cy = rect.y + rect.height / 2;
+  const dx = point[0] - cx;
+  const dy = point[1] - cy;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 'right' : 'left';
+  return dy >= 0 ? 'bottom' : 'top';
+}
+
 function transitionSides(transition) {
   const from = states.get(transition.from);
   const to = states.get(transition.to);
+  const explicitVia = asArray(transition.via);
+  if (explicitVia.length) {
+    return {
+      fromSide: chosenSide(transition.fromSide, sideFacingPoint(from, explicitVia[0], defaultFromSide(from, to))),
+      toSide: chosenSide(transition.toSide, sideFacingPoint(to, explicitVia.at(-1), defaultToSide(from, to))),
+    };
+  }
+  if (transition.route === 'drop') {
+    const channelY = transition.channelY
+      ?? ((from.y + from.height / 2) + (to.y + to.height / 2)) / 2;
+    return {
+      fromSide: chosenSide(transition.fromSide, channelY >= from.y + from.height / 2 ? 'bottom' : 'top'),
+      toSide: chosenSide(transition.toSide, channelY >= to.y + to.height / 2 ? 'bottom' : 'top'),
+    };
+  }
   const channelSide = ({
     'bottom-channel': 'bottom',
     'top-channel': 'top',
@@ -554,7 +580,8 @@ function pathFor(transition) {
     const midX = (start[0] + end[0]) / 2;
     via = [[midX, start[1]], [midX, end[1]]];
   }
-  const points = normalizeRoutePoints([start, ...via, end]);
+  const rawPoints = [start, ...via, end];
+  const points = transition.via ? dedupeRoutePoints(rawPoints) : normalizeRoutePoints(rawPoints);
   const routed = {
     d: roundedPath(markerSafeRoutePoints(points, {
       strokeWidth: transition.width || (transition.variant === 'emphasis' ? 2 : 1.1),

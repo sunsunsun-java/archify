@@ -429,6 +429,7 @@ export class RunRecorder {
     this.childCompletions = new Map();
     this.activeStageId = null;
     this.finalized = false;
+    this.appendFailure = null;
     this.startedMonoMs = clock.monotonicMs();
     this.startedWallMs = clock.wallMs();
 
@@ -438,6 +439,9 @@ export class RunRecorder {
 
   _append(type, payload = {}) {
     if (this.finalized) throw new Error('RunRecorder is already finalized.');
+    if (this.appendFailure) {
+      throw new Error('RunRecorder is unusable after an append failure.', { cause: this.appendFailure });
+    }
     const monotonicMs = this.clock.monotonicMs();
     const elapsedMs = roundMs(monotonicMs - this.startedMonoMs);
     const event = {
@@ -450,12 +454,17 @@ export class RunRecorder {
     };
     const line = Buffer.from(`${JSON.stringify(event)}\n`, 'utf8');
     let offset = 0;
-    while (offset < line.byteLength) {
-      const written = fs.writeSync(this.descriptor, line, offset, line.byteLength - offset, null);
-      if (written <= 0) throw new Error(`Could not append event ${event.seq}.`);
-      offset += written;
+    try {
+      while (offset < line.byteLength) {
+        const written = fs.writeSync(this.descriptor, line, offset, line.byteLength - offset, null);
+        if (written <= 0) throw new Error(`Could not append event ${event.seq}.`);
+        offset += written;
+      }
+      fs.fsyncSync(this.descriptor);
+    } catch (error) {
+      this.appendFailure = error;
+      throw error;
     }
-    fs.fsyncSync(this.descriptor);
     return event;
   }
 
@@ -489,16 +498,25 @@ export class RunRecorder {
     this.childCompletions.set(id, new Set());
     this.openScopes.add(id);
 
-    this._append('scope.started', {
-      scope: {
-        id,
-        kind,
-        name: normalizedName,
-        parentId,
-        ...(attempt ? { attempt } : {}),
-        metadata: safeMetadata,
-      },
-    });
+    try {
+      this._append('scope.started', {
+        scope: {
+          id,
+          kind,
+          name: normalizedName,
+          parentId,
+          ...(attempt ? { attempt } : {}),
+          metadata: safeMetadata,
+        },
+      });
+    } catch (error) {
+      this.openScopes.delete(id);
+      this.childCompletions.delete(id);
+      if (parentId) this.childCompletions.get(parentId)?.delete(childCompletion);
+      completeChild();
+      if (kind === 'stage') this.activeStageId = null;
+      throw error;
+    }
     const scope = new Scope(this, id);
     let result;
     let operationError;
@@ -548,6 +566,9 @@ export class RunRecorder {
 
   finalize({ status = 'completed', finalReceipt = null } = {}) {
     if (this.finalized) throw new Error('RunRecorder is already finalized.');
+    if (this.appendFailure) {
+      throw new Error('RunRecorder is unusable after an append failure.', { cause: this.appendFailure });
+    }
     if (this.activeStageId || this.openScopes.size) {
       throw new Error(`Cannot finalize while scope ${this.activeStageId || [...this.openScopes][0]} is active.`);
     }

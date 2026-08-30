@@ -12,6 +12,8 @@ import {
   QUALITY_CONTRACT,
   qualityContractIdentity,
 } from './quality-contract.mjs';
+import { successfulPreflightReceiptProblems } from './candidate-preflight.mjs';
+import { verifyEvidenceLedger } from '../evidence/project-index.mjs';
 
 const HANDOFF_SCHEMA_VERSION = 1;
 const HANDOFF_KIND = 'archify.authoring-handoff';
@@ -119,7 +121,49 @@ function assertRun(run) {
   return JSON.parse(JSON.stringify(run));
 }
 
-function buildHandoff({ run, candidatePath, evidencePath, validationPath, createdAt }) {
+function createEvidenceBinding({ repoRoot, projectIndexPath, run }) {
+  if (!repoRoot || !projectIndexPath) {
+    throw new TypeError('authoring run requires repoRoot and projectIndexPath.');
+  }
+  const root = fs.realpathSync(path.resolve(repoRoot));
+  const projectIndex = readJsonReceipt(projectIndexPath, 'project index');
+  const indexedRoot = projectIndex.document.repository?.root;
+  if (typeof indexedRoot !== 'string' || fs.realpathSync(path.resolve(indexedRoot)) !== root) {
+    throw new Error('project index repository root does not match repoRoot.');
+  }
+  const repository = {
+    origin: projectIndex.document.repository?.origin,
+    revision: projectIndex.document.repository?.revision,
+    objectFormat: projectIndex.document.repository?.objectFormat,
+    indexDigest: projectIndex.document.digest,
+  };
+  if (!repository.origin || !repository.revision || !repository.objectFormat || !repository.indexDigest) {
+    throw new Error('project index does not contain a complete pinned repository identity.');
+  }
+  if (run.repository?.revision
+    && run.repository.revision.toLowerCase() !== repository.revision.toLowerCase()) {
+    throw new Error('authoring run repository revision does not match the project index.');
+  }
+  return {
+    repoRoot: root,
+    projectIndex: digestDescriptor(projectIndex),
+    repository,
+  };
+}
+
+function readBoundProjectIndex(binding) {
+  if (!binding || typeof binding !== 'object') {
+    throw new Error('authoring run is missing its evidence binding.');
+  }
+  const projectIndex = readJsonReceipt(binding.projectIndex?.path, 'project index');
+  if (projectIndex.bytes !== binding.projectIndex?.bytes
+    || projectIndex.sha256 !== binding.projectIndex?.sha256) {
+    throw new Error('project index no longer matches the authoring run binding.');
+  }
+  return projectIndex;
+}
+
+function buildHandoff({ run, evidenceBinding, candidatePath, evidencePath, validationPath, createdAt }) {
   const candidate = readJsonReceipt(candidatePath, 'candidate');
   const evidence = readJsonReceipt(evidencePath, 'evidence ledger');
   const validation = readJsonReceipt(validationPath, 'validation receipt');
@@ -131,14 +175,40 @@ function buildHandoff({ run, candidatePath, evidencePath, validationPath, create
   const errors = validation.document.composition?.summary?.errors;
   const warnings = validation.document.composition?.summary?.warnings;
   const guards = QUALITY_CONTRACT.guards;
+  const expectedCheckNames = new Set(guards.deterministicCheckNames);
   if (checks.length !== guards.deterministicChecksRequired
     || checksPassed !== guards.deterministicChecksRequired
+    || new Set(checks.map((check) => check?.name)).size !== expectedCheckNames.size
+    || checks.some((check) => !expectedCheckNames.has(check?.name))
     || validation.document.composition?.profile !== guards.qualityProfile
     || !Number.isInteger(errors) || !Number.isInteger(warnings)
     || errors !== guards.compositionErrors || warnings !== guards.compositionWarnings) {
     throw new Error(`validation receipt must contain exactly ${guards.deterministicChecksRequired} passing checks under ${guards.qualityProfile} with ${guards.compositionErrors} errors and ${guards.compositionWarnings} warnings.`);
   }
+  const candidateType = candidate.document.diagram_type;
+  if (candidateType !== run.diagramType || validation.document.type !== run.diagramType
+    || validation.document.specification?.type !== run.diagramType) {
+    throw new Error('validation diagram type does not match the authoring run and candidate.');
+  }
+  if (validation.document.specification?.bytes !== candidate.bytes
+    || validation.document.specification?.sha256 !== candidate.sha256) {
+    throw new Error('validation specification does not match the current candidate bytes.');
+  }
+  const preflightArtifact = validation.document.artifact;
+  const preflightArtifactPath = validation.document.preflight?.artifact?.path;
+  const preflightProblems = successfulPreflightReceiptProblems(validation.document.preflight, {
+    artifactPath: preflightArtifactPath,
+    artifactReceipt: preflightArtifact,
+  });
+  if (preflightProblems.length > 0) {
+    throw new Error(`validation receipt must contain a passing digest-bound four-viewport preflight: ${preflightProblems.join('; ')}.`);
+  }
   const facts = Array.isArray(evidence.document.facts) ? evidence.document.facts : [];
+  const projectIndex = readBoundProjectIndex(evidenceBinding);
+  const evidenceVerification = verifyEvidenceLedger(evidence.document, {
+    repoRoot: evidenceBinding.repoRoot,
+    projectIndex: projectIndex.document,
+  });
   const evidenceRepository = evidence.document.repository;
   if (run.repository?.revision && evidenceRepository?.revision
     && run.repository.revision !== evidenceRepository.revision) {
@@ -164,6 +234,8 @@ function buildHandoff({ run, candidatePath, evidencePath, validationPath, create
       ledgerDigest: evidence.document.ledgerDigest || null,
       indexDigest: evidence.document.repository?.indexDigest || null,
       factCount: facts.length,
+      verification: evidenceVerification,
+      projectIndex: digestDescriptor(projectIndex),
     },
     validation: {
       ...digestDescriptor(validation),
@@ -172,6 +244,14 @@ function buildHandoff({ run, candidatePath, evidencePath, validationPath, create
       checksTotal: checks.length,
       errors,
       warnings,
+      specification: validation.document.specification,
+      artifact: validation.document.artifact,
+      preflight: {
+        schemaVersion: validation.document.preflight.schemaVersion,
+        status: validation.document.preflight.status,
+        viewportsPassed: validation.document.preflight.containment.viewports.filter((entry) => entry.ok).length,
+        viewportsTotal: validation.document.preflight.containment.viewports.length,
+      },
     },
   };
   return {
@@ -184,8 +264,16 @@ function buildHandoff({ run, candidatePath, evidencePath, validationPath, create
  * Start the cross-process CLI authoring envelope. The local clock is the only
  * source of the start marker; agents cannot supply duration fields.
  */
-export function startAuthoringRun({ run, outputDirectory, clock = productionClock() }) {
+export function startAuthoringRun({
+  run,
+  outputDirectory,
+  repoRoot,
+  projectIndexPath,
+  clock = productionClock(),
+}) {
   const safeRun = assertRun(run);
+  const evidenceBinding = createEvidenceBinding({ repoRoot, projectIndexPath, run: safeRun });
+  safeRun.repository = evidenceBinding.repository;
   const paths = authoringPaths(outputDirectory);
   for (const target of Object.values(paths)) {
     if (fs.existsSync(target)) {
@@ -205,6 +293,7 @@ export function startAuthoringRun({ run, outputDirectory, clock = productionCloc
     startedAtMs,
     startedSteadyMs,
     run: { ...safeRun, measurementDomain: 'agent-authoring' },
+    evidenceBinding,
   };
   const envelope = {
     ...body,
@@ -258,6 +347,7 @@ export function finalizeAuthoringRun({
   }
   const handoff = buildHandoff({
     run,
+    evidenceBinding: envelope.evidenceBinding,
     candidatePath,
     evidencePath,
     validationPath,
@@ -297,12 +387,18 @@ export function finalizeAuthoringRun({
  * this module and cannot be hand-filled by an agent.
  */
 export class AuthoringRun {
-  static open({ run, outputDirectory, clock = productionClock() }) {
-    return new AuthoringRun({ run, outputDirectory, clock });
+  static open({ run, outputDirectory, repoRoot, projectIndexPath, clock = productionClock() }) {
+    return new AuthoringRun({ run, outputDirectory, repoRoot, projectIndexPath, clock });
   }
 
-  constructor({ run, outputDirectory, clock }) {
+  constructor({ run, outputDirectory, repoRoot, projectIndexPath, clock }) {
     this.run = assertRun(run);
+    this.evidenceBinding = createEvidenceBinding({
+      repoRoot,
+      projectIndexPath,
+      run: this.run,
+    });
+    this.run.repository = this.evidenceBinding.repository;
     this.clock = clock;
     this.startedMonoMs = clock.monotonicMs();
     this.startedWallMs = clock.wallMs();
@@ -338,6 +434,7 @@ export class AuthoringRun {
     const elapsedMs = this.clock.monotonicMs() - this.startedMonoMs;
     const handoff = buildHandoff({
       run: this.run,
+      evidenceBinding: this.evidenceBinding,
       candidatePath,
       evidencePath,
       validationPath,
