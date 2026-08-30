@@ -116,6 +116,14 @@ test('relationship preview precisely links pointer and keyboard rows to an edge 
   assert.match(html, /addEventListener\('focusin'/);
   assert.match(html, /addEventListener\('focusout'/);
   assert.match(html, /pinnedRelationship \|\| focusedRelationship \|\| hoveredRelationship/);
+  assert.match(html, /function lockRelationshipLensPosition\(\)/);
+  assert.match(html, /coarseNarrowPointer = window\.innerWidth <= 720/);
+  assert.match(html, /positionLocked = relationshipLensLockedTop !== null/);
+  assert.match(html, /if \(positionLocked\) \{[\s\S]*preferred = relationshipLensLockedTop/);
+  assert.match(html, /unlockRelationshipLensPosition\(\);[\s\S]*chip\.removeAttribute\('data-relationship-previewing'\)/);
+  assert.match(html, /data-relationship-preview-origin="pointer"/);
+  assert.match(html, /pointerStable = !!\(next && next === hoveredRelationship && !focusedRelationship\)/);
+  assert.match(html, /next === activeRelationshipPreview && pointerStable === activePointerStable/);
   assert.doesNotMatch(diagram, /data-relationship-preview(?:-active|-node|-source|-target)?=/);
 });
 
@@ -136,7 +144,7 @@ test('relationship lens is keyboard navigable, mobile-pinned, and excluded from 
   assert.match(html, /event\.key !== 'End'/);
   assert.match(html, /buttons\[index\]\.focus\(\)/);
   assert.match(html, /data-wide-diagram="true"\] \.focus-chip/);
-  assert.match(html, /\.focus-chip\[data-relationship-previewing="true"\] \.relationship-lens-list/);
+  assert.match(html, /\.focus-chip\[data-relationship-previewing="true"\]:not\(\[data-relationship-preview-origin="pointer"\]\) \.relationship-lens-list/);
   assert.match(html, /\.relationship-lens-row:not\(\[data-preview-active="true"\]\)/);
   assert.match(html, /var mobile = window\.innerWidth <= 720/);
   assert.match(html, /previewingOnMobile = mobile && chip\.getAttribute\('data-relationship-previewing'\) === 'true'/);

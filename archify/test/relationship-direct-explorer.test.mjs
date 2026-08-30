@@ -91,7 +91,8 @@ test('activation opens the existing source passport and pins its exact relations
   assert.match(template, /function clearRelationshipPreview\(options\)/);
   assert.match(template, /clearRelationshipPreview\(\{ clearPin: true \}\)/);
   assert.match(template, /copyBtn\.textContent = viewerText\('viewer\.passport\.copyNode'\)/);
-  assert.match(template, /previewRelationship\(row\)/);
+  assert.match(template, /previewRelationship\(row, \{ reveal: false \}\)/);
+  assert.match(template, /options\.direct !== true && options\.reveal !== false/);
   assert.match(template, /inspectRelationship: inspectRelationship/);
   assert.match(template, /event\.key !== 'ArrowRight'/);
   assert.match(template, /event\.key !== 'ArrowLeft'/);

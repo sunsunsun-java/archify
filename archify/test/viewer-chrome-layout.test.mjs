@@ -91,6 +91,65 @@ function renderRelationshipExplorationStress() {
   return output;
 }
 
+function renderRelationshipHoverStabilityStress() {
+  const source = {
+    schema_version: 1,
+    diagram_type: 'architecture',
+    meta: {
+      title: 'Relationship hover stability stress',
+      quality_profile: 'showcase',
+      viewBox: [1220, 640],
+    },
+    components: [
+      { id: 'operator', type: 'external', label: 'Operator', pos: [34, 278], size: [126, 68] },
+      { id: 'entry', type: 'frontend', label: 'Entry', pos: [208, 278], size: [152, 68] },
+      { id: 'session', type: 'backend', label: 'Session', pos: [412, 278], size: [158, 68] },
+      {
+        id: 'agent-kernel',
+        type: 'backend',
+        label: 'Agent Core',
+        pos: [622, 278],
+        size: [158, 68],
+      },
+      { id: 'ai-router', type: 'backend', label: 'pi-ai runtime', pos: [832, 278], size: [164, 68] },
+      { id: 'models', type: 'cloud', label: 'Models', pos: [1044, 278], size: [142, 68] },
+      { id: 'resources', type: 'cloud', label: 'Resources', pos: [412, 92], size: [158, 68] },
+      { id: 'extensions', type: 'messagebus', label: 'Extensions', pos: [622, 92], size: [158, 68] },
+      { id: 'store', type: 'database', label: 'Store', pos: [412, 470], size: [158, 68] },
+      { id: 'tools', type: 'security', label: 'Tools', pos: [622, 470], size: [158, 68] },
+    ],
+    boundaries: [{
+      kind: 'region',
+      label: 'Local runtime',
+      wraps: ['entry', 'session', 'agent-kernel', 'ai-router', 'resources', 'extensions', 'store', 'tools'],
+      pad: 24,
+    }],
+    connections: [
+      { id: 'request', from: 'operator', to: 'entry', variant: 'emphasis' },
+      { id: 'entry-session', from: 'entry', to: 'session' },
+      { id: 'session-agent', from: 'session', to: 'agent-kernel', variant: 'emphasis', route: 'straight' },
+      { id: 'agent-ai', from: 'agent-kernel', to: 'ai-router', label: 'stream', labelAt: [806, 260], variant: 'emphasis' },
+      { id: 'ai-models', from: 'ai-router', to: 'models', variant: 'emphasis' },
+      { id: 'resources-session', from: 'resources', to: 'session' },
+      { id: 'extensions-session', from: 'extensions', to: 'session', variant: 'dashed' },
+      { id: 'session-store', from: 'session', to: 'store' },
+      { id: 'agent-tools', from: 'agent-kernel', to: 'tools', variant: 'security' },
+    ],
+    cards: [],
+  };
+  const input = path.join(tmp, 'relationship-hover-stability-stress.json');
+  const output = path.join(tmp, 'relationship-hover-stability-stress.html');
+  fs.writeFileSync(input, `${JSON.stringify(source, null, 2)}\n`);
+  execFileSync(process.execPath, [
+    path.join(skillRoot, 'bin', 'archify.mjs'),
+    'render',
+    'architecture',
+    input,
+    output,
+  ]);
+  return output;
+}
+
 function renderRelationshipOverflowStress() {
   const repeatedConnections = (direction, count) => Array.from({ length: count }, (_, index) => ({
     id: `${direction}-${index + 1}`,
@@ -1742,6 +1801,203 @@ test('relationship exploration deep links and translated 1x framing yield to man
   }
 });
 
+test('relationship hover stability fixture renders the reported topology before browser assertions run', () => {
+  const html = fs.readFileSync(renderRelationshipHoverStabilityStress(), 'utf8');
+  assert.match(html, /data-node-id="agent-kernel"/);
+  assert.match(html, /data-node-id="ai-router"/);
+  assert.match(html, /data-edge-from="agent-kernel"[^>]+data-edge-to="ai-router"/);
+});
+
+test('desktop relationship hover keeps the Passport row under a stationary pointer while the camera reveals endpoints', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  const artifact = renderRelationshipHoverStabilityStress();
+  try {
+    for (const scenario of [
+      { label: 'fully visible container', width: 1396, height: 894, scrollOffset: 0 },
+      { label: 'partially visible container', width: 1396, height: 700, scrollOffset: 80 },
+      { label: 'fine pointer at mobile breakpoint', width: 720, height: 700, scrollOffset: 0, expandRelationships: true },
+      { label: 'fine pointer below mobile breakpoint', width: 719, height: 700, scrollOffset: 0, expandRelationships: true },
+    ]) {
+      const sessionId = await load(browser, artifact, {
+        width: scenario.width,
+        height: scenario.height,
+        query: `?case=${encodeURIComponent(scenario.label)}`,
+      });
+      await browser.cdp.send('Emulation.setEmulatedMedia', {
+        features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
+      }, sessionId);
+      await browser.cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false }, sessionId);
+      await evaluate(browser, sessionId, `(function () {
+        document.documentElement.setAttribute('data-motion', 'full');
+        var container = document.querySelector('.diagram-container');
+        if (${scenario.scrollOffset > 0}) {
+          var spacer = document.createElement('div');
+          spacer.setAttribute('data-test-scroll-spacer', '');
+          spacer.style.height = '400px';
+          document.body.appendChild(spacer);
+        }
+        window.scrollTo(0, Math.max(0, container.offsetTop + ${scenario.scrollOffset}));
+        Archify.focus.set('agent-kernel', { toggle: false, updateUrl: false });
+        if (${scenario.expandRelationships === true}) document.getElementById('btn-focus-relations').click();
+      })()`);
+      await waitForLayout(browser, sessionId);
+      const point = await evaluate(browser, sessionId, `(function () {
+        var row = document.querySelector('.relationship-lens-row[data-relationship-target="ai-router"]');
+        var rect = row.getBoundingClientRect();
+        return {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          containerTop: document.querySelector('.diagram-container').getBoundingClientRect().top,
+          finePointer: matchMedia('(hover: hover) and (pointer: fine)').matches,
+          camera: Archify.view.state()
+        };
+      })()`);
+      if (scenario.scrollOffset) assert.ok(point.containerTop < 0, JSON.stringify({ scenario, point }));
+      if (scenario.expandRelationships) assert.equal(point.finePointer, true, JSON.stringify({ scenario, point }));
+      await browser.cdp.send('Input.dispatchMouseEvent', {
+        type: 'mouseMoved',
+        x: point.x,
+        y: point.y,
+        button: 'none',
+        buttons: 0,
+      }, sessionId);
+      const receipt = await evaluate(browser, sessionId, `(function () {
+        var point = ${JSON.stringify(point)};
+        var container = document.querySelector('.diagram-container');
+        var svg = document.querySelector('.diagram-container > svg');
+        var row = document.querySelector('.relationship-lens-row[data-relationship-target="ai-router"]');
+        var rowKey = row.getAttribute('data-relationship-key');
+        return new Promise(function (resolve) {
+          var frames = 0;
+          var previousActiveKey = svg.getAttribute('data-relationship-preview-active');
+          var previousMoving = container.hasAttribute('data-camera-transaction');
+          var previousUnder = true;
+          var activeStarts = previousActiveKey ? 1 : 0;
+          var clears = 0;
+          var transactionStarts = previousMoving ? 1 : 0;
+          var underTransitions = 0;
+          var missedHitFrames = 0;
+          var wrongKeyFrames = 0;
+          var scaleDirectionChanges = 0;
+          var xDirectionChanges = 0;
+          var yDirectionChanges = 0;
+          var previousScaleDirection = 0;
+          var previousXDirection = 0;
+          var previousYDirection = 0;
+          var previousScale = point.camera.scale;
+          var previousX = point.camera.x;
+          var previousY = point.camera.y;
+          var rowTops = [];
+          var scales = [point.camera.scale];
+          var xs = [point.camera.x];
+          var ys = [point.camera.y];
+          function recordDirection(delta, previousDirection, increment) {
+            if (Math.abs(delta) <= 0.0001) return previousDirection;
+            var direction = delta > 0 ? 1 : -1;
+            if (previousDirection && direction !== previousDirection) increment();
+            return direction;
+          }
+          function sample() {
+            frames += 1;
+            var activeKey = svg.getAttribute('data-relationship-preview-active');
+            if (activeKey !== previousActiveKey) {
+              if (activeKey) activeStarts += 1;
+              else clears += 1;
+            }
+            previousActiveKey = activeKey;
+            if (activeKey && activeKey !== rowKey) wrongKeyFrames += 1;
+            var moving = container.hasAttribute('data-camera-transaction');
+            if (moving && !previousMoving) transactionStarts += 1;
+            previousMoving = moving;
+            var rect = row.getBoundingClientRect();
+            var under = point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
+            if (under !== previousUnder) underTransitions += 1;
+            previousUnder = under;
+            var hit = document.elementFromPoint(point.x, point.y);
+            if (!hit || hit.closest('[data-relationship-key]') !== row) missedHitFrames += 1;
+            var camera = Archify.view.state();
+            var scale = camera.scale;
+            var delta = scale - previousScale;
+            previousScaleDirection = recordDirection(delta, previousScaleDirection, function () { scaleDirectionChanges += 1; });
+            previousXDirection = recordDirection(camera.x - previousX, previousXDirection, function () { xDirectionChanges += 1; });
+            previousYDirection = recordDirection(camera.y - previousY, previousYDirection, function () { yDirectionChanges += 1; });
+            previousScale = scale;
+            previousX = camera.x;
+            previousY = camera.y;
+            rowTops.push(rect.top);
+            scales.push(scale);
+            xs.push(camera.x);
+            ys.push(camera.y);
+            if (frames >= 240) {
+              var scaleTail = scales.slice(-30);
+              var xTail = xs.slice(-30);
+              var yTail = ys.slice(-30);
+              var containerRect = container.getBoundingClientRect();
+              var visible = {
+                left: Math.max(0, containerRect.left),
+                top: Math.max(0, containerRect.top),
+                right: Math.min(window.innerWidth, containerRect.right),
+                bottom: Math.min(window.innerHeight, containerRect.bottom)
+              };
+              var targetsVisible = ['agent-kernel', 'ai-router'].map(function (id) {
+                var targetRect = svg.querySelector('[data-node-id="' + id + '"]').getBoundingClientRect();
+                return targetRect.left >= visible.left - 0.5 && targetRect.top >= visible.top - 0.5 &&
+                  targetRect.right <= visible.right + 0.5 && targetRect.bottom <= visible.bottom + 0.5;
+              });
+              resolve({
+                activeStarts: activeStarts,
+                clears: clears,
+                finalActiveKey: activeKey,
+                rowKey: rowKey,
+                transactionStarts: transactionStarts,
+                finalMoving: moving,
+                underTransitions: underTransitions,
+                missedHitFrames: missedHitFrames,
+                wrongKeyFrames: wrongKeyFrames,
+                scaleDirectionChanges: scaleDirectionChanges,
+                xDirectionChanges: xDirectionChanges,
+                yDirectionChanges: yDirectionChanges,
+                minimumRowTop: Math.min.apply(Math, rowTops),
+                maximumRowTop: Math.max.apply(Math, rowTops),
+                minimumScale: Math.min.apply(Math, scales),
+                maximumScale: Math.max.apply(Math, scales),
+                settledScaleRange: Math.max.apply(Math, scaleTail) - Math.min.apply(Math, scaleTail),
+                settledXRange: Math.max.apply(Math, xTail) - Math.min.apply(Math, xTail),
+                settledYRange: Math.max.apply(Math, yTail) - Math.min.apply(Math, yTail),
+                targetsVisible: targetsVisible
+              });
+              return;
+            }
+            requestAnimationFrame(sample);
+          }
+          requestAnimationFrame(sample);
+        });
+      })()`, true);
+      const message = `${scenario.label}: ${JSON.stringify(receipt)}`;
+      assert.equal(receipt.activeStarts, 1, message);
+      assert.equal(receipt.clears, 0, message);
+      assert.equal(receipt.finalActiveKey, receipt.rowKey, message);
+      assert.ok(receipt.transactionStarts <= 1, message);
+      assert.equal(receipt.finalMoving, false, message);
+      assert.equal(receipt.underTransitions, 0, message);
+      assert.equal(receipt.missedHitFrames, 0, message);
+      assert.equal(receipt.wrongKeyFrames, 0, message);
+      assert.equal(receipt.scaleDirectionChanges, 0, message);
+      assert.equal(receipt.xDirectionChanges, 0, message);
+      assert.equal(receipt.yDirectionChanges, 0, message);
+      assert.ok(receipt.maximumRowTop - receipt.minimumRowTop <= 1, message);
+      assert.ok(receipt.settledScaleRange <= 0.001, message);
+      assert.ok(receipt.settledXRange <= 0.001, message);
+      assert.ok(receipt.settledYRange <= 0.001, message);
+      assert.ok(receipt.targetsVisible.every(Boolean), message);
+    }
+  } finally {
+    await browser.close();
+  }
+});
+
 test('relationship exploration stays clear at the narrow desktop breakpoint with Details expanded', {
   skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
 }, async () => {
@@ -1935,6 +2191,41 @@ test('mobile relationship exploration keeps every result outside compact and exp
     assert.deepEqual(preview.fullyVisibleMatches, preview.ids, JSON.stringify(preview));
     assert.equal(previewControls.reachVisible, true, JSON.stringify(previewControls));
     assert.equal(previewControls.detailsHidden, true, JSON.stringify(previewControls));
+
+    sessionId = await load(browser, artifact, { width: 390, height: 700 });
+    await evaluate(browser, sessionId, `(function () {
+      Archify.focus.set('hub', { toggle: false, updateUrl: false });
+      document.getElementById('btn-focus-relations').click();
+    })()`);
+    await waitForLayout(browser, sessionId);
+    const hoverPoint = await evaluate(browser, sessionId, `(function () {
+      var row = document.querySelector('#relationship-lens-list .relationship-lens-row[data-direction="out"]');
+      var rect = row.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    })()`);
+    await browser.cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved', x: hoverPoint.x, y: hoverPoint.y, button: 'none', buttons: 0,
+    }, sessionId);
+    await waitForLayout(browser, sessionId);
+    const pointerOrigin = await evaluate(browser, sessionId,
+      `document.getElementById('focus-chip').getAttribute('data-relationship-preview-origin')`);
+    assert.equal(pointerOrigin, 'pointer');
+    await focusSelector(
+      browser,
+      sessionId,
+      '#relationship-lens-list .relationship-lens-row[data-direction="out"]',
+    );
+    await browser.cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved', x: 389, y: 699, button: 'none', buttons: 0,
+    }, sessionId);
+    await waitForLayout(browser, sessionId);
+    const focusOrigin = await evaluate(browser, sessionId,
+      `document.getElementById('focus-chip').getAttribute('data-relationship-preview-origin')`);
+    const focusAfterHover = await evaluate(browser, sessionId,
+      mobileReceiptExpression('[data-node-id][data-relationship-preview-node]'));
+    assert.equal(focusOrigin, null, JSON.stringify(focusAfterHover));
+    assert.deepEqual(focusAfterHover.ids, ['hub', 'out-left']);
+    assert.deepEqual(focusAfterHover.fullyVisibleMatches, focusAfterHover.ids, JSON.stringify(focusAfterHover));
 
     sessionId = await load(browser, artifact, { width: 390, height: 700 });
     const keyboardStart = await evaluate(browser, sessionId, `(function () {

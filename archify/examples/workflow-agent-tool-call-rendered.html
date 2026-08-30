@@ -3821,15 +3821,14 @@
       .relationship-lens-actions #btn-focus-relations { display: block; color: var(--database-stroke); }
       .focus-chip:not([data-relations-expanded="true"]) .relationship-lens-head { border-bottom-color: transparent; }
       .focus-chip:not([data-relations-expanded="true"]) .relationship-lens-list { display: none; }
-      /* While a mobile reader previews one relationship, turn the full Lens
-         into a compact peek card. This keeps the exact source and target on
-         canvas instead of covering them with a long, scrollable list. */
-      .focus-chip[data-relationship-previewing="true"] .relationship-lens-list {
+      /* Keep a stationary fine-pointer row under the cursor. Focus/touch
+         previews still compact the Passport so both endpoints fit on mobile. */
+      .focus-chip[data-relationship-previewing="true"]:not([data-relationship-preview-origin="pointer"]) .relationship-lens-list {
         padding: 0.35rem;
       }
-      .focus-chip[data-relationship-previewing="true"] .relationship-lens-group { margin: 0; }
-      .focus-chip[data-relationship-previewing="true"] .relationship-lens-group-title,
-      .focus-chip[data-relationship-previewing="true"] .relationship-lens-row:not([data-preview-active="true"]) {
+      .focus-chip[data-relationship-previewing="true"]:not([data-relationship-preview-origin="pointer"]) .relationship-lens-group { margin: 0; }
+      .focus-chip[data-relationship-previewing="true"]:not([data-relationship-preview-origin="pointer"]) .relationship-lens-group-title,
+      .focus-chip[data-relationship-previewing="true"]:not([data-relationship-preview-origin="pointer"]) .relationship-lens-row:not([data-preview-active="true"]) {
         display: none;
       }
       .node-finder {
@@ -7706,6 +7705,7 @@
       var directPreviewTimer = null;
       var relationshipPreviewTimer = null;
       var relationshipRestoreTimer = null;
+      var relationshipLensLockedTop = null;
       var reachabilityMode = null;
       var activeReachability = null;
       var svgNamespace = 'http://www.w3.org/2000/svg';
@@ -8425,6 +8425,20 @@
         if (relationshipRestoreTimer) window.clearTimeout(relationshipRestoreTimer);
         relationshipRestoreTimer = null;
       }
+      function lockRelationshipLensPosition() {
+        var coarseNarrowPointer = window.innerWidth <= 720 &&
+          (!finePointerQuery || !finePointerQuery.matches);
+        if (chip.hidden || coarseNarrowPointer) return;
+        var containerRect = container.getBoundingClientRect();
+        var chipRect = chip.getBoundingClientRect();
+        var currentTop = parseFloat(chip.style.top);
+        relationshipLensLockedTop = Number.isFinite(currentTop)
+          ? currentTop
+          : chipRect.top - containerRect.top - container.clientTop;
+      }
+      function unlockRelationshipLensPosition() {
+        relationshipLensLockedTop = null;
+      }
       function scheduleRelationshipRestore() {
         cancelRelationshipRestore();
         relationshipRestoreTimer = window.setTimeout(function () {
@@ -8453,7 +8467,9 @@
           pinnedRelationshipKey = null;
           svg.removeAttribute('data-relationship-pin-active');
         }
+        unlockRelationshipLensPosition();
         chip.removeAttribute('data-relationship-previewing');
+        chip.removeAttribute('data-relationship-preview-origin');
         edges().forEach(function (edge) { edge.removeAttribute('data-relationship-preview'); });
         nodes().forEach(function (node) {
           node.removeAttribute('data-relationship-preview-node');
@@ -8498,12 +8514,18 @@
           if (id === to) node.setAttribute('data-relationship-preview-target', '');
         });
         button.setAttribute('data-preview-active', 'true');
-        if (!chip.hidden && options.direct !== true) chip.setAttribute('data-relationship-previewing', 'true');
+        if (!chip.hidden && options.direct !== true) {
+          lockRelationshipLensPosition();
+          chip.setAttribute('data-relationship-previewing', 'true');
+          if (options.pointerStable === true) chip.setAttribute('data-relationship-preview-origin', 'pointer');
+          else chip.removeAttribute('data-relationship-preview-origin');
+        }
         activeRelationshipPreview = button;
         syncExplorationMode();
         renderRelationshipPulse(key);
         requestLensPlacement();
-        if (options.direct !== true && Archify.view && typeof Archify.view.reveal === 'function') {
+        if (options.direct !== true && options.reveal !== false &&
+            Archify.view && typeof Archify.view.reveal === 'function') {
           requestAnimationFrame(function () {
             if (activeRelationshipPreview !== button) return;
             Archify.view.reveal([from, to], {
@@ -8518,9 +8540,12 @@
       }
       function syncRelationshipPreview() {
         var next = pinnedRelationship || focusedRelationship || hoveredRelationship;
-        if (next === activeRelationshipPreview) return;
+        var pointerStable = !!(next && next === hoveredRelationship && !focusedRelationship);
+        var activePointerStable = chip.getAttribute('data-relationship-preview-origin') === 'pointer';
+        if (next === activeRelationshipPreview && pointerStable === activePointerStable) return;
         previewRelationship(next, {
           direct: !!(next && next.hasAttribute('data-relationship-hit-key')),
+          pointerStable: pointerStable,
           restoreView: !next
         });
       }
@@ -8593,7 +8618,7 @@
         });
         if (!row) return false;
         expandRelationshipGroupForRow(row);
-        previewRelationship(row);
+        previewRelationship(row, { reveal: false });
         pinnedRelationship = row;
         pinnedRelationshipKey = key;
         syncExplorationMode();
@@ -8937,6 +8962,8 @@
         var minTop = Math.min(visibleTop, maxTop);
         var nodeCenter = nodeRect.top - containerRect.top + nodeRect.height / 2;
         var mobile = window.innerWidth <= 720;
+        var positionLocked = relationshipLensLockedTop !== null &&
+          chip.getAttribute('data-relationship-previewing') === 'true';
         var compactExploration = chip.getAttribute('data-exploration-compact') === 'true' &&
           chip.getAttribute('data-exploration-expanded') !== 'true';
         var stackedExploration = mobile &&
@@ -8944,7 +8971,9 @@
         var previewingOnMobile = mobile && chip.getAttribute('data-relationship-previewing') === 'true';
         var compactOnMobile = mobile && chip.getAttribute('data-relations-expanded') !== 'true';
         var preferred;
-        if (compactExploration || stackedExploration) {
+        if (positionLocked) {
+          preferred = relationshipLensLockedTop;
+        } else if (compactExploration || stackedExploration) {
           preferred = visibleTop;
         } else if (compactOnMobile) {
           var nodeTop = nodeRect.top - containerRect.top;
@@ -8968,7 +8997,7 @@
         var chipRect = chip.getBoundingClientRect();
         var safeGap = 10;
         var protectViewerChrome = !mobile || compactOnMobile || previewingOnMobile;
-        var protectedRects = (protectViewerChrome
+        var protectedRects = (!positionLocked && protectViewerChrome
           ? [svg.querySelector('[data-legend]'), container.querySelector('.diagram-nav')]
           : [])
           .filter(function (element) {
