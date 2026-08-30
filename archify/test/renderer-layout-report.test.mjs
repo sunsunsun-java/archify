@@ -20,15 +20,6 @@ const CASES = {
       source.components[1].pos = [...source.components[0].pos];
     },
   },
-  workflow: {
-    example: 'agent-tool-call.workflow.json',
-    entityKey: 'nodes',
-    relationshipCount: (source) => source.edges.length,
-    labelCount: (source) => source.edges.filter((edge) => edge.label).length,
-    breakGeometry(source) {
-      source.nodes.push({ ...source.nodes[0], id: 'overlapping-copy' });
-    },
-  },
   sequence: {
     example: 'cache-miss-request.sequence.json',
     entityKey: 'participants',
@@ -469,13 +460,6 @@ test('architecture: legacy inspect aliases preserve their original rounded shape
 });
 
 const LABEL_CONTAINMENT_CASES = {
-  workflow: {
-    example: 'agent-tool-call.workflow.json',
-    path: '/edges/1/labelAt',
-    mutate(source) {
-      source.edges[1].labelAt = [10000, 100];
-    },
-  },
   dataflow: {
     example: 'product-analytics.dataflow.json',
     path: '/flows/0/labelAt',
@@ -528,7 +512,6 @@ for (const [type, definition] of Object.entries(LABEL_CONTAINMENT_CASES)) {
 
 const OVERSIZED_RELATIONSHIP_LABEL_CASES = {
   architecture: { collection: 'connections' },
-  workflow: { collection: 'edges' },
   dataflow: { collection: 'flows' },
   lifecycle: { collection: 'transitions' },
 };

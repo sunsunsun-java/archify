@@ -12,6 +12,16 @@ Load `authoring-kit <type> --json` once. Its byte-identical file packets contain
 
 Do not invent fields. Use the nearest matching example for structure, then author fresh IDs, wording, facts, and layout.
 
+## Workflow layout contracts
+
+Use schema v2 for new workflows and keep schema v1 when an existing source must
+retain fixed geometry. In both versions, `col` stays in `0..5` and semantic
+edge labels are never deleted as a spacing repair. Do not change only
+`schema_version` when absolute coordinates exist: follow the canonical
+[migration and layout-receipt contract](../renderers/workflow/README.md#migration-and-layout-receipt).
+The complete normative invariants live in the workflow renderer's
+[layout contracts](../renderers/workflow/README.md#layout-contracts).
+
 ## Legend contract
 
 Omit `meta.legend` for the truthful default: `auto` lists only semantic kinds
@@ -117,12 +127,15 @@ CJK characters count as two units
 
 Relationship labels are semantic data. If the gap is too small, move the label,
 adjust the route or spacing, then shorten the wording while preserving meaning.
-Only delete a label when both endpoints fully imply the relationship and it
-contains no protocol, action, direction, synchronous/asynchronous behavior, or
-cross-boundary mechanism. Explain why a deleted label is redundant. Never
-delete a meaningful label merely to pass `showcase`. Apply a diagnosed
-`labelAt`, `labelDx`/`labelDy`, or `labelSegment` before guessing several
-geometry controls at once.
+Omit only wording already fully implied by both endpoints and carrying no
+protocol, action, direction, synchronous/asynchronous behavior, or
+cross-boundary mechanism. Preserve every meaningful label.
+Deleting it is not a spacing repair. If a relationship starts unlabeled because
+its endpoints fully imply it, explain why the wording is redundant; this is a
+semantic authoring choice, not a spacing repair. In workflow v2, let the compiler
+allocate its measured mask before applying a diagnosed `labelAt`,
+`labelDx`/`labelDy`, or `labelSegment`. Apply one diagnosed geometry control at
+a time.
 
 ### Repair order
 
@@ -144,14 +157,15 @@ Grid placement is preferred when the schema supports it. Free positions are appr
 
 ### Workflow
 
-Lanes express responsibility or phase. Columns express progression. Keep the happy path monotonic; route retries and exception returns outside the main lane corridor.
+Lanes express responsibility or phase. Columns `0..5` express logical
+progression. Start new workflows on `readable-v2`; retain `fixed-v1` only for
+legacy geometry compatibility. Keep the happy path monotonic, preserve semantic
+edge labels, and route retries and exception returns outside the main lane
+corridor.
 
-Workflow `meta.column_fit` accepts `auto`, `spread`, or `fixed`. Omitted `auto`
-keeps the exact legacy grid at 720px and spreads wider authored viewBoxes;
-authored `via`, `channelX`, and `labelAt` horizontal geometry is remapped with
-the columns so routes and labels stay attached to their intended story steps.
-For showcase output on a wide canvas, place the first and last story steps near
-columns 0 and 5. Use `fixed` only when the left-biased legacy grid is deliberate.
+Use workflow schema v2 for new sources. Its constraint-driven compiler treats
+columns as logical ranks and derives readable geometry from measured content.
+Keep schema v1 only when preserving fixed legacy geometry byte-for-byte.
 
 ### Sequence
 
@@ -163,11 +177,20 @@ Stages express transformation or custody. Rows separate parallel streams. Label 
 
 ### Lifecycle
 
-Main phases use columns `0..4`; event and terminal bands use columns `0..2`. A recoverable failure needs a real transition back to an active state. A card or guided view saying “retry” is not topology.
+Main phases use columns `0..4`; event and terminal bands use columns `0..2`.
+Event/terminal column `N` aligns to the same x coordinate as main column
+`N + 2`. A recoverable failure needs a real transition back to an active state.
+A card or guided view saying “retry” is not topology.
 
 ## Repository evidence
 
 When the diagram must reflect real code, pin one full commit and run `project-index <repo-root> --revision <commit> --output <index.json>` once. Reuse that mechanical file/import/symbol/package index across every diagram for the same revision. Query compact candidate slices with `project-index query <index.json> --symbol ... --import ... --path ...`; the query returns mechanical matches and editable selection hints, never inferred topology. Confirm facts and summaries, then use `evidence-ledger hydrate <index.json> <selections.json>` to fill revision, blob, and range hashes in one batched read. Run `evidence-ledger verify <ledger.json> --project-index <index.json> --repo-root <path>` immediately before handoff. Verification requires the original ProjectIndex receipt and checks its digest, origin, revision, selected file facts, Git blobs, and range hashes; a missing or changed receipt fails closed. Use `--repo-root <path>` when the chosen renderer supports evidence receipts. Never infer runtime causality from file proximity or naming alone.
+The shared ProjectIndex and EvidenceLedger workflow supports repository-backed
+authoring for all five diagram types. The renderer-level
+`--repo-root <path>` is architecture-only and is accepted by architecture
+`render`, `validate`, `deliver`, `preview`, and `compare`; workflow, sequence,
+dataflow, and lifecycle reject it. Never infer runtime causality from file
+proximity or naming alone.
 
 ## Hand-placed fallback
 

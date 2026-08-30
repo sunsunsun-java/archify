@@ -7,6 +7,7 @@ const recordedDiagnosticKeys = new Set();
 const recordedDiagnosticIndexesByMessage = new Map();
 const knownDiagnosticsByMessage = new Map();
 const boundaryKey = Symbol.for('archify.renderer-diagnostic-boundary');
+let recordingSuppressionDepth = 0;
 
 function plainObject(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
@@ -24,6 +25,9 @@ function normalizedDiagnostic(diagnostic) {
     supportedFixes: Array.isArray(diagnostic?.supportedFixes)
       ? [...new Set(diagnostic.supportedFixes.map((fix) => String(fix).trim()).filter(Boolean))]
       : [],
+    ...(Array.isArray(diagnostic?.suppresses) ? {
+      suppresses: [...new Set(diagnostic.suppresses.map((code) => String(code).trim()).filter(Boolean))],
+    } : {}),
   };
 }
 
@@ -51,6 +55,7 @@ export function layoutIssue(issue, defaults = {}) {
 }
 
 export function recordDiagnostic(diagnostic) {
+  if (recordingSuppressionDepth > 0) return;
   const normalized = normalizedDiagnostic(diagnostic);
   const messageKey = `${normalized.severity}\u0000${normalized.message}`;
   const priorKnown = knownDiagnosticsByMessage.get(messageKey);
@@ -78,6 +83,15 @@ export function recordDiagnostic(diagnostic) {
   recordedDiagnosticKeys.add(key);
   recordedDiagnosticIndexesByMessage.set(messageKey, recorded.length);
   recorded.push(normalized);
+}
+
+export function withDiagnosticRecordingSuppressed(callback) {
+  recordingSuppressionDepth += 1;
+  try {
+    return callback();
+  } finally {
+    recordingSuppressionDepth -= 1;
+  }
 }
 
 export function throwDiagnosticError(message, diagnostics) {

@@ -37,7 +37,7 @@ const LAYOUT_BUDGETS = Object.freeze({
     recommendedViewBox: Object.freeze([1000, 540]),
     maximumViewBoxAspectRatio: 0.54,
     primaryLimits: Object.freeze({ nodes: 12, lanes: 4, cards: 2, guidedViews: 2 }),
-    composition: 'Prefer horizontal lanes or phases; wide viewBoxes auto-spread workflow columns and authored route geometry, while fixed is only for intentional legacy placement.',
+    composition: 'Use schema v2 horizontal lanes or phases with constraint-driven readable layout; retain schema v1 only for fixed legacy geometry compatibility.',
   }),
   sequence: Object.freeze({
     recommendedViewBox: Object.freeze([1080, 620]),

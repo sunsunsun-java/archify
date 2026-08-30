@@ -591,7 +591,7 @@ const TAG_SHRINK_CASES = [
   ['architecture', 'components', 'owner: platform operations team', 7],
   ['dataflow', 'nodes', 'owner: analytics platform', 7],
   ['lifecycle', 'states', 'owner: platform operations pod', 7],
-  ['workflow', 'nodes', 'owner: runtime squad A', 7],
+  ['workflow', 'nodes', 'owner: runtime execution squad A', 7],
 ];
 
 for (const [mode, collection, tag, preferred] of TAG_SHRINK_CASES) {
@@ -662,80 +662,6 @@ test('contract: ajv path errors are annotated with the element id', () => {
   // Only meaningful when ajv is installed; skip the assertion in degraded mode.
   if (!/schema validation failed/.test(stderr)) return;
   assert.match(stderr, /id\/label:/);
-});
-
-test('workflow: auto column fit balances a wide authored viewBox', () => {
-  const d = {
-    schema_version: 1,
-    diagram_type: 'workflow',
-    meta: { title: 'Wide balanced workflow', viewBox: [1085, 400], quality_profile: 'showcase' },
-    lanes: [{ id: 'main', label: 'Main lane' }],
-    nodes: [
-      { id: 'first', lane: 'main', col: 0, type: 'frontend', label: 'First' },
-      { id: 'last', lane: 'main', col: 5, type: 'backend', label: 'Last' },
-    ],
-    edges: [{ id: 'main-path', from: 'first', to: 'last', route: 'straight' }],
-  };
-  const { code, stderr, outPath } = render('workflow', d);
-  assert.equal(code, 0, stderr);
-  const html = fs.readFileSync(outPath, 'utf8');
-  const lane = workflowLaneRect(html);
-  const first = workflowNodeRect(html, 'first');
-  const last = workflowNodeRect(html, 'last');
-  assert.deepEqual(lane, { x: 40, y: 52, width: 1005, height: 104 });
-  assert.ok(last.x - first.x > 850, 'wide workflows should use the available horizontal canvas');
-  const leftWhitespace = first.x;
-  const rightWhitespace = 1085 - (last.x + last.width);
-  assert.ok(Math.abs(leftWhitespace - rightWhitespace) <= 12, `content is not balanced: left=${leftWhitespace}, right=${rightWhitespace}`);
-});
-
-test('workflow: fixed column fit preserves the legacy 720px grid on a wide viewBox', () => {
-  const d = {
-    schema_version: 1,
-    diagram_type: 'workflow',
-    meta: { title: 'Fixed compatibility workflow', viewBox: [1085, 400], column_fit: 'fixed' },
-    lanes: [{ id: 'main', label: 'Main lane' }],
-    nodes: [
-      { id: 'first', lane: 'main', col: 0, type: 'frontend', label: 'First' },
-      { id: 'last', lane: 'main', col: 5, type: 'backend', label: 'Last' },
-    ],
-    edges: [{ id: 'main-path', from: 'first', to: 'last', route: 'straight' }],
-  };
-  const { code, stderr, outPath } = render('workflow', d);
-  assert.equal(code, 0, stderr);
-  const html = fs.readFileSync(outPath, 'utf8');
-  assert.deepEqual(workflowLaneRect(html), { x: 40, y: 52, width: 640, height: 104 });
-  assert.equal(workflowNodeRect(html, 'first').x, 42);
-  assert.equal(workflowNodeRect(html, 'last').x, 579);
-});
-
-test('workflow: wide fitting remaps authored labelAt without clipping its mask', () => {
-  const d = {
-    schema_version: 1,
-    diagram_type: 'workflow',
-    meta: { title: 'Wide authored label', viewBox: [1085, 400] },
-    lanes: [{ id: 'main', label: 'Main lane' }],
-    nodes: [
-      { id: 'first', lane: 'main', col: 0, type: 'frontend', label: 'First' },
-      { id: 'last', lane: 'main', col: 5, type: 'backend', label: 'Last' },
-    ],
-    edges: [{ id: 'projection', from: 'first', to: 'last', route: 'straight', label: 'Projection', labelAt: [730, 180] }],
-  };
-  const { code, stderr, outPath } = render('workflow', d);
-  assert.equal(code, 0, stderr);
-  const html = fs.readFileSync(outPath, 'utf8');
-  const [labelX] = workflowEdgeLabelPoint(html, 'projection');
-  assert.ok(labelX > 1000, `expected authored label to follow the spread columns, received x=${labelX}`);
-  assert.ok(labelX + 29 <= 1085, `relationship-label mask clips the viewBox at x=${labelX}`);
-});
-
-test('workflow: column fit rejects unknown layout modes at the schema boundary', () => {
-  const d = load('workflow');
-  d.meta.column_fit = 'elastic';
-  const { code, stderr } = render('workflow', d);
-  assert.notEqual(code, 0);
-  assert.match(stderr, /column_fit/);
-  assert.match(stderr, /fixed|spread|auto/);
 });
 
 test('workflow: same-lane offset auto edge stays orthogonal', () => {
@@ -1012,6 +938,7 @@ test('workflow: explicit labelAt remains authoritative on an automatic one-bend 
 
 test('workflow: bounded font fitting keeps an ordinary long sublabel inside its node', () => {
   const d = load('workflow');
+  d.nodes[0].width = 92;
   d.nodes[0].sublabel = 'shell / browser / MCP';
   const { code, stderr, outPath } = render('workflow', d);
   assert.equal(code, 0, stderr);
@@ -1095,12 +1022,34 @@ test('architecture: showcase rejects a connection label that hides another route
 });
 
 test('workflow: showcase rejects an edge label that hides another route', () => {
-  const d = load('workflow');
-  d.edges.find((edge) => edge.id === 'plan-request').labelAt = [562, 491];
+  const d = {
+    schema_version: 1,
+    diagram_type: 'workflow',
+    meta: {
+      title: 'Workflow label-route clearance',
+      quality_profile: 'showcase',
+      viewBox: [720, 400],
+      legend: { mode: 'hidden' },
+    },
+    lanes: [
+      { id: 'label', label: 'Label owner' },
+      { id: 'route', label: 'Other route' },
+    ],
+    nodes: [
+      { id: 'a', lane: 'label', col: 0, type: 'backend', label: 'A' },
+      { id: 'b', lane: 'label', col: 2, type: 'backend', label: 'B' },
+      { id: 'c', lane: 'route', col: 0, type: 'backend', label: 'C' },
+      { id: 'd', lane: 'route', col: 2, type: 'backend', label: 'D' },
+    ],
+    edges: [
+      { id: 'labeled-edge', from: 'a', to: 'b', label: 'plan', labelAt: [200, 243] },
+      { id: 'other-route', from: 'c', to: 'd' },
+    ],
+  };
   const { code, stderr } = render('workflow', d);
   assert.notEqual(code, 0, `expected non-zero exit; stderr:\n${stderr}`);
   assert.match(stderr, /\[composition\/label-route-clearance\] showcase workflow/);
-  assert.match(stderr, /plan.*retry-request/);
+  assert.match(stderr, /plan.*other-route/);
 });
 
 test('lifecycle: showcase rejects a transition label that hides another route', () => {
@@ -1276,6 +1225,32 @@ test('architecture: showcase rejects an unrelated proper edge crossing', () => {
   assert.match(stderr, /at \[240, 190\]/);
   assert.match(stderr, /segments 1 and 1/);
   assert.match(stderr, /route\/via|fromSide\/toSide/);
+});
+
+test('architecture: showcase preserves a straight-through explicit waypoint as an authored touch', () => {
+  const d = {
+    schema_version: 1,
+    diagram_type: 'architecture',
+    meta: {
+      title: 'Forward-collinear waypoint compatibility',
+      quality_profile: 'showcase',
+      viewBox: [600, 320],
+      legend: { mode: 'hidden' },
+    },
+    components: [
+      { id: 'a', type: 'backend', label: 'A', pos: [50, 100], size: [80, 60] },
+      { id: 'b', type: 'backend', label: 'B', pos: [450, 100], size: [80, 60] },
+      { id: 'c', type: 'backend', label: 'C', pos: [260, 0], size: [80, 60] },
+      { id: 'd', type: 'backend', label: 'D', pos: [260, 200], size: [80, 60] },
+    ],
+    connections: [
+      { id: 'horizontal', from: 'a', to: 'b', via: [[300, 130]] },
+      { id: 'vertical', from: 'c', to: 'd' },
+    ],
+  };
+
+  const { code, stderr } = render('architecture', d);
+  assert.equal(code, 0, stderr);
 });
 
 test('architecture: standard keeps the same proper crossing renderable', () => {

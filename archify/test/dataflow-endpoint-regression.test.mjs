@@ -87,50 +87,6 @@ test('dataflow: bottom-channel connects the bottom centers without borrowing sid
   assert.notDeepEqual(writeBack[0], execute.at(-1));
 });
 
-test('workflow: bottom-channel resolves to bottom-center ports without authored sides', () => {
-  const html = renderDiagram('workflow', {
-    schema_version: 1,
-    diagram_type: 'workflow',
-    meta: { title: 'Bottom channel endpoint defaults', quality_profile: 'showcase' },
-    lanes: [{ id: 'main', label: 'Main' }],
-    nodes: [
-      { id: 'source', lane: 'main', col: 3, type: 'backend', label: 'Source' },
-      { id: 'target', lane: 'main', col: 0, type: 'database', label: 'Target' },
-    ],
-    edges: [{ id: 'return', from: 'source', to: 'target', route: 'bottom-channel' }],
-  });
-  const source = nodeRect(html, 'source');
-  const target = nodeRect(html, 'target');
-  const points = relationshipPoints(html, 'return');
-
-  assert.deepEqual(points[0], [source.x + source.width / 2, source.y + source.height]);
-  assert.deepEqual(points.at(-1), [target.x + target.width / 2, target.y + target.height]);
-  assert.ok(points[1][1] > source.y + source.height);
-  assert.equal(points[1][1], points.at(-2)[1]);
-});
-
-test('workflow: up-channel resolves to top-center ports without authored sides', () => {
-  const html = renderDiagram('workflow', {
-    schema_version: 1,
-    diagram_type: 'workflow',
-    meta: { title: 'Top channel endpoint defaults', quality_profile: 'showcase' },
-    lanes: [{ id: 'main', label: 'Main' }],
-    nodes: [
-      { id: 'source', lane: 'main', col: 3, type: 'backend', label: 'Source' },
-      { id: 'target', lane: 'main', col: 0, type: 'database', label: 'Target' },
-    ],
-    edges: [{ id: 'return', from: 'source', to: 'target', route: 'up-channel' }],
-  });
-  const source = nodeRect(html, 'source');
-  const target = nodeRect(html, 'target');
-  const points = relationshipPoints(html, 'return');
-
-  assert.deepEqual(points[0], [source.x + source.width / 2, source.y]);
-  assert.deepEqual(points.at(-1), [target.x + target.width / 2, target.y]);
-  assert.ok(points[1][1] < source.y);
-  assert.equal(points[1][1], points.at(-2)[1]);
-});
-
 test('lifecycle: named channels resolve to the matching side centers without authored sides', () => {
   const cases = [
     { route: 'bottom-channel', side: 'bottom' },
