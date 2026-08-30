@@ -66,7 +66,7 @@ const LAYOUT_BUDGETS = Object.freeze({
     maximumViewBoxAspectRatio: 0.563,
     desktopReadability: desktopReadability(960),
     primaryLimits: Object.freeze({ nodes: 12, lanes: 4, cards: 2, guidedViews: 2 }),
-    composition: 'Use schema v2 horizontal lanes or phases with constraint-driven readable layout; retain schema v1 only for fixed legacy geometry compatibility.',
+    composition: 'Use schema v2 horizontal lanes or phases with constraint-driven readable layout. Prefer one primary lane, or keep each semantic lane in one contiguous mainPath segment; avoid repeated back-and-forth lane re-entry. Place branches in adjacent lanes near their decision column. Retain schema v1 only for fixed legacy geometry compatibility.',
   }),
   sequence: Object.freeze({
     recommendedViewBox: Object.freeze([1080, 620]),

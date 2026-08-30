@@ -247,6 +247,58 @@ function diagnosticActions(diagnostics, { widthConflict = false } = {}) {
   }));
 }
 
+function workflowRelationshipEndpoints(reference, edgeById) {
+  const relationship = reference?.relationship || reference;
+  const edge = edgeById.get(relationship?.id);
+  const from = relationship?.from || edge?.from;
+  const to = relationship?.to || edge?.to;
+  return typeof from === 'string' && typeof to === 'string' ? { from, to } : null;
+}
+
+function workflowMainPathLaneAdvice(type, candidate, diagnostics) {
+  if (type !== 'workflow' || candidate?.schema_version !== 2) return null;
+
+  const mainPath = Array.isArray(candidate?.mainPath) ? candidate.mainPath : [];
+  const mainPathEdges = new Set(mainPath.slice(1).map((nodeId, index) => (
+    `${mainPath[index]}\u0000${nodeId}`
+  )));
+  const edgeById = new Map((Array.isArray(candidate?.edges) ? candidate.edges : [])
+    .filter((edge) => typeof edge?.id === 'string')
+    .map((edge) => [edge.id, edge]));
+  const crossingTouchesMainPath = diagnostics.some((diagnostic) => {
+    if (diagnostic?.code !== 'composition/proper-crossing') return false;
+    return [diagnostic?.subject, diagnostic?.evidence?.otherRelationship].some((reference) => {
+      const endpoints = workflowRelationshipEndpoints(reference, edgeById);
+      return endpoints && mainPathEdges.has(`${endpoints.from}\u0000${endpoints.to}`);
+    });
+  });
+  if (!crossingTouchesMainPath) return null;
+
+  const nodeById = new Map((Array.isArray(candidate?.nodes) ? candidate.nodes : [])
+    .filter((node) => typeof node?.id === 'string' && typeof node?.lane === 'string')
+    .map((node) => [node.id, node]));
+  const laneRuns = [];
+  for (const nodeId of mainPath) {
+    const lane = nodeById.get(nodeId)?.lane;
+    if (!lane) return null;
+    if (laneRuns.at(-1) !== lane) laneRuns.push(lane);
+  }
+  const seen = new Set();
+  let laneReentries = 0;
+  for (const lane of laneRuns) {
+    if (seen.has(lane)) laneReentries += 1;
+    seen.add(lane);
+  }
+  if (laneReentries < 2) return null;
+
+  return {
+    laneChanges: Math.max(0, laneRuns.length - 1),
+    laneReentries,
+    laneRuns,
+    mainPath: [...mainPath],
+  };
+}
+
 /**
  * Convert validation evidence into a bounded, semantics-preserving repair plan.
  * The plan is advisory: the unchanged deterministic and browser gates remain
@@ -275,7 +327,20 @@ export function createRepairPlan({
   const containment = containmentAdvice(candidate, preflight);
   const widthConstraints = viewBoxWidthConstraints(normalizedDiagnostics);
   const widthConflict = widthConstraints?.status === 'conflict';
+  const workflowLaneReflow = workflowMainPathLaneAdvice(type, candidate, normalizedDiagnostics);
+  const topologyReflowRequired = Boolean(workflowLaneReflow)
+    && !progress.shouldStop
+    && progress.structuralReflowCount < progress.maxStructuralReflows;
   const actions = diagnosticActions(normalizedDiagnostics, { widthConflict });
+  if (topologyReflowRequired) {
+    for (const action of actions) {
+      if (action.code !== 'composition/proper-crossing') continue;
+      action.supportedFixes = unique([
+        'perform the mainPath structural reflow before adding or changing local route controls',
+        ...action.supportedFixes,
+      ]);
+    }
+  }
   if (widthConflict) {
     const safeConflictFixes = [
       'reflow or wrap the same semantic copy so the renderer minimum width and readability maximum width no longer conflict',
@@ -340,6 +405,20 @@ export function createRepairPlan({
     });
   }
 
+  if (topologyReflowRequired) {
+    actions.unshift({
+      id: 'workflow-main-path-lane-reflow',
+      code: 'workflow/main-path-lane-reflow',
+      subject: { type, path: '/mainPath' },
+      evidence: workflowLaneReflow,
+      supportedFixes: [
+        'place the mainPath on one primary lane when roles permit, or keep each semantic lane in one contiguous segment while preserving real ownership',
+        'remove repeated back-and-forth lane re-entry; preserve an intentional terminal return only when it communicates a real handoff',
+        'place tool, error, and recovery branches in adjacent lanes near their decision column, then remove stale via, bias, or route controls from the old topology',
+      ],
+    });
+  }
+
   const causes = unique([
     widthConflict ? 'layout/viewbox-width-constraint-conflict' : null,
     containment?.cause,
@@ -351,7 +430,7 @@ export function createRepairPlan({
     stage,
     status: progress.shouldStop
       ? 'bounded-stop'
-      : progress.shouldReflow
+      : progress.shouldReflow || topologyReflowRequired
         ? 'structural-reflow-required'
         : widthConflict
           ? 'constraint-conflict'

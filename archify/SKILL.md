@@ -54,6 +54,11 @@ Workflow note: use schema v2 for new workflows; preserve schema v1 when an
 existing source needs fixed legacy geometry. Keep semantic edge labels and act
 on the compiler diagnostic. The canonical layout, pin, migration, and receipt
 contract is in [`renderers/workflow/README.md`](renderers/workflow/README.md#layout-contracts).
+Prefer one primary `mainPath` lane, or keep each semantic lane in one contiguous
+segment; do not alternate back and forth between lanes. Put tool, error, and
+recovery branches in adjacent lanes near their decision column. When a geometry
+diagnostic reports crossings on a repeatedly re-entering main path, remove stale
+route controls and structurally reflow the same semantics before more local edits.
 
 Lifecycle note: phase columns `0..4` occupy the main rail; event/terminal column `N` in `0..2` aligns exactly beneath main column `N + 2`. A recoverable state uses `type: "failure"` plus a real transition back to the active state.
 

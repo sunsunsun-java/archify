@@ -64,6 +64,129 @@ test('repair plan preserves structured deterministic diagnostics without inventi
   assert.equal(plan.containment, undefined);
 });
 
+test('workflow crossing with repeated main-path lane re-entry requests structural reflow immediately', () => {
+  const plan = createRepairPlan({
+    type: 'workflow',
+    stage: 'check',
+    candidate: {
+      schema_version: 2,
+      mainPath: ['intake', 'prepare', 'stream', 'inspect', 'settle', 'finish'],
+      nodes: [
+        { id: 'intake', lane: 'turn', col: 0 },
+        { id: 'prepare', lane: 'settle', col: 0 },
+        { id: 'stream', lane: 'turn', col: 1 },
+        { id: 'inspect', lane: 'settle', col: 1 },
+        { id: 'settle', lane: 'turn', col: 2 },
+        { id: 'finish', lane: 'settle', col: 3 },
+      ],
+      edges: [
+        { id: 'prepare-stream', from: 'prepare', to: 'stream' },
+        { id: 'inspect-dispatch', from: 'inspect', to: 'dispatch' },
+      ],
+    },
+    diagnostics: [{
+      code: 'composition/proper-crossing',
+      subject: { id: 'inspect-dispatch' },
+      evidence: { otherRelationship: { id: 'prepare-stream' } },
+    }],
+  });
+
+  assert.equal(plan.status, 'structural-reflow-required');
+  assert.equal(plan.progress.shouldReflow, false);
+  assert.equal(plan.actions[0].code, 'workflow/main-path-lane-reflow');
+  assert.equal(plan.actions[0].evidence.laneChanges, 5);
+  assert.equal(plan.actions[0].evidence.laneReentries, 4);
+  assert.deepEqual(plan.actions[0].evidence.laneRuns, [
+    'turn', 'settle', 'turn', 'settle', 'turn', 'settle',
+  ]);
+  assert.match(plan.actions[0].supportedFixes.join(' '), /back-and-forth/i);
+});
+
+test('workflow lane handoffs without repeated re-entry keep focused crossing advice', () => {
+  const plan = createRepairPlan({
+    type: 'workflow',
+    stage: 'check',
+    candidate: {
+      schema_version: 2,
+      mainPath: ['input', 'plan', 'approve', 'tool', 'final'],
+      nodes: [
+        { id: 'input', lane: 'ui', col: 0 },
+        { id: 'plan', lane: 'agent', col: 1 },
+        { id: 'approve', lane: 'policy', col: 2 },
+        { id: 'tool', lane: 'tools', col: 3 },
+        { id: 'final', lane: 'ui', col: 4 },
+      ],
+    },
+    diagnostics: [{ code: 'composition/proper-crossing' }],
+  });
+
+  assert.equal(plan.status, 'repair-required');
+  assert.equal(plan.actions.some(({ code }) => code === 'workflow/main-path-lane-reflow'), false);
+});
+
+test('workflow branch-only crossing does not misclassify the main-path lane topology', () => {
+  const plan = createRepairPlan({
+    type: 'workflow',
+    stage: 'check',
+    candidate: {
+      schema_version: 2,
+      mainPath: ['a', 'b', 'c', 'd', 'e', 'f'],
+      nodes: [
+        { id: 'a', lane: 'upper', col: 0 },
+        { id: 'b', lane: 'lower', col: 0 },
+        { id: 'c', lane: 'upper', col: 1 },
+        { id: 'd', lane: 'lower', col: 1 },
+        { id: 'e', lane: 'upper', col: 2 },
+        { id: 'f', lane: 'lower', col: 3 },
+      ],
+      edges: [
+        { id: 'branch-x', from: 'x', to: 'y' },
+        { id: 'branch-z', from: 'z', to: 'q' },
+      ],
+    },
+    diagnostics: [{
+      code: 'composition/proper-crossing',
+      subject: { id: 'branch-x' },
+      evidence: { otherRelationship: { id: 'branch-z' } },
+    }],
+  });
+
+  assert.equal(plan.status, 'repair-required');
+  assert.equal(plan.actions.some(({ code }) => code === 'workflow/main-path-lane-reflow'), false);
+});
+
+test('workflow lane reflow is not offered after the structural repair budget is exhausted', () => {
+  const diagnostic = {
+    code: 'composition/proper-crossing',
+    subject: { id: 'b-c', from: 'b', to: 'c' },
+  };
+  const plan = createRepairPlan({
+    type: 'workflow',
+    stage: 'check',
+    candidate: {
+      schema_version: 2,
+      mainPath: ['a', 'b', 'c', 'd', 'e'],
+      nodes: [
+        { id: 'a', lane: 'upper' },
+        { id: 'b', lane: 'lower' },
+        { id: 'c', lane: 'upper' },
+        { id: 'd', lane: 'lower' },
+        { id: 'e', lane: 'upper' },
+      ],
+      edges: [{ id: 'b-c', from: 'b', to: 'c' }],
+    },
+    diagnostics: [diagnostic],
+    attemptHistory: Array.from({ length: 23 }, (_, index) => ({
+      stage: 'check',
+      repairMode: index === 2 || index === 5 ? 'structural-reflow' : 'focused',
+      diagnostics: [diagnostic],
+    })),
+  });
+
+  assert.equal(plan.status, 'bounded-stop');
+  assert.equal(plan.actions.some(({ code }) => code === 'workflow/main-path-lane-reflow'), false);
+});
+
 test('repair plan exposes the same fail-closed guards as the authoring contract', () => {
   const plan = createRepairPlan({
     type: 'workflow',

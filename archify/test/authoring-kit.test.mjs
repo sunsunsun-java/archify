@@ -117,6 +117,14 @@ test('authoring kit returns the exact schema, common schema, and one matching ex
   }
 });
 
+test('workflow authoring budget prevents repeated main-path lane re-entry', () => {
+  const composition = loadAuthoringKit('workflow').layoutBudget.composition;
+
+  assert.match(composition, /primary lane|contiguous lane segments/i);
+  assert.match(composition, /back-and-forth|repeated lane re-entry/i);
+  assert.match(composition, /branch/i);
+});
+
 test('authoring kit rejects unknown types without falling back to another example', () => {
   assert.throws(
     () => loadAuthoringKit('deployment'),
