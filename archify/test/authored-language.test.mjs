@@ -26,6 +26,27 @@ function fixture(name, mutate) {
   return file;
 }
 
+function localizeReaderFacing(source) {
+  const localize = (value) => {
+    if (Array.isArray(value)) {
+      value.forEach((entry) => localize(entry));
+      return;
+    }
+    if (!value || typeof value !== 'object') return;
+    for (const [key, entry] of Object.entries(value)) {
+      if (['label', 'sublabel', 'tag', 'note', 'title', 'subtitle'].includes(key)
+        && typeof entry === 'string') {
+        value[key] = key === 'title' && value === source.meta ? source.meta.title : '中文说明';
+      } else if (key === 'items' && Array.isArray(entry)) {
+        entry.forEach((_item, index) => { entry[index] = '中文说明'; });
+      } else {
+        localize(entry);
+      }
+    }
+  };
+  localize(source);
+}
+
 test('validate rejects an English-authored candidate when Chinese is required', () => {
   const input = fixture('english.workflow.json', (source) => {
     source.meta.title = 'Agent tool workflow';
@@ -57,24 +78,7 @@ test('validate accepts Chinese reader-facing copy while preserving technical ide
   const input = fixture('chinese.workflow.json', (source) => {
     source.meta.title = 'Agent 工具调用工作流';
     source.meta.locale = 'zh-CN';
-    const localize = (value) => {
-      if (Array.isArray(value)) {
-        value.forEach((entry) => localize(entry));
-        return;
-      }
-      if (!value || typeof value !== 'object') return;
-      for (const [key, entry] of Object.entries(value)) {
-        if (['label', 'sublabel', 'tag', 'note', 'title', 'subtitle'].includes(key)
-          && typeof entry === 'string') {
-          value[key] = key === 'title' && value === source.meta ? source.meta.title : '中文说明';
-        } else if (key === 'items' && Array.isArray(entry)) {
-          entry.forEach((_item, index) => { entry[index] = '中文说明'; });
-        } else {
-          localize(entry);
-        }
-      }
-    };
-    localize(source);
+    localizeReaderFacing(source);
     source.nodes[0].label = 'ToolResultMessage[]';
   });
   const result = run(['validate', 'workflow', input, '--require-authored-language', 'zh-CN', '--json']);
@@ -90,6 +94,35 @@ test('validate accepts Chinese reader-facing copy while preserving technical ide
     bytes: bytes.byteLength,
     sha256: createHash('sha256').update(bytes).digest('hex'),
   });
+});
+
+test('validate rejects Chinese reader-facing body copy when English is required', () => {
+  const input = fixture('english-with-chinese-body.workflow.json', (source) => {
+    source.meta.title = 'Agent tool workflow';
+    source.meta.locale = 'en';
+    source.lanes[0].label = '中文阶段';
+  });
+  const result = run(['validate', 'workflow', input, '--require-authored-language', 'en', '--json']);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  const receipt = JSON.parse(result.stdout);
+  assert.equal(receipt.stage, 'language');
+  assert.ok(receipt.diagnostics[0].evidence.violations.some((entry) => entry.path === '/lanes/0/label'));
+});
+
+test('validate preserves bounded multi-word product names in Chinese diagrams', () => {
+  const input = fixture('chinese-product-name.workflow.json', (source) => {
+    source.meta.title = 'Agent 工具调用工作流';
+    source.meta.locale = 'zh-CN';
+    localizeReaderFacing(source);
+    source.nodes[0].label = 'GitHub Actions';
+  });
+  const result = run(['validate', 'workflow', input, '--require-authored-language', 'zh-CN', '--json']);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const receipt = JSON.parse(result.stdout);
+  assert.equal(receipt.authoredLanguage.violations, 0);
+  assert.ok(receipt.authoredLanguage.technicalIdentifiersPreserved >= 1);
 });
 
 test('deliver enforces the same authored-language gate before touching output', () => {

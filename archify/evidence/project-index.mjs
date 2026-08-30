@@ -13,6 +13,9 @@ const MAX_ANALYZED_TOTAL_BYTES = 64 * 1024 * 1024;
 const MAX_SOURCE_TERMS = 200;
 const MAX_SOURCE_PATH_FILTERS = 200;
 const MAX_SOURCE_INSPECT_RANGES = 1000;
+const MAX_SOURCE_SEARCH_FILES = 256;
+const MAX_SOURCE_SEARCH_BYTES = 32 * 1024 * 1024;
+const SOURCE_SEARCH_BATCH_FILES = 8;
 
 const LANGUAGES = Object.freeze({
   '.c': 'c',
@@ -659,7 +662,7 @@ function sourceOptions(index, {
   };
 }
 
-function pinnedSourceBlobs(index, requestedFiles, repoRoot) {
+function pinnedSourceContext(index, repoRoot) {
   const repository = resolveRepository(repoRoot);
   if (repository.objectFormat !== index.repository.objectFormat) {
     throw projectError('Project source repository object format does not match the index.', {
@@ -691,9 +694,13 @@ function pinnedSourceBlobs(index, requestedFiles, repoRoot) {
     });
   }
   const byPath = new Map(revisionTree.map((entry) => [entry.path, entry]));
+  return { byPath, repository, revision };
+}
+
+function readPinnedSourceBlobs(context, requestedFiles) {
   const revisionEntries = [];
   for (const file of requestedFiles) {
-    const entry = byPath.get(file.path);
+    const entry = context.byPath.get(file.path);
     if (!entry || entry.blobOid !== file.blobOid.toLowerCase() || entry.bytes !== file.bytes) {
       throw projectError(`Project source blob for ${JSON.stringify(file.path)} does not match the index.`, {
         code: 'project-index/source-blob-mismatch',
@@ -702,10 +709,14 @@ function pinnedSourceBlobs(index, requestedFiles, repoRoot) {
     revisionEntries.push(entry);
   }
   return {
-    blobs: batchBlobs(repository.root, revisionEntries, repository.objectFormat),
-    repository,
-    revision,
+    blobs: batchBlobs(context.repository.root, revisionEntries, context.repository.objectFormat),
+    repository: context.repository,
+    revision: context.revision,
   };
+}
+
+function pinnedSourceBlobs(index, requestedFiles, repoRoot) {
+  return readPinnedSourceBlobs(pinnedSourceContext(index, repoRoot), requestedFiles);
 }
 
 function redactSourceLine(text) {
@@ -752,30 +763,67 @@ export function searchProjectSource(index, options = {}) {
     file.mode.startsWith('100')
     && (!query.paths.length || query.paths.some((prefix) => pathMatchesPrefix(file.path, prefix)))
   )).sort((left, right) => compareBinaryText(left.path, right.path));
-  const pinned = pinnedSourceBlobs(index, requestedFiles, query.repoRoot);
-  const found = [];
+  const pinned = pinnedSourceContext(index, query.repoRoot);
+  const budgetedFiles = [];
+  let budgetedBytes = 0;
+  let budgetReason = null;
   for (const file of requestedFiles) {
-    const content = pinned.blobs.get(file.blobOid.toLowerCase());
-    if (content.includes('\0')) continue;
-    const lines = content.split(/\r\n|\n|\r/);
-    if (lines.at(-1) === '') lines.pop();
-    for (const [offset, text] of lines.entries()) {
-      const matchedTerms = query.terms.filter((term) => text.includes(term));
-      if (!matchedTerms.length) continue;
-      const matchLine = offset + 1;
-      const line = Math.max(1, matchLine - query.contextLines);
-      const endLine = Math.min(lines.length, matchLine + query.contextLines);
-      found.push({
-        path: file.path,
-        blobOid: file.blobOid.toLowerCase(),
-        line,
-        endLine,
-        matchedLines: [{ line: matchLine, terms: matchedTerms }],
-        ...numberedSourceRange(content, line, endLine),
-      });
+    if (budgetedFiles.length >= MAX_SOURCE_SEARCH_FILES) {
+      budgetReason = 'file-limit';
+      break;
+    }
+    if (budgetedBytes + file.bytes > MAX_SOURCE_SEARCH_BYTES) {
+      budgetReason = 'byte-limit';
+      break;
+    }
+    budgetedFiles.push(file);
+    budgetedBytes += file.bytes;
+  }
+  const found = [];
+  let filesRead = 0;
+  let bytesRead = 0;
+  let filesSearched = 0;
+  let bytesSearched = 0;
+  let stoppedAtResultLimit = false;
+  search: for (let offset = 0; offset < budgetedFiles.length; offset += SOURCE_SEARCH_BATCH_FILES) {
+    const batch = budgetedFiles.slice(offset, offset + SOURCE_SEARCH_BATCH_FILES);
+    const loaded = readPinnedSourceBlobs(pinned, batch);
+    filesRead += batch.length;
+    bytesRead += batch.reduce((sum, file) => sum + file.bytes, 0);
+    for (const file of batch) {
+      const content = loaded.blobs.get(file.blobOid.toLowerCase());
+      filesSearched += 1;
+      bytesSearched += file.bytes;
+      if (content.includes('\0')) continue;
+      const lines = content.split(/\r\n|\n|\r/);
+      if (lines.at(-1) === '') lines.pop();
+      for (const [lineOffset, text] of lines.entries()) {
+        const matchedTerms = query.terms.filter((term) => text.includes(term));
+        if (!matchedTerms.length) continue;
+        const matchLine = lineOffset + 1;
+        const line = Math.max(1, matchLine - query.contextLines);
+        const endLine = Math.min(lines.length, matchLine + query.contextLines);
+        found.push({
+          path: file.path,
+          blobOid: file.blobOid.toLowerCase(),
+          line,
+          endLine,
+          matchedLines: [{ line: matchLine, terms: matchedTerms }],
+          ...numberedSourceRange(content, line, endLine),
+        });
+        if (found.length > query.maxResults) {
+          stoppedAtResultLimit = true;
+          break search;
+        }
+      }
     }
   }
   const matches = found.slice(0, query.maxResults);
+  const truncationReasons = [
+    ...(stoppedAtResultLimit ? ['result-limit'] : []),
+    ...(budgetReason ? [budgetReason] : []),
+  ];
+  const exactMatchCount = !stoppedAtResultLimit && !budgetReason;
   return {
     schemaVersion: 1,
     command: 'project-index-source-search',
@@ -791,10 +839,22 @@ export function searchProjectSource(index, options = {}) {
       contextLines: query.contextLines,
       maxResults: query.maxResults,
     },
-    filesSearched: requestedFiles.length,
+    searchBudget: {
+      maxFiles: MAX_SOURCE_SEARCH_FILES,
+      maxBytes: MAX_SOURCE_SEARCH_BYTES,
+      batchFiles: SOURCE_SEARCH_BATCH_FILES,
+      resultSentinel: query.maxResults + 1,
+    },
+    filesEligible: requestedFiles.length,
+    filesRead,
+    bytesRead,
+    filesSearched,
+    bytesSearched,
     matchesFound: found.length,
+    matchesFoundExact: exactMatchCount,
     returned: matches.length,
-    truncated: matches.length < found.length,
+    truncated: matches.length < found.length || Boolean(budgetReason),
+    ...(truncationReasons.length ? { truncationReasons } : {}),
     matches,
   };
 }

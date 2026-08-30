@@ -158,6 +158,9 @@ function fakeRunner({
     if (request.kind === 'repository-revision') {
       return { exitCode: 0, signal: null, stdout: `${revisionValue}\n`, stderr: '' };
     }
+    if (request.kind === 'repository-status') {
+      return { exitCode: 0, signal: null, stdout: '', stderr: '' };
+    }
     if (request.kind === 'chrome-capability') {
       const ok = capabilityStatus === 'pass';
       const exitCode = ok ? 0 : capabilityStatus === 'unavailable' ? 2 : 1;
@@ -463,6 +466,95 @@ test('production command runner times out and terminates a hung process tree', a
   });
 });
 
+test('suite runner rejects tracked and untracked repository drift before creating output', async (t) => {
+  for (const drift of ['tracked', 'untracked']) {
+    await t.test(drift, async () => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `archify-suite-dirty-${drift}-`));
+      t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+      const repoRoot = path.join(tmp, 'repo');
+      fs.mkdirSync(repoRoot);
+      execFileSync('git', ['init', '-q'], { cwd: repoRoot });
+      execFileSync('git', ['config', 'user.email', 'archify@example.test'], { cwd: repoRoot });
+      execFileSync('git', ['config', 'user.name', 'Archify Test'], { cwd: repoRoot });
+      fs.writeFileSync(path.join(repoRoot, 'README.md'), 'fixture\n');
+      execFileSync('git', ['add', 'README.md'], { cwd: repoRoot });
+      execFileSync('git', ['commit', '-qm', 'fixture'], { cwd: repoRoot });
+      const pinned = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+      if (drift === 'tracked') fs.writeFileSync(path.join(repoRoot, 'README.md'), 'changed\n');
+      else fs.writeFileSync(path.join(repoRoot, 'untracked.txt'), 'untracked\n');
+      const manifestPath = writeManifest(tmp, [{
+        type: 'workflow',
+        candidate: staticCandidate(tmp, 'workflow'),
+        commands: qualityCommands(),
+      }]);
+      const outputRoot = path.join(tmp, 'output');
+      const repositoryOnlyRunner = async (request) => {
+        if (!request.kind.startsWith('repository-')) throw new Error(`unexpected ${request.kind}`);
+        return spawnCommandRunner(request);
+      };
+
+      await assert.rejects(runSuite({
+        manifestPath,
+        repoRoot,
+        revision: pinned,
+        outputRoot,
+        archifyCli,
+        commandRunner: repositoryOnlyRunner,
+      }), /repository worktree is not clean/i);
+      assert.equal(fs.existsSync(outputRoot), false, 'dirty input must fail before suite output is created');
+    });
+  }
+});
+
+test('suite runner fails the final receipt when a generator dirties tracked or untracked repository state', async (t) => {
+  for (const drift of ['tracked', 'untracked']) {
+    await t.test(drift, async () => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `archify-suite-generator-drift-${drift}-`));
+      t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+      const repoRoot = path.join(tmp, 'repo');
+      fs.mkdirSync(repoRoot);
+      execFileSync('git', ['init', '-q'], { cwd: repoRoot });
+      execFileSync('git', ['config', 'user.email', 'archify@example.test'], { cwd: repoRoot });
+      execFileSync('git', ['config', 'user.name', 'Archify Test'], { cwd: repoRoot });
+      fs.writeFileSync(path.join(repoRoot, 'README.md'), 'fixture\n');
+      execFileSync('git', ['add', 'README.md'], { cwd: repoRoot });
+      execFileSync('git', ['commit', '-qm', 'fixture'], { cwd: repoRoot });
+      const pinned = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+      const outputRoot = path.join(tmp, 'output');
+      const manifestPath = writeManifest(tmp, [{
+        type: 'workflow',
+        candidate: '{diagramOutput}/candidate.json',
+        commands: [
+          { id: 'prepare', kind: 'exec', argv: ['prepare-candidate', '{candidate}'], receipt: 'json' },
+          ...qualityCommands(),
+        ],
+      }]);
+      const typedRunner = fakeRunner({ revisionValue: pinned });
+      const commandRunner = async (request) => {
+        if (request.kind.startsWith('repository-')) return spawnCommandRunner(request);
+        const result = await typedRunner(request);
+        if (request.kind === 'exec') {
+          const target = drift === 'tracked' ? 'README.md' : 'generated-untracked.txt';
+          fs.writeFileSync(path.join(repoRoot, target), `${drift} drift\n`);
+        }
+        return result;
+      };
+
+      const summary = await runSuite({
+        manifestPath,
+        repoRoot,
+        revision: pinned,
+        outputRoot,
+        archifyCli,
+        commandRunner,
+      });
+
+      assert.equal(summary.status, 'automated-failure');
+      assert.match(summary.finalReceipt.error.message, /repository worktree is not clean/i);
+    });
+  }
+});
+
 test('suite runner integration: real packaged validate and deliver CLIs complete the trusted chain', async (t) => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-suite-real-cli-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
@@ -550,7 +642,8 @@ test('suite runner: pins the repository once, isolates diagrams, and generates t
 
   assert.equal(summary.status, 'automated-pass-awaiting-human-review');
   assert.deepEqual(summary.diagrams.map((diagram) => diagram.status), ['completed', 'completed']);
-  assert.equal(commandRunner.requests.filter((request) => request.kind === 'repository-revision').length, 1);
+  assert.equal(commandRunner.requests.filter((request) => request.kind === 'repository-revision').length, 2);
+  assert.equal(commandRunner.requests.filter((request) => request.kind === 'repository-status').length, 2);
   assert.equal(
     commandRunner.requests.find((request) => request.kind === 'exec').cwd,
     path.join(outputRoot, 'sequence'),

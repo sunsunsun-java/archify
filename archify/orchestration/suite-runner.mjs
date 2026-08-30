@@ -1712,6 +1712,38 @@ async function verifyPinnedRevision(repoRoot, revision, commandRunner) {
   return actual.toLowerCase();
 }
 
+async function verifyCleanWorktree(repoRoot, commandRunner, phase) {
+  const result = await commandRunner({
+    id: `repository-cleanliness-${phase}`,
+    kind: 'repository-status',
+    executable: 'git',
+    args: ['-C', repoRoot, 'status', '--porcelain=v1', '-z', '--untracked-files=all', '--ignore-submodules=none'],
+    cwd: repoRoot,
+    env: {},
+  });
+  if (result.exitCode !== 0) {
+    throw new Error(`Could not inspect repository worktree: ${result.stderr.trim() || `exit ${result.exitCode}`}`);
+  }
+  if (result.stdout.length > 0) {
+    const entries = result.stdout.split('\0').filter(Boolean);
+    const statusCodes = [...new Set(entries.map((entry) => entry.slice(0, 2)))].sort();
+    const error = new Error(
+      `Repository worktree is not clean during ${phase}: ${entries.length} changed path(s) (${statusCodes.join(', ')}).`,
+    );
+    error.code = 'ARCHIFY_SUITE_DIRTY_REPOSITORY';
+    error.phase = phase;
+    error.changedPaths = entries.length;
+    error.statusCodes = statusCodes;
+    throw error;
+  }
+}
+
+async function verifyPinnedCheckout(repoRoot, revision, commandRunner, phase) {
+  const actual = await verifyPinnedRevision(repoRoot, revision, commandRunner);
+  await verifyCleanWorktree(repoRoot, commandRunner, phase);
+  return actual;
+}
+
 function ensureFreshOutput(outputRoot, diagrams) {
   fs.mkdirSync(outputRoot, { recursive: true });
   for (const name of [
@@ -1758,7 +1790,12 @@ export async function runSuite({
 
   const manifest = jsonClone(JSON.parse(fs.readFileSync(absoluteManifest, 'utf8')), 'manifest');
   const normalized = normalizeManifest(manifest, absoluteManifest, absoluteOutput);
-  const pinnedRevision = await verifyPinnedRevision(absoluteRepo, assertString(revision, 'revision'), commandRunner);
+  const pinnedRevision = await verifyPinnedCheckout(
+    absoluteRepo,
+    assertString(revision, 'revision'),
+    commandRunner,
+    'suite-start',
+  );
   const suite = {
     ...normalized,
     outputRoot: absoluteOutput,
@@ -1920,6 +1957,20 @@ export async function runSuite({
       const projectIndexIntegrityError = sanitizeProjectIndexEvidence(suite, []);
       if (projectIndexIntegrityError && !suiteError) suiteError = projectIndexIntegrityError;
     }
+  }
+
+  try {
+    await suiteRecorder.stage('repositoryIntegrity', async (stage) => {
+      await stage.span('pinned-clean-checkout', async () => verifyPinnedCheckout(
+        absoluteRepo,
+        pinnedRevision,
+        commandRunner,
+        'suite-finalization',
+      ));
+      stage.milestone('repositoryIntegrityVerified', { revision: pinnedRevision, clean: true });
+    });
+  } catch (error) {
+    if (!suiteError) suiteError = error;
   }
 
   suite.automationError = suiteError ? {

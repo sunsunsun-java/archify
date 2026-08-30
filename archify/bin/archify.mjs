@@ -219,11 +219,18 @@ function authoredLanguageEntries(diagram) {
 }
 
 function isTechnicalAuthoredText(text) {
-  if (/\s/u.test(text)) return false;
-  return /[\[\]()._/:@{}<>#+]/u.test(text)
-    || /[a-z][A-Z]/u.test(text)
-    || /^[A-Z0-9-]{2,}$/u.test(text)
-    || /^https?:\/\//iu.test(text);
+  if (text.length > 80 || /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u.test(text)) return false;
+  const tokens = text.trim().split(/\s+/u);
+  if (tokens.length === 0 || tokens.length > 4) return false;
+  const safeToken = (token) => /^[A-Za-z0-9][A-Za-z0-9[\]()._/:@{}<>#+-]*$/u.test(token);
+  const technicalSignal = (token) => /[\[\]()._/:@{}<>#+]/u.test(token)
+    || /[a-z][A-Z]/u.test(token)
+    || /^[A-Z0-9-]{2,}$/u.test(token)
+    || /^https?:\/\//iu.test(token);
+  if (!tokens.every(safeToken) || !technicalSignal(tokens[0])) return false;
+  return tokens.slice(1).every((token) => (
+    technicalSignal(token) || /^[A-Z][A-Za-z0-9+.#/-]*$/u.test(token)
+  ));
 }
 
 function authoredLanguageAssessment(diagram, requiredLanguage) {
@@ -237,13 +244,15 @@ function authoredLanguageAssessment(diagram, requiredLanguage) {
   const titleMatches = requiredLanguage === 'zh-CN' ? hasCjk : hasLatin && !hasCjk;
   const technicalIdentifiers = entries.filter((entry) => isTechnicalAuthoredText(entry.text));
   const proseEntries = entries.filter((entry) => !isTechnicalAuthoredText(entry.text));
+  const cjk = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u;
   const proseViolations = requiredLanguage === 'zh-CN'
-    ? proseEntries.filter((entry) => !/[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u.test(entry.text))
-    : [];
+    ? proseEntries.filter((entry) => !cjk.test(entry.text))
+    : proseEntries.filter((entry) => cjk.test(entry.text));
+  const proseLanguage = requiredLanguage === 'zh-CN' ? 'Simplified Chinese' : 'English';
   const violations = [
     ...(!localeMatches ? [{ path: '/meta/locale', text: locale ?? null, reason: `must equal ${requiredLanguage}` }] : []),
     ...(!titleMatches ? [{ path: '/meta/title', text: title, reason: `must visibly use ${requiredLanguage}` }] : []),
-    ...proseViolations.map((entry) => ({ ...entry, reason: 'reader-facing prose does not use Simplified Chinese' })),
+    ...proseViolations.map((entry) => ({ ...entry, reason: `reader-facing prose does not use ${proseLanguage}` })),
   ];
   const receipt = {
     required: requiredLanguage,
@@ -257,7 +266,7 @@ function authoredLanguageAssessment(diagram, requiredLanguage) {
   const problems = [
     ...(!localeMatches ? [`meta.locale must be "${requiredLanguage}"`] : []),
     ...(!titleMatches ? [`meta.title must visibly use ${requiredLanguage === 'zh-CN' ? 'Simplified Chinese' : 'English'}`] : []),
-    ...(proseViolations.length ? [`${proseViolations.length} reader-facing prose field(s) must use Simplified Chinese`] : []),
+    ...(proseViolations.length ? [`${proseViolations.length} reader-facing prose field(s) must use ${proseLanguage}`] : []),
   ];
   return {
     receipt,

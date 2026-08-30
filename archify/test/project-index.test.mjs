@@ -224,6 +224,32 @@ test('source search batches multiple terms and paths with stable result limiting
   ]);
 });
 
+test('source search stops materializing repository blobs after the result budget is proven truncated', () => {
+  const data = fixture();
+  for (let index = 0; index < 40; index += 1) {
+    fs.writeFileSync(
+      path.join(data.root, `${String(index).padStart(3, '0')}-match.txt`),
+      `needle ${index}\n`,
+    );
+  }
+  git(data.root, 'add', '.');
+  git(data.root, 'commit', '-m', 'many searchable files');
+  const revision = git(data.root, 'rev-parse', 'HEAD');
+  const index = buildProjectIndex({ repoRoot: data.root, revision });
+
+  const receipt = searchProjectSource(index, {
+    terms: ['needle'],
+    contextLines: 0,
+    maxResults: 1,
+  });
+
+  assert.equal(receipt.returned, 1);
+  assert.equal(receipt.truncated, true);
+  assert.equal(receipt.matchesFound, 2, 'only the returned result plus one truncation sentinel is materialized');
+  assert.ok(receipt.filesRead < index.files.length, 'result limiting must stop blob reads before the whole repository');
+  assert.ok(receipt.bytesRead < index.files.reduce((sum, file) => sum + file.bytes, 0));
+});
+
 test('source inspect stably limits exact ranges and reads multiple paths in one blob batch', () => {
   const data = fixture();
   const index = buildProjectIndex({ repoRoot: data.root, revision: data.revision });
