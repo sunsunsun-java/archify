@@ -303,6 +303,43 @@ async function waitForLayout(browser, sessionId) {
   })()`, true);
 }
 
+async function waitForRelationshipReveal(browser, sessionId, targetId) {
+  return evaluate(browser, sessionId, `(function () {
+    var targetId = ${JSON.stringify(targetId)};
+    var target = document.querySelector('[data-node-id="' + targetId + '"]');
+    var passport = document.getElementById('focus-chip');
+    var container = document.querySelector('.diagram-container');
+    return new Promise(function (resolve, reject) {
+      var sampledFrames = 0;
+      var safeFrames = 0;
+      var lastReceipt = null;
+      function sample() {
+        sampledFrames += 1;
+        var targetRect = target.getBoundingClientRect();
+        var passportRect = passport.getBoundingClientRect();
+        var containerRect = container.getBoundingClientRect();
+        var overlap = Math.max(0, Math.min(targetRect.right, passportRect.right) - Math.max(targetRect.left, passportRect.left)) *
+          Math.max(0, Math.min(targetRect.bottom, passportRect.bottom) - Math.max(targetRect.top, passportRect.top));
+        var fullyVisible = targetRect.left >= containerRect.left - 0.5 && targetRect.top >= containerRect.top - 0.5 &&
+          targetRect.right <= containerRect.right + 0.5 && targetRect.bottom <= containerRect.bottom + 0.5;
+        var moving = container.hasAttribute('data-camera-transaction');
+        lastReceipt = { overlap: overlap, fullyVisible: fullyVisible, moving: moving };
+        safeFrames = overlap === 0 && fullyVisible && !moving ? safeFrames + 1 : 0;
+        if (safeFrames >= 8) {
+          resolve(lastReceipt);
+          return;
+        }
+        if (sampledFrames >= 240) {
+          reject(new Error('Relationship reveal did not settle safely: ' + JSON.stringify(lastReceipt)));
+          return;
+        }
+        requestAnimationFrame(sample);
+      }
+      requestAnimationFrame(sample);
+    });
+  })()`, true);
+}
+
 async function finalGeometry(browser, sessionId) {
   return evaluate(browser, sessionId, `(function () {
     function area(a, b) {
@@ -1802,6 +1839,16 @@ test('relationship hover only highlights while explicit activation owns camera m
       })()`);
       if (scenario.scrollOffset) assert.ok(point.containerTop < 0, JSON.stringify({ scenario, point }));
       if (scenario.expandRelationships) assert.equal(point.finePointer, true, JSON.stringify({ scenario, point }));
+      // CDP keeps the last mouse position across page loads. Move outside the
+      // Passport first so the target movement always creates a real ingress and
+      // dispatches pointerover, even when two scenarios reuse the same row center.
+      await browser.cdp.send('Input.dispatchMouseEvent', {
+        type: 'mouseMoved',
+        x: 1,
+        y: 1,
+        button: 'none',
+        buttons: 0,
+      }, sessionId);
       await browser.cdp.send('Input.dispatchMouseEvent', {
         type: 'mouseMoved',
         x: point.x,
@@ -2033,6 +2080,7 @@ test('relationship hover only highlights while explicit activation owns camera m
           type: 'mouseReleased', x: activationPoint.x, y: activationPoint.y,
           button: 'left', buttons: 0, clickCount: 1,
         }, sessionId);
+        await waitForRelationshipReveal(browser, sessionId, activationPoint.targetId);
         await waitForLayout(browser, sessionId);
         const activation = await evaluate(browser, sessionId, `(function () {
           var probe = window.__archifyRelationshipActivationProbe;
