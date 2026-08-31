@@ -1655,7 +1655,8 @@
       max-width: calc(100% - 13rem);
       max-height: min(
         calc(100dvh - 2rem),
-        var(--archify-passport-max-height, calc(100dvh - 2rem))
+        var(--archify-passport-max-height, calc(100dvh - 2rem)),
+        var(--archify-passport-radar-max-height, calc(100dvh - 2rem))
       );
       overflow: hidden;
       box-sizing: border-box;
@@ -12605,6 +12606,7 @@
       var feedback = document.getElementById('overview-map-feedback');
       var navigation = container.querySelector('.diagram-nav');
       var passport = document.getElementById('focus-chip');
+      var passportBody = document.getElementById('relationship-lens-body');
       var namespace = 'http://www.w3.org/2000/svg';
       var viewBox = diagram.viewBox && diagram.viewBox.baseVal;
       var mapSvg = document.createElementNS(namespace, 'svg');
@@ -12621,6 +12623,7 @@
       var syncFrame = 0;
       var spaceRetryTimer = 0;
       var spaceRetryCount = 0;
+      var passportReservationChanged = false;
       var placementGap = 16;
 
       mapSvg.setAttribute('role', 'group');
@@ -12715,6 +12718,8 @@
         return {
           bounds: { left: left, top: top, right: right, bottom: bottom },
           hardBlockers: [lensRect, controlRect, legendRect].filter(Boolean),
+          fixedBlockers: [controlRect, legendRect].filter(Boolean),
+          passportRect: lensRect,
           softBlockers: [activeRect].filter(Boolean),
           preferredSide: !activeRect || activeRect.left + activeRect.width / 2 > window.innerWidth / 2 ? 'left' : 'right'
         };
@@ -12823,8 +12828,61 @@
         panel.style.removeProperty('--archify-radar-left');
         panel.style.removeProperty('--archify-radar-top');
       }
+      function clearPassportReservation(options) {
+        options = options || {};
+        if (!passport || !passport.style.getPropertyValue('--archify-passport-radar-max-height')) return false;
+        passport.style.removeProperty('--archify-passport-radar-max-height');
+        if (options.reposition !== false && Archify.focus && typeof Archify.focus.reposition === 'function') {
+          Archify.focus.reposition();
+        }
+        return true;
+      }
+      function reservePassportForCompactRadar(context) {
+        if (window.innerWidth > 720 || !context || !context.passportRect || passportYielded ||
+            passport.hasAttribute('data-viewport-compact')) return false;
+        var fixedBlockers = context.fixedBlockers || [];
+        var segments = [{ top: context.bounds.top, bottom: context.bounds.bottom }];
+        fixedBlockers.forEach(function (blocker) {
+          if (blocker.right <= context.passportRect.left - placementGap ||
+              blocker.left >= context.passportRect.right + placementGap) return;
+          var blockedTop = blocker.top - placementGap;
+          var blockedBottom = blocker.bottom + placementGap;
+          segments = segments.reduce(function (available, segment) {
+            if (blockedBottom <= segment.top || blockedTop >= segment.bottom) {
+              available.push(segment);
+              return available;
+            }
+            if (blockedTop > segment.top) available.push({ top: segment.top, bottom: Math.min(segment.bottom, blockedTop) });
+            if (blockedBottom < segment.bottom) available.push({ top: Math.max(segment.top, blockedBottom), bottom: segment.bottom });
+            return available;
+          }, []);
+        });
+        segments.sort(function (first, second) {
+          return (second.bottom - second.top) - (first.bottom - first.top);
+        });
+        if (!segments.length) return false;
+        var fixedHead = passport.querySelector('.relationship-lens-head');
+        var minimumReservedBodyHeight = passportBody
+          ? Math.min(144, Math.max(56, passportBody.scrollHeight))
+          : 56;
+        var minimumPassportHeight = (fixedHead ? fixedHead.scrollHeight : 0) + minimumReservedBodyHeight;
+        var maximumPassportHeight = Math.floor(
+          segments[0].bottom - segments[0].top - panel.offsetHeight - placementGap
+        );
+        if (maximumPassportHeight < minimumPassportHeight || maximumPassportHeight >= passport.offsetHeight) return false;
+        var nextValue = maximumPassportHeight + 'px';
+        if (passport.style.getPropertyValue('--archify-passport-radar-max-height') === nextValue) return false;
+        passport.style.setProperty('--archify-passport-radar-max-height', nextValue);
+        if (Archify.focus && typeof Archify.focus.reposition === 'function') Archify.focus.reposition();
+        return true;
+      }
       function updateDocking() {
         var options = arguments[0] || {};
+        passportReservationChanged = false;
+        if (window.innerWidth > 720 || passportYielded ||
+            (passport && passport.hasAttribute('data-viewport-compact'))) {
+          clearPassportReservation({ reposition: false });
+        }
         if (panel.hidden) return false;
         if (panelDrag) return true;
         panel.removeAttribute('data-compact');
@@ -12851,6 +12909,7 @@
           panel.setAttribute('title', viewerText('viewer.radar.compacted'));
           context = placementContext();
           placement = chooseRadarPlacement(context, reference, placementOptions);
+          if (!placement) passportReservationChanged = reservePassportForCompactRadar(context);
         }
         if (!placement) {
           resetDockingStyles();
@@ -12898,7 +12957,9 @@
           attemptRequestedOpen();
         }, 60);
       }
-      function reflectUnavailable() {
+      function reflectUnavailable(options) {
+        options = options || {};
+        if (options.preserveReservation !== true) clearPassportReservation();
         restorePassport();
         panel.hidden = true;
         panel.setAttribute('data-placement-unavailable', 'true');
@@ -12914,7 +12975,7 @@
         if (!requestedOpen) return false;
         panel.hidden = false;
         if (!updateDocking(options)) {
-          reflectUnavailable();
+          reflectUnavailable({ preserveReservation: passportReservationChanged });
           return false;
         }
         clearSpaceRetry();
@@ -12930,7 +12991,7 @@
         if (!updateDocking({ allowCompact: false })) {
           restorePassport();
           if (!updateDocking()) {
-            reflectUnavailable();
+            reflectUnavailable({ preserveReservation: passportReservationChanged });
             return false;
           }
         }
@@ -12943,13 +13004,13 @@
         syncFrame = 0;
         if (panel.hidden || !Archify.view || typeof Archify.view.logicalViewport !== 'function') return;
         if (!updateDocking()) {
-          reflectUnavailable();
+          reflectUnavailable({ preserveReservation: passportReservationChanged });
           return;
         }
         if (passportYielded && panel.hasAttribute('data-compact')) {
           restorePassport();
           if (!updateDocking()) {
-            reflectUnavailable();
+            reflectUnavailable({ preserveReservation: passportReservationChanged });
             return;
           }
         }
@@ -13005,6 +13066,7 @@
           panel.hidden = true;
           resetDockingStyles();
           restorePassport();
+          clearPassportReservation();
           feedback.hidden = true;
           trigger.setAttribute('aria-expanded', 'false');
           trigger.removeAttribute('data-radar-space-limited');
