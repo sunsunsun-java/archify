@@ -7689,7 +7689,6 @@
       var relationshipHitTargets = [];
       var directPreviewTimer = null;
       var relationshipPreviewTimer = null;
-      var relationshipAvailabilityFrame = 0;
       var reachabilityMode = null;
       var activeReachability = null;
       var svgNamespace = 'http://www.w3.org/2000/svg';
@@ -8498,7 +8497,6 @@
         }, reducedMotionQuery && reducedMotionQuery.matches ? 0 : 90);
       }
       function syncRelationshipHitAvailability() {
-        relationshipAvailabilityFrame = 0;
         if (!relationshipHitTargets.length) return;
         var blocked = directRelationshipBlocked();
         var roving = relationshipHitTargets.find(function (target) {
@@ -8513,10 +8511,6 @@
             target.setAttribute('tabindex', target === roving ? '0' : '-1');
           }
         });
-      }
-      function requestRelationshipHitAvailability() {
-        if (relationshipAvailabilityFrame) return;
-        relationshipAvailabilityFrame = requestAnimationFrame(syncRelationshipHitAvailability);
       }
       function relationshipHitTarget(key) {
         return relationshipHitTargets.find(function (target) {
@@ -9347,7 +9341,7 @@
         relationshipResizeObserver.observe(relationshipBody);
       }
       if (typeof MutationObserver === 'function') {
-        var relationshipAvailabilityObserver = new MutationObserver(requestRelationshipHitAvailability);
+        var relationshipAvailabilityObserver = new MutationObserver(syncRelationshipHitAvailability);
         relationshipAvailabilityObserver.observe(html, {
           attributes: true,
           attributeFilter: ['data-embed', 'data-guide-open']

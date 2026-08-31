@@ -1996,6 +1996,22 @@ test('relationship exploration never restores stale camera work or repeats keybo
         disabled: availableTargets.some(function (target) { return target.hasAttribute('aria-disabled'); }),
         tabbable: availableTargets.filter(function (target) { return target.getAttribute('tabindex') === '0'; }).length
       };
+      var originalRequestAnimationFrame = window.requestAnimationFrame;
+      var deferredAvailabilityFrames = [];
+      window.requestAnimationFrame = function (callback) {
+        deferredAvailabilityFrames.push(callback);
+        return 9000 + deferredAvailabilityFrames.length;
+      };
+      var diagramSvg = document.querySelector('.diagram-container > svg');
+      diagramSvg.setAttribute('data-route-active', 'true');
+      await new Promise(function (resolve) { setTimeout(resolve, 0); });
+      var availabilityBeforeNextFrame = availableTargets.every(function (target) {
+        return target.getAttribute('aria-disabled') === 'true' && target.getAttribute('tabindex') === '-1';
+      });
+      window.requestAnimationFrame = originalRequestAnimationFrame;
+      diagramSvg.removeAttribute('data-route-active');
+      deferredAvailabilityFrames.forEach(function (callback) { callback(performance.now()); });
+      await new Promise(function (resolve) { setTimeout(resolve, 0); });
       var hovered = document.querySelector('[data-relationship-hit-key][data-relationship-id="agent-ai"]');
       var focused = document.querySelector('[data-relationship-hit-key][data-relationship-id="agent-tools"]');
       hovered.dispatchEvent(new PointerEvent('pointerover', {
@@ -2012,6 +2028,7 @@ test('relationship exploration never restores stale camera work or repeats keybo
         afterRepeat: afterRepeat,
         blockedKeyboardState: blockedKeyboardState,
         availableKeyboardState: availableKeyboardState,
+        availabilityBeforeNextFrame: availabilityBeforeNextFrame,
         focusedPreview: document.querySelector('.diagram-container > svg')
           .getAttribute('data-relationship-preview-active'),
         focusedKey: focused.getAttribute('data-relationship-key')
@@ -2025,6 +2042,7 @@ test('relationship exploration never restores stale camera work or repeats keybo
     assert.equal(receipt.afterRepeat.pressed, 'true', JSON.stringify(receipt));
     assert.deepEqual(receipt.blockedKeyboardState, { disabled: true, tabbable: 0 }, JSON.stringify(receipt));
     assert.deepEqual(receipt.availableKeyboardState, { disabled: false, tabbable: 1 }, JSON.stringify(receipt));
+    assert.equal(receipt.availabilityBeforeNextFrame, true, JSON.stringify(receipt));
     assert.equal(receipt.focusedPreview, receipt.focusedKey, JSON.stringify(receipt));
   } finally {
     await browser.close();

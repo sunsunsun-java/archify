@@ -123,7 +123,7 @@ test('blocked direct relationship targets leave the keyboard order until they ar
   assert.match(template, /if \(blocked\) \{[\s\S]*target\.setAttribute\('aria-disabled', 'true'\)[\s\S]*target\.setAttribute\('tabindex', '-1'\)/);
   assert.match(template, /target\.removeAttribute\('aria-disabled'\)/);
   assert.match(template, /target\.setAttribute\('tabindex', target === roving \? '0' : '-1'\)/);
-  assert.match(template, /new MutationObserver\(requestRelationshipHitAvailability\)/);
+  assert.match(template, /new MutationObserver\(syncRelationshipHitAvailability\)/);
   assert.match(template, /attributeFilter: \[[\s\S]*'data-focus-active'[\s\S]*'data-relationship-pin-active'[\s\S]*\]/);
 });
 
