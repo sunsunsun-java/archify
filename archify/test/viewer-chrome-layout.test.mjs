@@ -53,12 +53,13 @@ function renderWithoutLegend() {
   return output;
 }
 
-function renderRelationshipExplorationStress() {
+function renderRelationshipExplorationStress({ locale = 'en' } = {}) {
   const source = {
     schema_version: 1,
     diagram_type: 'architecture',
     meta: {
       title: 'Relationship exploration stress',
+      locale,
       quality_profile: 'showcase',
       viewBox: [1220, 640],
     },
@@ -78,8 +79,9 @@ function renderRelationshipExplorationStress() {
     ],
     cards: [],
   };
-  const input = path.join(tmp, 'relationship-exploration-stress.json');
-  const output = path.join(tmp, 'relationship-exploration-stress.html');
+  const suffix = locale.replace(/[^a-z0-9-]/gi, '-');
+  const input = path.join(tmp, `relationship-exploration-stress-${suffix}.json`);
+  const output = path.join(tmp, `relationship-exploration-stress-${suffix}.html`);
   fs.writeFileSync(input, `${JSON.stringify(source, null, 2)}\n`);
   execFileSync(process.execPath, [
     path.join(skillRoot, 'bin', 'archify.mjs'),
@@ -1817,6 +1819,13 @@ test('reachable relationship exploration keeps highlighted nodes outside the Pas
               resolve({
                 compact: passport.getAttribute('data-exploration-compact'),
                 hidden: passport.hidden,
+                passport: {
+                  width: passportRect.width,
+                  height: passportRect.height
+                },
+                reachButtonHeights: Array.from(passport.querySelectorAll('.semantic-passport-reach-actions button')).map(function (button) {
+                  return button.getBoundingClientRect().height;
+                }),
                 matchCount: matches.length,
                 overlaps: overlaps,
                 camera: Archify.view.state()
@@ -1839,6 +1848,10 @@ test('reachable relationship exploration keeps highlighted nodes outside the Pas
       assert.ok(receipt.overlaps.every((entry) => entry.fullyVisible), message);
       assert.equal(Math.max(...receipt.overlaps.map((entry) => entry.area)), 0, message);
       assert.equal(receipt.compact, 'true', message);
+      assert.ok(receipt.passport.width >= 420 && receipt.passport.width <= 440, message);
+      assert.ok(receipt.passport.height <= 120, message);
+      assert.equal(receipt.reachButtonHeights.length, 2, message);
+      assert.ok(receipt.reachButtonHeights.every((height) => height >= 40 && height <= 44), message);
 
       if (scenario.label === 'downstream') {
         await evaluate(browser, sessionId, `document.getElementById('btn-reach-downstream').click()`);
@@ -1855,6 +1868,98 @@ test('reachable relationship exploration keeps highlighted nodes outside the Pas
         assert.equal(restored.reach, null, JSON.stringify(restored));
         assert.equal(restored.camera.mode, 'semantic', JSON.stringify(restored));
         assert.ok(restored.camera.scale >= 1, JSON.stringify(restored));
+      }
+    }
+  } finally {
+    await browser.close();
+  }
+});
+
+test('compact reach Passport preserves long translated titles and the responsive breakpoint', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  const artifact = renderRelationshipExplorationStress({
+    locale: 'zh-CN',
+  });
+  try {
+    for (const width of [1280, 1281]) {
+      const sessionId = await load(browser, artifact, { width, height: 900 });
+      await evaluate(browser, sessionId, `(function () {
+        var container = document.querySelector('.diagram-container');
+        window.scrollTo(0, Math.max(0, container.offsetTop));
+        document.querySelector('[data-node-id="hub"]').setAttribute(
+          'data-node-label',
+          '负责会话事件编排与工具调度的核心运行模块'
+        );
+        Archify.focus.set('hub', { toggle: false, updateUrl: false });
+      })()`);
+      await waitForLayout(browser, sessionId);
+      const hit = await evaluate(browser, sessionId, `(function () {
+        var button = document.getElementById('btn-reach-downstream');
+        var rect = button.getBoundingClientRect();
+        var x = rect.left + rect.width / 2;
+        var y = rect.top + rect.height / 2;
+        var target = document.elementFromPoint(x, y);
+        return {
+          x: x,
+          y: y,
+          ownsCenter: !!(target && target.closest('#btn-reach-downstream') === button)
+        };
+      })()`);
+      assert.equal(hit.ownsCenter, true, JSON.stringify({ width, hit }));
+      await browser.cdp.send('Input.dispatchMouseEvent', {
+        type: 'mousePressed', x: hit.x, y: hit.y,
+        button: 'left', buttons: 1, clickCount: 1,
+      }, sessionId);
+      await browser.cdp.send('Input.dispatchMouseEvent', {
+        type: 'mouseReleased', x: hit.x, y: hit.y,
+        button: 'left', buttons: 0, clickCount: 1,
+      }, sessionId);
+      await waitForLayout(browser, sessionId);
+      const receipt = await evaluate(browser, sessionId, `(function () {
+        var passport = document.getElementById('focus-chip');
+        var container = document.querySelector('.diagram-container');
+        var title = passport.querySelector('.relationship-lens-title');
+        var actions = passport.querySelector('.relationship-lens-actions');
+        var passportRect = passport.getBoundingClientRect();
+        var containerRect = container.getBoundingClientRect();
+        var titleRect = title.getBoundingClientRect();
+        var actionsRect = actions.getBoundingClientRect();
+        return {
+          drawer: passport.getAttribute('data-responsive-drawer'),
+          compact: passport.getAttribute('data-exploration-compact'),
+          reach: document.querySelector('.diagram-container > svg').getAttribute('data-reach-active'),
+          passport: { left: passportRect.left, right: passportRect.right, width: passportRect.width, height: passportRect.height },
+          container: { left: containerRect.left, right: containerRect.right, width: containerRect.width },
+          titleActionsOverlap: Math.max(0, Math.min(titleRect.right, actionsRect.right) - Math.max(titleRect.left, actionsRect.left)),
+          headerBorder: getComputedStyle(passport.querySelector('.relationship-lens-head')).borderBottomWidth,
+          reachButtonHeights: Array.from(passport.querySelectorAll('.semantic-passport-reach-actions button')).map(function (button) {
+            return button.getBoundingClientRect().height;
+          }),
+          actionHeights: Array.from(actions.querySelectorAll('button')).filter(function (button) {
+            return button.offsetParent !== null;
+          }).map(function (button) {
+            return button.getBoundingClientRect().height;
+          })
+        };
+      })()`);
+      const message = JSON.stringify({ width, receipt });
+      assert.equal(receipt.compact, 'true', message);
+      assert.equal(receipt.reach, 'downstream', message);
+      assert.equal(receipt.titleActionsOverlap, 0, message);
+      assert.equal(receipt.reachButtonHeights.length, 2, message);
+      assert.ok(receipt.reachButtonHeights.every((height) => height >= 40), message);
+      if (width === 1280) {
+        assert.equal(receipt.drawer, 'true', message);
+        assert.ok(receipt.passport.left <= receipt.container.left + 17, message);
+        assert.ok(receipt.passport.right >= receipt.container.right - 17, message);
+        assert.ok(receipt.actionHeights.every((height) => height >= 40), message);
+      } else {
+        assert.equal(receipt.drawer, null, message);
+        assert.ok(receipt.passport.width >= 420 && receipt.passport.width <= 440, message);
+        assert.ok(receipt.passport.height <= 120, message);
+        assert.equal(receipt.headerBorder, '0px', message);
       }
     }
   } finally {

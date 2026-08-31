@@ -1815,6 +1815,67 @@
     .focus-chip[data-exploration-compact="true"]:not([data-exploration-expanded="true"]) .semantic-passport-reach-status {
       line-height: 1.25;
     }
+    @media (min-width: 1281px) {
+      .focus-chip[data-exploration-compact="true"]:not([data-exploration-expanded="true"]) {
+        right: auto;
+        width: min(27rem, calc(100% - 2rem));
+        max-width: min(27rem, calc(100% - 2rem));
+        border-radius: 0.65rem;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+      }
+      .focus-chip[data-exploration-compact="true"]:not([data-exploration-expanded="true"]) .relationship-lens-head {
+        gap: 0.45rem;
+        padding: 0.32rem 0.42rem;
+        border-bottom: 0;
+      }
+      .focus-chip[data-exploration-compact="true"]:not([data-exploration-expanded="true"]) .relationship-lens-copy {
+        display: flex;
+        min-width: 0;
+        align-items: baseline;
+        gap: 0.42rem;
+      }
+      .focus-chip[data-exploration-compact="true"]:not([data-exploration-expanded="true"]) .relationship-lens-actions {
+        flex-direction: row-reverse;
+        align-items: center;
+        gap: 0.12rem;
+      }
+      .focus-chip[data-exploration-compact="true"]:not([data-exploration-expanded="true"]) .relationship-lens-title {
+        flex: 0 1 auto;
+        min-width: 0;
+        font-size: 0.75rem;
+      }
+      .focus-chip[data-exploration-compact="true"]:not([data-exploration-expanded="true"]) .relationship-lens-summary {
+        flex: 1 1 0;
+        min-width: 0;
+        margin-top: 0;
+        overflow: hidden;
+        font-size: 0.5625rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .focus-chip[data-exploration-compact="true"]:not([data-exploration-expanded="true"]) .relationship-lens-body {
+        padding-bottom: 0.22rem;
+        scrollbar-gutter: auto;
+      }
+      .focus-chip[data-exploration-compact="true"]:not([data-exploration-expanded="true"]) .relationship-lens-details {
+        padding: 0 0.42rem 0.18rem;
+      }
+      .focus-chip[data-exploration-compact="true"]:not([data-exploration-expanded="true"]) .semantic-passport-reach {
+        grid-template-columns: minmax(0, 1.2fr) minmax(7.5rem, 0.8fr);
+        gap: 0.35rem;
+        margin-top: 0;
+        padding-top: 0;
+        border-top: 0;
+      }
+      .focus-chip[data-exploration-compact="true"]:not([data-exploration-expanded="true"]) .semantic-passport-reach-actions button {
+        min-height: 2.5rem;
+        padding: 0.2rem 0.34rem;
+      }
+      .focus-chip[data-exploration-compact="true"]:not([data-exploration-expanded="true"]) .semantic-passport-reach-status {
+        font-size: 0.5rem;
+        line-height: 1.2;
+      }
+    }
     .relationship-lens-eyebrow {
       display: block;
       margin-bottom: 0.18rem;
@@ -3730,6 +3791,22 @@
           var(--archify-passport-max-height, 20rem),
           var(--archify-passport-radar-max-height, 20rem)
         );
+      }
+      .focus-chip[data-responsive-drawer="true"][data-exploration-compact="true"]:not([data-exploration-expanded="true"]) {
+        right: 1rem;
+        left: 1rem;
+        width: auto;
+        max-width: none;
+      }
+      .focus-chip[data-responsive-drawer="true"][data-exploration-compact="true"]:not([data-exploration-expanded="true"]) .semantic-passport-reach-actions button {
+        min-height: 2.5rem;
+      }
+      .focus-chip[data-responsive-drawer="true"][data-exploration-mode="reach"]:not([data-exploration-expanded="true"]) .relationship-lens-actions button {
+        min-height: 2.5rem;
+      }
+      .focus-chip[data-responsive-drawer="true"][data-exploration-mode="reach"]:not([data-exploration-expanded="true"]) .relationship-lens-actions #btn-focus-clear {
+        width: 2.5rem;
+        height: 2.5rem;
       }
       .focus-chip[data-responsive-drawer="true"]:not([data-exploration-expanded="true"]) .semantic-passport-meta,
       .focus-chip[data-responsive-drawer="true"]:not([data-exploration-expanded="true"]) .semantic-passport-evidence,
