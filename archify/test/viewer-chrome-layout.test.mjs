@@ -1920,6 +1920,8 @@ test('relationship exploration deep links and translated 1x framing yield to man
       var container = document.querySelector('.diagram-container');
       var before = Archify.view.state();
       var pannable = container.classList.contains('is-pannable');
+      var deltaX = before.x > 0 ? -36 : 36;
+      var deltaY = before.y > 0 ? -16 : 16;
       container.dispatchEvent(new PointerEvent('pointerdown', {
         bubbles: true,
         button: 0,
@@ -1928,27 +1930,125 @@ test('relationship exploration deep links and translated 1x framing yield to man
         clientX: 720,
         clientY: 520
       }));
+      var afterPointerDown = Archify.view.state();
       container.dispatchEvent(new PointerEvent('pointermove', {
         bubbles: true,
         button: 0,
         buttons: 1,
         pointerId: 17,
-        clientX: 756,
-        clientY: 536
+        clientX: 720 + deltaX,
+        clientY: 520 + deltaY
       }));
+      var afterPointerMove = Archify.view.state();
       container.dispatchEvent(new PointerEvent('pointerup', {
         bubbles: true,
         button: 0,
         pointerId: 17,
-        clientX: 756,
-        clientY: 536
+        clientX: 720 + deltaX,
+        clientY: 520 + deltaY
       }));
-      return { before: before, after: Archify.view.state(), pannable: pannable };
+      return {
+        before: before,
+        afterPointerDown: afterPointerDown,
+        afterPointerMove: afterPointerMove,
+        after: Archify.view.state(),
+        deltaX: deltaX,
+        deltaY: deltaY,
+        pannable: pannable
+      };
     })()`);
     assert.equal(panned.before.scale, 1, JSON.stringify(panned));
     assert.equal(panned.pannable, true, JSON.stringify(panned));
+    assert.equal(panned.afterPointerDown.mode, 'manual', JSON.stringify(panned));
+    assert.ok(Math.abs(panned.afterPointerDown.scale - panned.before.scale) <= 0.001, JSON.stringify(panned));
+    assert.ok(Math.abs(panned.afterPointerDown.x - panned.before.x) <= 0.05, JSON.stringify(panned));
+    assert.ok(Math.abs(panned.afterPointerDown.y - panned.before.y) <= 0.05, JSON.stringify(panned));
+    assert.ok(Math.abs(panned.afterPointerMove.x - panned.before.x - panned.deltaX) <= 0.05, JSON.stringify(panned));
+    assert.ok(Math.abs(panned.afterPointerMove.y - panned.before.y - panned.deltaY) <= 0.05, JSON.stringify(panned));
     assert.equal(panned.after.mode, 'manual', JSON.stringify(panned));
-    assert.ok(Math.abs(panned.after.x - panned.before.x) + Math.abs(panned.after.y - panned.before.y) > 3, JSON.stringify(panned));
+    assert.ok(Math.abs(panned.after.x - panned.afterPointerMove.x) <= 0.05, JSON.stringify(panned));
+    assert.ok(Math.abs(panned.after.y - panned.afterPointerMove.y) <= 0.05, JSON.stringify(panned));
+  } finally {
+    await browser.close();
+  }
+});
+
+test('sub-1x semantic framing yields to repeatable manual pan without snapping', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  const artifact = renderLargeReachabilityStress();
+  try {
+    const sessionId = await load(browser, artifact, { width: 721, height: 500 });
+    const receipt = await evaluate(browser, sessionId, `(function () {
+      var container = document.querySelector('.diagram-container');
+      var svg = container.querySelector(':scope > svg');
+      window.scrollTo(0, Math.max(0, container.offsetTop));
+      var ids = Array.from(svg.querySelectorAll('[data-node-id]')).map(function (node) {
+        return node.getAttribute('data-node-id');
+      });
+      Archify.view.reveal(ids, {
+        fitAll: true,
+        minimumScale: 0.35,
+        instant: true,
+        reason: 'sub-one-manual-pan-regression'
+      });
+      var before = Archify.view.state();
+      var width = svg.clientWidth || 1;
+      var height = svg.clientHeight || 1;
+      var centerX = (1 - width * before.scale + width - 1) / 2;
+      var centerY = (1 - height * before.scale + height - 1) / 2;
+      var deltaX = centerX >= before.x ? 12 : -12;
+      var deltaY = centerY >= before.y ? 8 : -8;
+      function pointer(type, pointerId, x, y, buttons) {
+        container.dispatchEvent(new PointerEvent(type, {
+          bubbles: true,
+          button: 0,
+          buttons: buttons,
+          pointerId: pointerId,
+          clientX: x,
+          clientY: y
+        }));
+      }
+      pointer('pointerdown', 31, 280, 180, 1);
+      var afterPointerDown = Archify.view.state();
+      pointer('pointermove', 31, 280 + deltaX, 180 + deltaY, 1);
+      var afterPointerMove = Archify.view.state();
+      pointer('pointerup', 31, 280 + deltaX, 180 + deltaY, 0);
+      var afterPointerUp = Archify.view.state();
+      var pannableAgain = container.classList.contains('is-pannable');
+      var secondDeltaX = deltaX > 0 ? -6 : 6;
+      var secondDeltaY = deltaY > 0 ? -4 : 4;
+      pointer('pointerdown', 32, 300, 190, 1);
+      pointer('pointermove', 32, 300 + secondDeltaX, 190 + secondDeltaY, 1);
+      pointer('pointerup', 32, 300 + secondDeltaX, 190 + secondDeltaY, 0);
+      return {
+        before: before,
+        afterPointerDown: afterPointerDown,
+        afterPointerMove: afterPointerMove,
+        afterPointerUp: afterPointerUp,
+        afterSecondDrag: Archify.view.state(),
+        deltaX: deltaX,
+        deltaY: deltaY,
+        secondDeltaX: secondDeltaX,
+        secondDeltaY: secondDeltaY,
+        pannableAgain: pannableAgain
+      };
+    })()`);
+    const message = JSON.stringify(receipt);
+    assert.ok(receipt.before.scale < 1, message);
+    assert.equal(receipt.before.mode, 'semantic', message);
+    assert.equal(receipt.afterPointerDown.mode, 'manual', message);
+    assert.ok(Math.abs(receipt.afterPointerDown.scale - receipt.before.scale) <= 0.001, message);
+    assert.ok(Math.abs(receipt.afterPointerDown.x - receipt.before.x) <= 0.05, message);
+    assert.ok(Math.abs(receipt.afterPointerDown.y - receipt.before.y) <= 0.05, message);
+    assert.ok(Math.abs(receipt.afterPointerMove.x - receipt.before.x - receipt.deltaX) <= 0.05, message);
+    assert.ok(Math.abs(receipt.afterPointerMove.y - receipt.before.y - receipt.deltaY) <= 0.05, message);
+    assert.ok(Math.abs(receipt.afterPointerUp.x - receipt.afterPointerMove.x) <= 0.05, message);
+    assert.ok(Math.abs(receipt.afterPointerUp.y - receipt.afterPointerMove.y) <= 0.05, message);
+    assert.equal(receipt.pannableAgain, true, message);
+    assert.ok(Math.abs(receipt.afterSecondDrag.x - receipt.afterPointerUp.x - receipt.secondDeltaX) <= 0.05, message);
+    assert.ok(Math.abs(receipt.afterSecondDrag.y - receipt.afterPointerUp.y - receipt.secondDeltaY) <= 0.05, message);
   } finally {
     await browser.close();
   }
@@ -3439,6 +3539,148 @@ test('narrow viewports dock the Passport as a compact bottom sheet without hidin
       assert.equal(relations.overlap, 0, JSON.stringify({ width, relations }));
       assert.equal(relations.focusFullyVisible, true, JSON.stringify({ width, relations }));
     }
+  } finally {
+    await browser.close();
+  }
+});
+
+test('responsive Passport breakpoint preserves a visible keyboard focus and truthful disclosure', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  const artifact = renderRelationshipExplorationStress();
+  try {
+    const sessionId = await load(browser, artifact, { width: 1281, height: 900 });
+    await evaluate(browser, sessionId, `(function () {
+      Archify.focus.set('hub', { toggle: false, updateUrl: false });
+      document.getElementById('btn-focus-copy').focus();
+    })()`);
+    await waitForLayout(browser, sessionId);
+    const desktopFocus = await evaluate(browser, sessionId, `document.activeElement.id`);
+    assert.equal(desktopFocus, 'btn-focus-copy');
+
+    await browser.cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 1280,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, sessionId);
+    await waitForLayout(browser, sessionId);
+    const entered = await evaluate(browser, sessionId, `(function () {
+      var active = document.activeElement;
+      var activeRect = active.getBoundingClientRect();
+      var details = document.getElementById('btn-focus-details');
+      var panel = document.getElementById(details.getAttribute('aria-controls'));
+      var reach = document.getElementById('btn-reach-downstream');
+      return {
+        activeId: active.id,
+        activeVisible: activeRect.width > 0 && activeRect.height > 0 && active.offsetParent !== null,
+        drawer: document.getElementById('focus-chip').getAttribute('data-responsive-drawer'),
+        expanded: details.getAttribute('aria-expanded'),
+        controls: details.getAttribute('aria-controls'),
+        panelHidden: panel.hidden,
+        reachVisible: reach.offsetParent !== null
+      };
+    })()`);
+    assert.deepEqual(entered, {
+      activeId: 'btn-focus-clear',
+      activeVisible: true,
+      drawer: 'true',
+      expanded: 'false',
+      controls: 'relationship-lens-details-panel',
+      panelHidden: true,
+      reachVisible: true,
+    }, JSON.stringify(entered));
+
+    await browser.cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9,
+    }, sessionId);
+    await browser.cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9,
+    }, sessionId);
+    const beforeLeaving = await evaluate(browser, sessionId, `(function () {
+      var details = document.getElementById('btn-focus-details');
+      return {
+        activeId: document.activeElement.id,
+        detailsVisible: details.offsetParent !== null,
+        viewportCompact: document.getElementById('focus-chip').getAttribute('data-viewport-compact')
+      };
+    })()`);
+    assert.deepEqual(beforeLeaving, {
+      activeId: 'btn-focus-details',
+      detailsVisible: true,
+      viewportCompact: null,
+    }, JSON.stringify(beforeLeaving));
+    await browser.cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 1281,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, sessionId);
+    await waitForLayout(browser, sessionId);
+    const left = await evaluate(browser, sessionId, `(function () {
+      var active = document.activeElement;
+      var rect = active.getBoundingClientRect();
+      return {
+        activeId: active.id,
+        activeVisible: rect.width > 0 && rect.height > 0 && active.offsetParent !== null,
+        drawer: document.getElementById('focus-chip').getAttribute('data-responsive-drawer'),
+        detailsHidden: document.getElementById('btn-focus-details').hidden,
+        panelHidden: document.getElementById('relationship-lens-details-panel').hidden
+      };
+    })()`);
+    assert.deepEqual(left, {
+      activeId: 'btn-focus-clear',
+      activeVisible: true,
+      drawer: null,
+      detailsHidden: true,
+      panelHidden: false,
+    }, JSON.stringify(left));
+  } finally {
+    await browser.close();
+  }
+});
+
+test('cold-start reachability deep links reframe after stable Reader geometry', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  const artifact = renderRelationshipExplorationStress();
+  const camera = `(function () {
+    var state = Archify.view.state();
+    return {
+      scale: Math.round(state.scale * 1000) / 1000,
+      x: Math.round(state.x * 100) / 100,
+      y: Math.round(state.y * 100) / 100,
+      mode: state.mode
+    };
+  })()`;
+  try {
+    const sessionId = await load(browser, artifact, {
+      width: 1281,
+      height: 900,
+      query: '#focus=hub&reach=downstream',
+    });
+    const coldStart = await evaluate(browser, sessionId, camera);
+
+    await browser.cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 1280,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, sessionId);
+    await waitForLayout(browser, sessionId);
+    await browser.cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 1281,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, sessionId);
+    await waitForLayout(browser, sessionId);
+    const returned = await evaluate(browser, sessionId, camera);
+
+    assert.deepEqual(coldStart, returned, JSON.stringify({ coldStart, returned }));
+    assert.equal(returned.mode, 'semantic');
   } finally {
     await browser.close();
   }

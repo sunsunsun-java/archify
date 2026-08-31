@@ -1705,6 +1705,7 @@
       background: color-mix(in srgb, var(--frontend-stroke) 68%, transparent);
     }
     .relationship-lens-details { padding: 0.1rem 0.75rem 0; }
+    .relationship-lens-details-panel[hidden] { display: none; }
     .focus-chip[data-relationship-scroll-more="true"]::after {
       content: '';
       position: absolute;
@@ -5538,26 +5539,28 @@
           </div>
           <div class="relationship-lens-actions">
             <button id="btn-focus-clear" type="button" aria-label="Close semantic passport" title="Close">&#215;</button>
-            <button id="btn-focus-details" type="button" aria-label="Show full semantic passport" aria-expanded="false" aria-controls="relationship-lens-body" hidden>Details</button>
+            <button id="btn-focus-details" type="button" aria-label="Show full semantic passport" aria-expanded="false" aria-controls="relationship-lens-details-panel" hidden>Details</button>
             <button id="btn-focus-copy" type="button" aria-label="Copy link to focused node">Copy link</button>
             <button id="btn-focus-relations" type="button" aria-label="Show connected relationships" aria-expanded="false" aria-controls="relationship-lens-list">Relations</button>
           </div>
         </div>
         <div class="relationship-lens-body" id="relationship-lens-body" tabindex="0" role="group" aria-label="Details">
           <div class="relationship-lens-details">
-            <div class="semantic-passport-meta" id="focus-passport-meta" aria-label="Node metadata">
-              <span id="focus-kind" data-passport="kind"></span>
-              <span id="focus-context" data-passport="context" hidden></span>
-              <span id="focus-tag" data-passport="tag" hidden></span>
-              <span id="focus-brand" data-passport="brand" hidden></span>
-              <code id="focus-id" data-passport="id"></code>
-            </div>
-            <div class="semantic-passport-evidence" id="focus-evidence" hidden aria-label="Verified source evidence">
-              <div class="semantic-passport-evidence-head">
-                <span class="semantic-passport-evidence-status">Verified source</span>
-                <a class="semantic-passport-repository" id="focus-repository" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"></a>
+            <div class="relationship-lens-details-panel" id="relationship-lens-details-panel">
+              <div class="semantic-passport-meta" id="focus-passport-meta" aria-label="Node metadata">
+                <span id="focus-kind" data-passport="kind"></span>
+                <span id="focus-context" data-passport="context" hidden></span>
+                <span id="focus-tag" data-passport="tag" hidden></span>
+                <span id="focus-brand" data-passport="brand" hidden></span>
+                <code id="focus-id" data-passport="id"></code>
               </div>
-              <div class="semantic-passport-evidence-links" id="focus-evidence-links"></div>
+              <div class="semantic-passport-evidence" id="focus-evidence" hidden aria-label="Verified source evidence">
+                <div class="semantic-passport-evidence-head">
+                  <span class="semantic-passport-evidence-status">Verified source</span>
+                  <a class="semantic-passport-repository" id="focus-repository" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"></a>
+                </div>
+                <div class="semantic-passport-evidence-links" id="focus-evidence-links"></div>
+              </div>
             </div>
             <div class="semantic-passport-reach" id="focus-reach" hidden>
               <span class="semantic-passport-reach-label">Authored reach</span>
@@ -7738,6 +7741,7 @@
       var upstreamCount = document.getElementById('focus-reach-upstream-count');
       var downstreamCount = document.getElementById('focus-reach-downstream-count');
       var relationshipBody = document.getElementById('relationship-lens-body');
+      var detailsPanel = document.getElementById('relationship-lens-details-panel');
       var relationshipList = document.getElementById('relationship-lens-list');
       var copyBtn = document.getElementById('btn-focus-copy');
       var detailsBtn = document.getElementById('btn-focus-details');
@@ -7753,6 +7757,7 @@
       var relationshipHitTargets = [];
       var directPreviewTimer = null;
       var relationshipPreviewTimer = null;
+      var lastExplorationFocus = null;
       var reachabilityMode = null;
       var activeReachability = null;
       var svgNamespace = 'http://www.w3.org/2000/svg';
@@ -7845,12 +7850,34 @@
         detailsBtn.setAttribute('aria-label', viewerText(expanded
           ? 'viewer.passport.details.hide'
           : 'viewer.passport.details.show'));
+        detailsPanel.hidden = expandable && !expanded;
       }
       function responsiveDrawerEnabled() {
         return window.innerWidth <= 1280 && html.getAttribute('data-embed') !== 'true';
       }
+      function recoverHiddenExplorationFocus(focused) {
+        if (!focused || !chip.contains(focused) ||
+            (!focused.hidden && focused.offsetParent !== null)) return;
+        function moveToClose() {
+          try { clearBtn.focus({ preventScroll: true }); }
+          catch (_) { try { clearBtn.focus(); } catch (_) {} }
+        }
+        moveToClose();
+        requestAnimationFrame(function () {
+          var active = document.activeElement;
+          if (active === document.body || active === html ||
+              (chip.contains(active) && (active.hidden || active.offsetParent === null))) {
+            moveToClose();
+          }
+        });
+      }
       function syncResponsiveDrawerState() {
         var enabled = responsiveDrawerEnabled();
+        var changed = enabled !== (chip.getAttribute('data-responsive-drawer') === 'true');
+        var activeElement = document.activeElement;
+        var focused = chip.contains(activeElement)
+          ? activeElement
+          : (activeElement === document.body || activeElement === html ? lastExplorationFocus : null);
         if (enabled) chip.setAttribute('data-responsive-drawer', 'true');
         else {
           chip.removeAttribute('data-responsive-drawer');
@@ -7859,6 +7886,7 @@
           }
         }
         syncExplorationDetailsButton();
+        if (changed) recoverHiddenExplorationFocus(focused);
         return enabled;
       }
       function setExplorationMode(mode, compact) {
@@ -9325,6 +9353,9 @@
           Archify.view.reveal([id], { includeNeighbors: true, reason: 'focus' });
         }
       });
+      chip.addEventListener('focus', function (event) {
+        lastExplorationFocus = event.target;
+      }, true);
       clearBtn.addEventListener('click', function () { clear({ restoreFocus: true }); });
       detailsBtn.addEventListener('click', function () {
         if (chip.getAttribute('data-exploration-compact') !== 'true' &&
@@ -12048,6 +12079,7 @@
       var semanticSyncRequested = false;
       var deferredRevealFrame = 0;
       var viewIntentGeneration = 0;
+      var manualViewIntentGeneration = 0;
       var autoScrollUntil = 0;
       var semanticViewport = null;
 
@@ -12066,10 +12098,20 @@
         if (minimum > maximum) return (start + end - extent) / 2;
         return Math.min(maximum, Math.max(minimum, value));
       }
+      function clampManualOverviewAxis(value, viewportExtent, contentExtent) {
+        var minimumVisible = Math.min(1, viewportExtent, contentExtent);
+        return Math.min(
+          viewportExtent - minimumVisible,
+          Math.max(minimumVisible - contentExtent, value)
+        );
+      }
       function clamp() {
         var width = svg.clientWidth || 1;
         var height = svg.clientHeight || 1;
-        if (semanticViewport) {
+        if (state.mode === 'manual' && state.scale <= 1.001) {
+          state.x = clampManualOverviewAxis(state.x, width, width * state.scale);
+          state.y = clampManualOverviewAxis(state.y, height, height * state.scale);
+        } else if (semanticViewport) {
           state.x = clampAxis(state.x, semanticViewport.left, semanticViewport.right, width * state.scale);
           state.y = clampAxis(state.y, semanticViewport.top, semanticViewport.bottom, height * state.scale);
         } else {
@@ -12078,9 +12120,10 @@
         }
       }
       function semanticCanPan() {
-        return state.scale > 1.001 || !!(semanticViewport && (
-          state.scale < 0.999 || Math.abs(state.x) > 0.5 || Math.abs(state.y) > 0.5
-        ));
+        var translated = Math.abs(state.x) > 0.5 || Math.abs(state.y) > 0.5;
+        return state.scale > 1.001 ||
+          (state.mode === 'manual' && (state.scale < 0.999 || translated)) ||
+          !!(semanticViewport && (state.scale < 0.999 || translated));
       }
       function reducedMotion() {
         return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -12312,6 +12355,7 @@
         container.removeAttribute('data-camera-transaction');
       }
       function interruptCamera(reason) {
+        manualViewIntentGeneration += 1;
         beginViewIntent();
         if (viewSyncFrame) cancelAnimationFrame(viewSyncFrame);
         viewSyncFrame = 0;
@@ -12777,6 +12821,30 @@
           else apply();
         });
       }
+      function stabilizeInitialSemanticView() {
+        var startupManualIntent = manualViewIntentGeneration;
+        requestAnimationFrame(function () {
+          /* Defer the one startup semantic transaction until fonts and Reader
+             chrome settle. A later click, drag, hash change, or guided-view
+             intent either increments the manual generation or establishes a
+             semantic camera, preventing startup framing from overriding it. */
+          var fontsReady = document.fonts && document.fonts.ready
+            ? document.fonts.ready.catch(function () {})
+            : Promise.resolve();
+          fontsReady.then(function () {
+            return Archify.readerLayout && typeof Archify.readerLayout.whenStable === 'function'
+              ? Archify.readerLayout.whenStable().catch(function () {})
+              : Promise.resolve();
+          }).then(function () {
+            return Archify.viewerChromeLayout && typeof Archify.viewerChromeLayout.whenStable === 'function'
+              ? Archify.viewerChromeLayout.whenStable().catch(function () {})
+              : Promise.resolve();
+          }).then(function () {
+            if (startupManualIntent !== manualViewIntentGeneration || state.mode === 'semantic') return;
+            syncSemantic();
+          });
+        });
+      }
       function pinControls() {
         container.style.setProperty('--archify-scroll-x', container.scrollLeft + 'px');
       }
@@ -12829,7 +12897,7 @@
       });
       apply();
       pinControls();
-      requestViewSync(true);
+      stabilizeInitialSemanticView();
 
       return {
         zoomIn: function () { zoom(state.scale + 0.25); },
@@ -13093,7 +13161,7 @@
         return true;
       }
       function reservePassportForCompactRadar(context) {
-        if (window.innerWidth > 720 || !context || !context.passportRect || passportYielded ||
+        if (window.innerWidth > 1280 || !context || !context.passportRect || passportYielded ||
             passport.hasAttribute('data-viewport-compact')) return false;
         var fixedBlockers = context.fixedBlockers || [];
         var segments = [{ top: context.bounds.top, bottom: context.bounds.bottom }];
@@ -13436,7 +13504,11 @@
         }
         var requested = activeDrag.current;
         manualPosition = { left: requested.left, top: requested.top };
-        updateDocking();
+        if (!updateDocking()) {
+          reflectUnavailable({ preserveReservation: passportReservationChanged });
+        } else {
+          requestAnimationFrame(sync);
+        }
       }
 
       trigger.addEventListener('click', toggle);

@@ -280,12 +280,7 @@ test('deliver rechecks aliases immediately before committing a verified candidat
 import fs from 'node:fs';
 const [, output] = process.argv.slice(2);
 fs.writeFileSync(process.env.ARCHIFY_TEST_RENDER_STARTED, output);
-const release = process.env.ARCHIFY_TEST_RENDER_RELEASE;
-const started = Date.now();
-while (!fs.existsSync(release) && Date.now() - started < 3000) {
-  await new Promise((resolve) => setTimeout(resolve, 20));
-}
-if (!fs.existsSync(release)) throw new Error('Timed out waiting for the alias-swap release marker.');
+await new Promise((resolve) => setTimeout(resolve, 500));
 fs.writeFileSync(output, '<!doctype html><title>verified candidate</title><svg></svg>');
 `);
   fs.writeFileSync(path.join(installedScripts, 'check-render-output.mjs'), `
@@ -311,7 +306,6 @@ console.log(JSON.stringify({
   const source = Buffer.from('{"meta":{"title":"race input"}}');
   fs.writeFileSync(input, source);
   const marker = path.join(cwd, 'renderer-started');
-  const release = path.join(cwd, 'renderer-release');
 
   const child = spawn(process.execPath, [
     path.join(installedBin, 'archify.mjs'),
@@ -319,11 +313,7 @@ console.log(JSON.stringify({
   ], {
     cwd,
     encoding: 'utf8',
-    env: {
-      ...process.env,
-      ARCHIFY_TEST_RENDER_STARTED: marker,
-      ARCHIFY_TEST_RENDER_RELEASE: release,
-    },
+    env: { ...process.env, ARCHIFY_TEST_RENDER_STARTED: marker },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let stdout = '';
@@ -343,7 +333,6 @@ console.log(JSON.stringify({
   fs.mkdirSync(path.dirname(path.join(inputDirectory, candidateRelative)), { recursive: true });
   fs.unlinkSync(linkedDirectory);
   fs.symlinkSync(inputDirectory, linkedDirectory, 'dir');
-  fs.writeFileSync(release, 'release');
 
   const status = await new Promise((resolve) => child.once('close', resolve));
 

@@ -64,7 +64,8 @@ test('all typed renderers expose named, stable relationships without changing ge
 test('relationship lens groups incoming, outgoing, and self-loop paths and follows neighbors', () => {
   const html = render('architecture', CASES.architecture.example);
   assert.match(html, /id="focus-chip" hidden role="region" aria-labelledby="relationship-lens-title"/);
-  assert.match(html, /id="btn-focus-details"[^>]+aria-expanded="false"[^>]+aria-controls="relationship-lens-body"/);
+  assert.match(html, /id="btn-focus-details"[^>]+aria-expanded="false"[^>]+aria-controls="relationship-lens-details-panel"/);
+  assert.match(html, /id="relationship-lens-details-panel"/);
   assert.match(html, /id="relationship-lens-body" tabindex="0" role="group" aria-label="Details"/);
   assert.match(html, /id="relationship-lens-list" aria-label="Connected relationships"/);
   assert.match(html, /function relationshipsFor\(id, byId\)/);

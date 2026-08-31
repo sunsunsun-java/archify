@@ -80,6 +80,9 @@ test('semantic camera follows reader intent but yields to manual navigation', ()
   assert.match(html, /Archify\.guidedViews\.pause\(\)/);
   assert.match(html, /container\.addEventListener\('pointerdown',[\s\S]+interruptCamera\(\)/);
   assert.match(html, /function semanticCanPan\(\)/);
+  assert.match(html, /function clampManualOverviewAxis\(value, viewportExtent, contentExtent\)/);
+  assert.match(html, /state\.mode === 'manual' && state\.scale <= 1\.001/);
+  assert.match(html, /state\.mode === 'manual' && \(state\.scale < 0\.999 \|\| translated\)/);
   assert.match(html, /if \(!semanticCanPan\(\) \|\| event\.button !== 0/);
   assert.match(html, /\.overview-map, \.route-probe, \.semantic-lens/);
   assert.match(html, /window\.innerWidth <= 720 && container\.hasAttribute\('data-wide-diagram'\) && Date\.now\(\) > autoScrollUntil/);
