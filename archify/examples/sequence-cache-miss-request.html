@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="generator" content="archify 2.16.0">
+  <meta name="generator" content="archify 2.17.0-dev.0">
   <title>Cache Miss Request Sequence Diagram</title>
   <script>
     // Resolve the theme before first paint so light-preference users don't
@@ -5738,6 +5738,7 @@
       var RASTER_SCALE = 4;
       var MOTION_DURATION = 6000;
       var MOTION_FPS = 30;
+      var SUPPORTED_EXPORT_FORMATS = { svg: true, png: true, jpeg: true, webp: true, webm: true };
 
       function exportError(key, values) {
         var error = new Error(viewerText(key, values));
@@ -6551,6 +6552,9 @@
       });
 
       function runExport(format) {
+        if (!Object.prototype.hasOwnProperty.call(SUPPORTED_EXPORT_FORMATS, format)) {
+          return Promise.reject(new Error('Unsupported export format: ' + String(format)));
+        }
         var base = diagramFilename();
         close(true);
         clearExportReceipt();
@@ -7153,9 +7157,6 @@
         resetReachabilityButtons();
         reachStatus.textContent = '';
         reachStatus.hidden = true;
-        if (Archify.exportMenu && typeof Archify.exportMenu.syncReachShare === 'function') {
-          Archify.exportMenu.syncReachShare();
-        }
         if (options.updateUrl === true && activeIds.length === 1) {
           try {
             history.replaceState(null, '', location.pathname + location.search + '#focus=' + encodeURIComponent(activeIds[0]));
@@ -7232,9 +7233,6 @@
           hops: result.maxDepth
         });
         reachStatus.hidden = false;
-        if (Archify.exportMenu && typeof Archify.exportMenu.syncReachShare === 'function') {
-          Archify.exportMenu.syncReachShare();
-        }
         if (options.updateUrl !== false) {
           try {
             history.replaceState(null, '', location.pathname + location.search + '#focus=' +
@@ -7246,98 +7244,6 @@
         }
         requestLensPlacement();
         return true;
-      }
-      function reachabilitySnapshot() {
-        if (!activeReachability || activeIds.length !== 1 ||
-            (reachabilityMode !== 'upstream' && reachabilityMode !== 'downstream') ||
-            activeReachability.direction !== reachabilityMode ||
-            activeReachability.originId !== activeIds[0] ||
-            svg.getAttribute('data-reach-active') !== reachabilityMode) return null;
-
-        var originId = activeReachability.originId;
-        var nodeIds = activeReachability.nodeIds.slice();
-        var edgeKeys = activeReachability.edgeKeys.slice();
-        if (nodeIds.length < 2 || nodeIds[0] !== originId || !edgeKeys.length ||
-            !activeReachability.depths || !Number.isInteger(activeReachability.maxDepth) ||
-            activeReachability.maxDepth < 1) return null;
-
-        var allNodes = nodes();
-        var allEdges = edges();
-        var seenNodeIds = Object.create(null);
-        var seenEdgeKeys = Object.create(null);
-        var nodeIdSet = Object.create(null);
-        var depths = Object.create(null);
-        var originNode = null;
-        var measuredMaxDepth = 0;
-
-        if (nodeIds.some(function (id) {
-          var depth = activeReachability.depths[id];
-          var matches = allNodes.filter(function (node) {
-            return node.getAttribute('data-node-id') === id;
-          });
-          if (typeof id !== 'string' || !id || seenNodeIds[id] || matches.length !== 1 ||
-              !matches[0].hasAttribute('data-reach-match') ||
-              !Number.isInteger(depth) || depth < 0 || depth > activeReachability.maxDepth ||
-              (id === originId
-                ? (!matches[0].hasAttribute('data-reach-origin') || depth !== 0)
-                : depth < 1)) return true;
-          seenNodeIds[id] = true;
-          nodeIdSet[id] = true;
-          depths[id] = depth;
-          measuredMaxDepth = Math.max(measuredMaxDepth, depth);
-          if (id === originId) originNode = matches[0];
-          return false;
-        }) || !originNode || measuredMaxDepth !== activeReachability.maxDepth ||
-            allNodes.filter(function (node) { return node.hasAttribute('data-reach-match'); }).length !== nodeIds.length) return null;
-
-        var edgeRecords = [];
-        if (edgeKeys.some(function (key) {
-          if (typeof key !== 'string' || !key || seenEdgeKeys[key]) return true;
-          var fragments = allEdges.filter(function (edge) {
-            return edge.getAttribute('data-edge-key') === key;
-          });
-          var drawableFragments = fragments.filter(hasDrawableGeometry);
-          if (!fragments.length || drawableFragments.length !== 1 ||
-              !fragments.every(function (fragment) { return fragment.hasAttribute('data-reach-match'); })) return true;
-          var first = fragments[0];
-          var from = first.getAttribute('data-edge-from');
-          var to = first.getAttribute('data-edge-to');
-          var id = first.getAttribute('data-edge-id') || '';
-          var labelValue = first.getAttribute('data-edge-label') || '';
-          if (!nodeIdSet[from] || !nodeIdSet[to] || !fragments.every(function (fragment) {
-            return fragment.getAttribute('data-edge-from') === from &&
-              fragment.getAttribute('data-edge-to') === to &&
-              (fragment.getAttribute('data-edge-id') || '') === id;
-          })) return true;
-          seenEdgeKeys[key] = true;
-          edgeRecords.push({
-            key: key,
-            id: id,
-            from: from,
-            to: to,
-            label: labelValue,
-            depth: Math.max(depths[from], depths[to])
-          });
-          return false;
-        })) return null;
-
-        var liveEdgeKeys = Object.create(null);
-        if (allEdges.some(function (edge) {
-          if (!edge.hasAttribute('data-reach-match')) return false;
-          var key = edge.getAttribute('data-edge-key');
-          if (!key || !seenEdgeKeys[key]) return true;
-          liveEdgeKeys[key] = true;
-          return false;
-        }) || Object.keys(liveEdgeKeys).length !== edgeKeys.length) return null;
-
-        return {
-          direction: reachabilityMode,
-          origin: { id: originId, label: nodeLabel(originNode, originId) },
-          nodeIds: nodeIds,
-          depths: depths,
-          maxDepth: activeReachability.maxDepth,
-          edges: edgeRecords
-        };
       }
       function setPassportValue(element, value) {
         var normalized = value == null ? '' : String(value).trim();
@@ -8427,7 +8333,6 @@
         copyLink: copyFocusLink,
         reach: applyReachability,
         clearReach: clearReachability,
-        reachabilitySnapshot: reachabilitySnapshot,
         inspectRelationship: inspectRelationship,
         inspectRelationshipById: inspectRelationshipById,
         reposition: requestLensPlacement,
@@ -12455,54 +12360,6 @@
         return node.getAttribute('data-node-label') ||
           (node.getAttribute('aria-label') || fallback).replace(/^Focus\s+/, '').split(',')[0];
       }
-      function exportSnapshot() {
-        if (mode !== 'result' || activeNodeIds.length < 2 || activeEdges.length !== activeNodeIds.length - 1) return null;
-        var allNodes = nodes();
-        var byId = nodesById();
-        var seenNodeIds = Object.create(null);
-        var seenEdgeKeys = Object.create(null);
-        if (startId !== activeNodeIds[0] || endId !== activeNodeIds[activeNodeIds.length - 1] ||
-            activeNodeIds.some(function (id) {
-              if (seenNodeIds[id] || allNodes.filter(function (node) {
-                return node.getAttribute('data-node-id') === id;
-              }).length !== 1) return true;
-              seenNodeIds[id] = true;
-              return !byId[id];
-            }) ||
-            activeEdges.some(function (edge, index) {
-              if (!edge || !svg.contains(edge)) return true;
-              var edgeKey = edge.getAttribute('data-edge-key');
-              var edgeId = edge.getAttribute('data-edge-id') || '';
-              if (!edgeKey || seenEdgeKeys[edgeKey]) return true;
-              seenEdgeKeys[edgeKey] = true;
-              var fragments = Array.prototype.slice.call(svg.querySelectorAll('[data-edge-key]')).filter(function (candidate) {
-                return candidate.getAttribute('data-edge-key') === edgeKey;
-              });
-              var drawableFragments = fragments.filter(hasDrawableGeometry);
-              return !fragments.length || !fragments.every(function (fragment) {
-                return fragment.getAttribute('data-edge-from') === activeNodeIds[index] &&
-                  fragment.getAttribute('data-edge-to') === activeNodeIds[index + 1] &&
-                  (fragment.getAttribute('data-edge-id') || '') === edgeId;
-              }) || drawableFragments.length !== 1 || drawableFragments[0] !== edge ||
-                edge.getAttribute('data-edge-from') !== activeNodeIds[index] ||
-                edge.getAttribute('data-edge-to') !== activeNodeIds[index + 1];
-            })) return null;
-        return {
-          source: { id: startId, label: nodeLabel(byId[startId], startId) },
-          target: { id: endId, label: nodeLabel(byId[endId], endId) },
-          nodeIds: activeNodeIds.slice(),
-          hops: activeEdges.length,
-          edges: activeEdges.map(function (edge) {
-            return {
-              key: edge.getAttribute('data-edge-key'),
-              id: edge.getAttribute('data-edge-id') || '',
-              from: edge.getAttribute('data-edge-from'),
-              to: edge.getAttribute('data-edge-to'),
-              label: edge.getAttribute('data-edge-label') || ''
-            };
-          })
-        };
-      }
       function edgeShapes(edge) {
         if (/^(path|line|polyline)$/i.test(edge.tagName)) return [edge];
         return Array.prototype.slice.call(edge.querySelectorAll('path, line, polyline'));
@@ -12655,7 +12512,6 @@
         findBtn.setAttribute('aria-label', viewerText('viewer.route.start.find.aria'));
         copyBtn.hidden = true;
         copyBtn.textContent = viewerText('viewer.route.copy');
-        if (Archify.exportMenu && typeof Archify.exportMenu.syncRouteShare === 'function') Archify.exportMenu.syncRouteShare();
         setTrigger(false);
         if (wasActive && options.preserveView !== true && Archify.view && typeof Archify.view.reset === 'function') {
           Archify.view.reset({ automatic: true });
@@ -13150,7 +13006,6 @@
         findBtn.hidden = true;
         copyBtn.hidden = false;
         setTrigger(true);
-        if (Archify.exportMenu && typeof Archify.exportMenu.syncRouteShare === 'function') Archify.exportMenu.syncRouteShare();
         if (options.updateUrl !== false) {
           replaceRouteHash(encodeURIComponent(startId) + '~' + encodeURIComponent(endId));
         }
@@ -13424,7 +13279,6 @@
         finderOpening: finderOpening,
         finderClosed: finderClosed,
         openFinder: openFinder,
-        exportSnapshot: exportSnapshot,
         active: function () { return mode === 'idle' ? null : mode; },
         result: function () {
           return mode === 'result'

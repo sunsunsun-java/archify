@@ -53,6 +53,8 @@ test('Copy diagram uses the complete high-resolution PNG raster path', () => {
   assert.match(html, /var scale = pickSafeScale\(vb\.width, vb\.height\);/);
   assert.match(html, /var data = serializeSvg\(scale\);/);
   assert.match(html, /ctx\.drawImage\(img, 0, 0\);/);
+  assert.match(html, /var SUPPORTED_EXPORT_FORMATS = \{ svg: true, png: true, jpeg: true, webp: true, webm: true \};/);
+  assert.match(html, /if \(!Object\.prototype\.hasOwnProperty\.call\(SUPPORTED_EXPORT_FORMATS, format\)\)[\s\S]*?Promise\.reject/);
 });
 
 test('retired Share Card UI, implementation, API, and receipt state are absent', () => {
@@ -66,6 +68,10 @@ test('retired Share Card UI, implementation, API, and receipt state are absent',
       /copyShareCard/,
       /downloadRouteShareCard/,
       /downloadReachShareCard/,
+      /syncReachShare/,
+      /syncRouteShare/,
+      /reachabilitySnapshot/,
+      /exportSnapshot/,
       /data-last-export-variant/,
       /data-last-export-route-state-clean/,
       /data-last-export-reach-state-clean/,

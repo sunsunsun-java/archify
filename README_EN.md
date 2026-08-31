@@ -21,9 +21,9 @@ Archify is a Node.js rendering and validation system for Cursor, Claude Code, Co
 
 ![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)
 ![Agent Skill](https://img.shields.io/badge/Agent-Skill-7C3AED?style=flat-square)
-![Stable Version](https://img.shields.io/badge/version-2.16.0-0891b2?style=flat-square)
+![Development Version](https://img.shields.io/badge/version-2.17.0--dev.0-0891b2?style=flat-square)
 
-**Current stable version:** `v2.16.0`. See [Changelog](CHANGELOG.md#2160--2026-08-30).
+**Current development version:** `v2.17.0-dev.0`. See [Changelog](CHANGELOG.md#unreleased).
 
 **[Project page](https://tt-a1i.github.io/archify/)** · **[Scenario guide](https://tt-a1i.github.io/archify/guide.html)** · **[Proof Lab](https://tt-a1i.github.io/archify/gallery.html)**
 
@@ -62,8 +62,6 @@ These are generated Archify artifacts, not product mockups. Click a frame to ope
 The [Proof Lab](https://tt-a1i.github.io/archify/gallery.html) contains all 11 checked-in scenarios, their JSON sources, named views, and validation receipts.
 
 ### A real repository, mapped from source
-
-[![MCO runtime architecture generated from the public mco-org/mco repository](docs/assets/mco-runtime-architecture.png)](https://tt-a1i.github.io/archify/cases/mco-runtime.architecture.html?theme=dark&present=1#view=dispatch-path)
 
 Archify traced [`mco-org/mco`](https://github.com/mco-org/mco) at `9f1a1cf` and produced this checked map. **[Open it ↗](https://tt-a1i.github.io/archify/cases/mco-runtime.architecture.html?theme=dark&present=1#view=dispatch-path)** · [trace reach ↗](https://tt-a1i.github.io/archify/cases/mco-runtime.architecture.html?theme=dark#focus=router&reach=downstream) · [typed source](docs/cases/mco-runtime.architecture.json)
 

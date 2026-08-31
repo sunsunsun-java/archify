@@ -17,9 +17,9 @@ Archify 是一套基于 Node.js 的渲染与校验系统，并以 Agent Skill �
 
 ![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)
 ![Agent Skill](https://img.shields.io/badge/Agent-Skill-7C3AED?style=flat-square)
-![稳定版本](https://img.shields.io/badge/version-2.16.0-0891b2?style=flat-square)
+![开发版本](https://img.shields.io/badge/version-2.17.0--dev.0-0891b2?style=flat-square)
 
-**当前稳定版本：** `v2.16.0`。详见[版本历史](CHANGELOG.md#2160--2026-08-30)。
+**当前开发版本：** `v2.17.0-dev.0`。详见[版本历史](CHANGELOG.md#unreleased)。
 
 **[在线项目页](https://tt-a1i.github.io/archify/)** · **[场景选图指南](https://tt-a1i.github.io/archify/guide.html)** · **[Proof Lab](https://tt-a1i.github.io/archify/gallery.html)**
 
@@ -57,8 +57,6 @@ npx skills add tt-a1i/archify -g
 [Proof Lab](https://tt-a1i.github.io/archify/gallery.html) 收录全部 11 个仓库内场景、JSON 源、命名视图和校验回执。
 
 ### 从真实仓库读出来，不是只靠 Prompt 画出来
-
-[![根据公开仓库 mco-org/mco 生成的 MCO 运行时架构图](docs/assets/mco-runtime-architecture.png)](https://tt-a1i.github.io/archify/cases/mco-runtime.architecture.html?theme=dark&present=1#view=dispatch-path)
 
 Archify 追踪 [`mco-org/mco`](https://github.com/mco-org/mco) 的 `9f1a1cf` 版本并生成这张校验地图。**[打开成品 ↗](https://tt-a1i.github.io/archify/cases/mco-runtime.architecture.html?theme=dark&present=1#view=dispatch-path)** · [追踪下游 ↗](https://tt-a1i.github.io/archify/cases/mco-runtime.architecture.html?theme=dark#focus=router&reach=downstream) · [Typed Source](docs/cases/mco-runtime.architecture.json)
 

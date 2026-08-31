@@ -183,7 +183,6 @@ test('README stays scannable without deleting the visual proof set', () => {
     'archify-demo-story.png',
     'archify-demo-route.png',
     'archify-demo-lens.png',
-    'mco-runtime-architecture.png',
     'archify-dark.png',
     'archify-light.png',
     'archify-workflow.png',

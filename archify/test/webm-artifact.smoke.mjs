@@ -805,23 +805,58 @@ try {
   async function captureCopiedDiagram(file, label) {
     await navigateReady(file, '!!(window.Archify && Archify.exportMenu && Archify.exportMenu.copyDiagram)', label);
     const copiedPayload = await withTimeout(evaluate(cdp, sessionId, String.raw`(async function () {
+      var originalCreateObjectURL = URL.createObjectURL;
+      var originalAnchorClick = HTMLAnchorElement.prototype.click;
       try {
-        Object.defineProperty(window, 'ClipboardItem', {
-          configurable: true,
-          value: function ClipboardItem(items) { this.items = items; }
-        });
+        var retiredDownloads = 0;
+        HTMLAnchorElement.prototype.click = function () { retiredDownloads += 1; };
+        var retiredError = null;
+        try { await Archify.exportMenu.run('share-card'); }
+        catch (error) { retiredError = String(error && error.message || error); }
+        var retiredReceipt = document.documentElement.getAttribute('data-last-export-format');
+        HTMLAnchorElement.prototype.click = originalAnchorClick;
+
+        var capturedSvg = null;
+        URL.createObjectURL = function (blob) {
+          if (!capturedSvg && blob && /^image\/svg\+xml/.test(blob.type || '')) capturedSvg = blob.text();
+          return originalCreateObjectURL.call(URL, blob);
+        };
         Object.defineProperty(navigator, 'clipboard', {
           configurable: true,
           value: {
             write: async function (items) {
-              window.__archifyCopiedDiagram = await Promise.resolve(items[0].items['image/png']);
+              window.__archifyCopiedDiagram = await items[0].getType('image/png');
             }
           }
         });
         window.alert = function (message) { window.__archifyCopyAlert = message; };
-        await Archify.exportMenu.copyDiagram();
+        var exportButton = document.querySelector('#btn-export');
+        var copyButton = document.querySelector('[aria-label="Share"] button[data-action="copy"]');
+        var copyDisabled = !copyButton || copyButton.disabled;
+        exportButton.click();
+        copyButton.click();
+        for (var attempt = 0; attempt < 200 && !window.__archifyCopiedDiagram && !window.__archifyCopyAlert; attempt += 1) {
+          await new Promise(function (resolve) { setTimeout(resolve, 25); });
+        }
         var blob = window.__archifyCopiedDiagram;
         if (!blob) throw new Error(window.__archifyCopyAlert || 'clipboard received no blob');
+        var svgText = capturedSvg ? await capturedSvg : '';
+        var parser = new DOMParser();
+        var exportedSvg = parser.parseFromString(svgText, 'image/svg+xml').documentElement;
+        var liveSvg = document.querySelector('.diagram-container svg');
+        function identities(root, selector, attribute) {
+          return Array.from(new Set(Array.from(root.querySelectorAll(selector))
+            .map(function (element) { return element.getAttribute(attribute); })
+            .filter(Boolean))).sort();
+        }
+        var topology = {
+          liveNodes: identities(liveSvg, '[data-node-id]', 'data-node-id'),
+          exportedNodes: identities(exportedSvg, '[data-node-id]', 'data-node-id'),
+          liveEdges: identities(liveSvg, '[data-edge-key]', 'data-edge-key'),
+          exportedEdges: identities(exportedSvg, '[data-edge-key]', 'data-edge-key'),
+          liveBoundaries: identities(liveSvg, '[data-boundary-id]', 'data-boundary-id'),
+          exportedBoundaries: identities(exportedSvg, '[data-boundary-id]', 'data-boundary-id')
+        };
         var bytes = new Uint8Array(await blob.arrayBuffer());
         var binary = '';
         for (var offset = 0; offset < bytes.length; offset += 32768) {
@@ -835,22 +870,39 @@ try {
           size: blob.size,
           base64: btoa(binary),
           viewBox: { width: vb.width, height: vb.height },
+          topology: topology,
+          copyDisabled: copyDisabled,
           soleShareAction: shareItems.length === 1 && shareItems[0].dataset.action === 'copy',
           retiredApi: !('shareCard' in Archify.exportMenu) &&
             !('copyShareCard' in Archify.exportMenu) &&
             !('downloadRouteShareCard' in Archify.exportMenu) &&
-            !('downloadReachShareCard' in Archify.exportMenu)
+            !('downloadReachShareCard' in Archify.exportMenu) &&
+            !('reachabilitySnapshot' in Archify.focus) &&
+            !('exportSnapshot' in Archify.routeProbe),
+          retiredFormat: {
+            rejected: Boolean(retiredError),
+            downloads: retiredDownloads,
+            receipt: retiredReceipt
+          }
         };
       } catch (error) {
         return { ok: false, error: String(error && error.message || error) };
+      } finally {
+        URL.createObjectURL = originalCreateObjectURL;
+        HTMLAnchorElement.prototype.click = originalAnchorClick;
       }
     })()`, true), 10_000, `${label} Copy diagram`);
 
     assert.equal(copiedPayload?.ok, true, copiedPayload?.error || `${label} Copy diagram failed`);
     assert.equal(copiedPayload.type, 'image/png');
     assert.ok(copiedPayload.size > 20_000, `${label} copied diagram is unexpectedly small`);
+    assert.equal(copiedPayload.copyDisabled, false, `${label} Copy diagram menu item is disabled`);
     assert.equal(copiedPayload.soleShareAction, true);
     assert.equal(copiedPayload.retiredApi, true);
+    assert.deepEqual(copiedPayload.retiredFormat, { rejected: true, downloads: 0, receipt: null });
+    assert.deepEqual(copiedPayload.topology.exportedNodes, copiedPayload.topology.liveNodes, `${label} copied diagram changed nodes`);
+    assert.deepEqual(copiedPayload.topology.exportedEdges, copiedPayload.topology.liveEdges, `${label} copied diagram changed edges`);
+    assert.deepEqual(copiedPayload.topology.exportedBoundaries, copiedPayload.topology.liveBoundaries, `${label} copied diagram changed boundaries`);
     const png = Buffer.from(copiedPayload.base64, 'base64');
     assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${label} copied output is not a PNG`);
     const width = png.readUInt32BE(16);
@@ -868,7 +920,10 @@ try {
     await navigateReady(file, '!!(window.Archify && Archify.routeProbe && Archify.exportMenu && Archify.motionGovernor)', label);
 
     async function sourceFingerprint() {
-      return evaluate(cdp, sessionId, `JSON.stringify(Archify.routeProbe.exportSnapshot())`);
+      return evaluate(cdp, sessionId, `JSON.stringify((function () {
+        var result = Archify.routeProbe.result();
+        return result ? { source: result.source, target: result.target, nodes: result.nodes, hops: result.hops } : null;
+      })())`);
     }
 
     const setup = await evaluate(cdp, sessionId, `(function () {
@@ -911,7 +966,9 @@ try {
   await verifyResolvedLegendContract(legendOutputs);
   await verifySemanticPassportDismissal(path.resolve(skillRoot, '../docs/gallery/artifacts/production-deployment.architecture.html'));
   await verifyArchitectureDeltaNavigator(path.resolve(skillRoot, '../examples/checkout-platform-delta.html'));
-  await captureCopiedDiagram(output, 'architecture-wide');
+  for (const [mode, file] of Object.entries(routeOutputs)) {
+    await captureCopiedDiagram(file, `${mode}-complete`);
+  }
   await verifyDynamicReducedMotionRoute(routeOutputs.architecture, 'architecture-route reduced motion', 'users', 'api');
   await navigateReady(output, '!!(window.Archify && Archify.motion && Archify.motion.canRecord())', 'motion artifact');
 

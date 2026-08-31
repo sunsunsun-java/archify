@@ -4812,7 +4812,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
 &lt;head&gt;
   &lt;meta charset=&quot;UTF-8&quot;&gt;
   &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
-  &lt;meta name=&quot;generator&quot; content=&quot;archify 2.16.0&quot;&gt;
+  &lt;meta name=&quot;generator&quot; content=&quot;archify 2.17.0-dev.0&quot;&gt;
   &lt;title&gt;Checkout Platform — Baseline Diagram&lt;/title&gt;
   &lt;script&gt;
     // Resolve the theme before first paint so light-preference users don&#39;t
@@ -10429,6 +10429,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       var RASTER_SCALE = 4;
       var MOTION_DURATION = 6000;
       var MOTION_FPS = 30;
+      var SUPPORTED_EXPORT_FORMATS = { svg: true, png: true, jpeg: true, webp: true, webm: true };
 
       function exportError(key, values) {
         var error = new Error(viewerText(key, values));
@@ -11242,6 +11243,9 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       });
 
       function runExport(format) {
+        if (!Object.prototype.hasOwnProperty.call(SUPPORTED_EXPORT_FORMATS, format)) {
+          return Promise.reject(new Error(&#39;Unsupported export format: &#39; + String(format)));
+        }
         var base = diagramFilename();
         close(true);
         clearExportReceipt();
@@ -11844,9 +11848,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         resetReachabilityButtons();
         reachStatus.textContent = &#39;&#39;;
         reachStatus.hidden = true;
-        if (Archify.exportMenu &amp;&amp; typeof Archify.exportMenu.syncReachShare === &#39;function&#39;) {
-          Archify.exportMenu.syncReachShare();
-        }
         if (options.updateUrl === true &amp;&amp; activeIds.length === 1) {
           try {
             history.replaceState(null, &#39;&#39;, location.pathname + location.search + &#39;#focus=&#39; + encodeURIComponent(activeIds[0]));
@@ -11923,9 +11924,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           hops: result.maxDepth
         });
         reachStatus.hidden = false;
-        if (Archify.exportMenu &amp;&amp; typeof Archify.exportMenu.syncReachShare === &#39;function&#39;) {
-          Archify.exportMenu.syncReachShare();
-        }
         if (options.updateUrl !== false) {
           try {
             history.replaceState(null, &#39;&#39;, location.pathname + location.search + &#39;#focus=&#39; +
@@ -11937,98 +11935,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         }
         requestLensPlacement();
         return true;
-      }
-      function reachabilitySnapshot() {
-        if (!activeReachability || activeIds.length !== 1 ||
-            (reachabilityMode !== &#39;upstream&#39; &amp;&amp; reachabilityMode !== &#39;downstream&#39;) ||
-            activeReachability.direction !== reachabilityMode ||
-            activeReachability.originId !== activeIds[0] ||
-            svg.getAttribute(&#39;data-reach-active&#39;) !== reachabilityMode) return null;
-
-        var originId = activeReachability.originId;
-        var nodeIds = activeReachability.nodeIds.slice();
-        var edgeKeys = activeReachability.edgeKeys.slice();
-        if (nodeIds.length &lt; 2 || nodeIds[0] !== originId || !edgeKeys.length ||
-            !activeReachability.depths || !Number.isInteger(activeReachability.maxDepth) ||
-            activeReachability.maxDepth &lt; 1) return null;
-
-        var allNodes = nodes();
-        var allEdges = edges();
-        var seenNodeIds = Object.create(null);
-        var seenEdgeKeys = Object.create(null);
-        var nodeIdSet = Object.create(null);
-        var depths = Object.create(null);
-        var originNode = null;
-        var measuredMaxDepth = 0;
-
-        if (nodeIds.some(function (id) {
-          var depth = activeReachability.depths[id];
-          var matches = allNodes.filter(function (node) {
-            return node.getAttribute(&#39;data-node-id&#39;) === id;
-          });
-          if (typeof id !== &#39;string&#39; || !id || seenNodeIds[id] || matches.length !== 1 ||
-              !matches[0].hasAttribute(&#39;data-reach-match&#39;) ||
-              !Number.isInteger(depth) || depth &lt; 0 || depth &gt; activeReachability.maxDepth ||
-              (id === originId
-                ? (!matches[0].hasAttribute(&#39;data-reach-origin&#39;) || depth !== 0)
-                : depth &lt; 1)) return true;
-          seenNodeIds[id] = true;
-          nodeIdSet[id] = true;
-          depths[id] = depth;
-          measuredMaxDepth = Math.max(measuredMaxDepth, depth);
-          if (id === originId) originNode = matches[0];
-          return false;
-        }) || !originNode || measuredMaxDepth !== activeReachability.maxDepth ||
-            allNodes.filter(function (node) { return node.hasAttribute(&#39;data-reach-match&#39;); }).length !== nodeIds.length) return null;
-
-        var edgeRecords = [];
-        if (edgeKeys.some(function (key) {
-          if (typeof key !== &#39;string&#39; || !key || seenEdgeKeys[key]) return true;
-          var fragments = allEdges.filter(function (edge) {
-            return edge.getAttribute(&#39;data-edge-key&#39;) === key;
-          });
-          var drawableFragments = fragments.filter(hasDrawableGeometry);
-          if (!fragments.length || drawableFragments.length !== 1 ||
-              !fragments.every(function (fragment) { return fragment.hasAttribute(&#39;data-reach-match&#39;); })) return true;
-          var first = fragments[0];
-          var from = first.getAttribute(&#39;data-edge-from&#39;);
-          var to = first.getAttribute(&#39;data-edge-to&#39;);
-          var id = first.getAttribute(&#39;data-edge-id&#39;) || &#39;&#39;;
-          var labelValue = first.getAttribute(&#39;data-edge-label&#39;) || &#39;&#39;;
-          if (!nodeIdSet[from] || !nodeIdSet[to] || !fragments.every(function (fragment) {
-            return fragment.getAttribute(&#39;data-edge-from&#39;) === from &amp;&amp;
-              fragment.getAttribute(&#39;data-edge-to&#39;) === to &amp;&amp;
-              (fragment.getAttribute(&#39;data-edge-id&#39;) || &#39;&#39;) === id;
-          })) return true;
-          seenEdgeKeys[key] = true;
-          edgeRecords.push({
-            key: key,
-            id: id,
-            from: from,
-            to: to,
-            label: labelValue,
-            depth: Math.max(depths[from], depths[to])
-          });
-          return false;
-        })) return null;
-
-        var liveEdgeKeys = Object.create(null);
-        if (allEdges.some(function (edge) {
-          if (!edge.hasAttribute(&#39;data-reach-match&#39;)) return false;
-          var key = edge.getAttribute(&#39;data-edge-key&#39;);
-          if (!key || !seenEdgeKeys[key]) return true;
-          liveEdgeKeys[key] = true;
-          return false;
-        }) || Object.keys(liveEdgeKeys).length !== edgeKeys.length) return null;
-
-        return {
-          direction: reachabilityMode,
-          origin: { id: originId, label: nodeLabel(originNode, originId) },
-          nodeIds: nodeIds,
-          depths: depths,
-          maxDepth: activeReachability.maxDepth,
-          edges: edgeRecords
-        };
       }
       function setPassportValue(element, value) {
         var normalized = value == null ? &#39;&#39; : String(value).trim();
@@ -13118,7 +13024,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         copyLink: copyFocusLink,
         reach: applyReachability,
         clearReach: clearReachability,
-        reachabilitySnapshot: reachabilitySnapshot,
         inspectRelationship: inspectRelationship,
         inspectRelationshipById: inspectRelationshipById,
         reposition: requestLensPlacement,
@@ -17146,54 +17051,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         return node.getAttribute(&#39;data-node-label&#39;) ||
           (node.getAttribute(&#39;aria-label&#39;) || fallback).replace(/^Focus\s+/, &#39;&#39;).split(&#39;,&#39;)[0];
       }
-      function exportSnapshot() {
-        if (mode !== &#39;result&#39; || activeNodeIds.length &lt; 2 || activeEdges.length !== activeNodeIds.length - 1) return null;
-        var allNodes = nodes();
-        var byId = nodesById();
-        var seenNodeIds = Object.create(null);
-        var seenEdgeKeys = Object.create(null);
-        if (startId !== activeNodeIds[0] || endId !== activeNodeIds[activeNodeIds.length - 1] ||
-            activeNodeIds.some(function (id) {
-              if (seenNodeIds[id] || allNodes.filter(function (node) {
-                return node.getAttribute(&#39;data-node-id&#39;) === id;
-              }).length !== 1) return true;
-              seenNodeIds[id] = true;
-              return !byId[id];
-            }) ||
-            activeEdges.some(function (edge, index) {
-              if (!edge || !svg.contains(edge)) return true;
-              var edgeKey = edge.getAttribute(&#39;data-edge-key&#39;);
-              var edgeId = edge.getAttribute(&#39;data-edge-id&#39;) || &#39;&#39;;
-              if (!edgeKey || seenEdgeKeys[edgeKey]) return true;
-              seenEdgeKeys[edgeKey] = true;
-              var fragments = Array.prototype.slice.call(svg.querySelectorAll(&#39;[data-edge-key]&#39;)).filter(function (candidate) {
-                return candidate.getAttribute(&#39;data-edge-key&#39;) === edgeKey;
-              });
-              var drawableFragments = fragments.filter(hasDrawableGeometry);
-              return !fragments.length || !fragments.every(function (fragment) {
-                return fragment.getAttribute(&#39;data-edge-from&#39;) === activeNodeIds[index] &amp;&amp;
-                  fragment.getAttribute(&#39;data-edge-to&#39;) === activeNodeIds[index + 1] &amp;&amp;
-                  (fragment.getAttribute(&#39;data-edge-id&#39;) || &#39;&#39;) === edgeId;
-              }) || drawableFragments.length !== 1 || drawableFragments[0] !== edge ||
-                edge.getAttribute(&#39;data-edge-from&#39;) !== activeNodeIds[index] ||
-                edge.getAttribute(&#39;data-edge-to&#39;) !== activeNodeIds[index + 1];
-            })) return null;
-        return {
-          source: { id: startId, label: nodeLabel(byId[startId], startId) },
-          target: { id: endId, label: nodeLabel(byId[endId], endId) },
-          nodeIds: activeNodeIds.slice(),
-          hops: activeEdges.length,
-          edges: activeEdges.map(function (edge) {
-            return {
-              key: edge.getAttribute(&#39;data-edge-key&#39;),
-              id: edge.getAttribute(&#39;data-edge-id&#39;) || &#39;&#39;,
-              from: edge.getAttribute(&#39;data-edge-from&#39;),
-              to: edge.getAttribute(&#39;data-edge-to&#39;),
-              label: edge.getAttribute(&#39;data-edge-label&#39;) || &#39;&#39;
-            };
-          })
-        };
-      }
       function edgeShapes(edge) {
         if (/^(path|line|polyline)$/i.test(edge.tagName)) return [edge];
         return Array.prototype.slice.call(edge.querySelectorAll(&#39;path, line, polyline&#39;));
@@ -17346,7 +17203,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         findBtn.setAttribute(&#39;aria-label&#39;, viewerText(&#39;viewer.route.start.find.aria&#39;));
         copyBtn.hidden = true;
         copyBtn.textContent = viewerText(&#39;viewer.route.copy&#39;);
-        if (Archify.exportMenu &amp;&amp; typeof Archify.exportMenu.syncRouteShare === &#39;function&#39;) Archify.exportMenu.syncRouteShare();
         setTrigger(false);
         if (wasActive &amp;&amp; options.preserveView !== true &amp;&amp; Archify.view &amp;&amp; typeof Archify.view.reset === &#39;function&#39;) {
           Archify.view.reset({ automatic: true });
@@ -17841,7 +17697,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         findBtn.hidden = true;
         copyBtn.hidden = false;
         setTrigger(true);
-        if (Archify.exportMenu &amp;&amp; typeof Archify.exportMenu.syncRouteShare === &#39;function&#39;) Archify.exportMenu.syncRouteShare();
         if (options.updateUrl !== false) {
           replaceRouteHash(encodeURIComponent(startId) + &#39;~&#39; + encodeURIComponent(endId));
         }
@@ -18115,7 +17970,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         finderOpening: finderOpening,
         finderClosed: finderClosed,
         openFinder: openFinder,
-        exportSnapshot: exportSnapshot,
         active: function () { return mode === &#39;idle&#39; ? null : mode; },
         result: function () {
           return mode === &#39;result&#39;
@@ -19364,7 +19218,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
 &lt;head&gt;
   &lt;meta charset=&quot;UTF-8&quot;&gt;
   &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
-  &lt;meta name=&quot;generator&quot; content=&quot;archify 2.16.0&quot;&gt;
+  &lt;meta name=&quot;generator&quot; content=&quot;archify 2.17.0-dev.0&quot;&gt;
   &lt;title&gt;Checkout Platform — Fraud Gate Diagram&lt;/title&gt;
   &lt;script&gt;
     // Resolve the theme before first paint so light-preference users don&#39;t
@@ -24986,6 +24840,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       var RASTER_SCALE = 4;
       var MOTION_DURATION = 6000;
       var MOTION_FPS = 30;
+      var SUPPORTED_EXPORT_FORMATS = { svg: true, png: true, jpeg: true, webp: true, webm: true };
 
       function exportError(key, values) {
         var error = new Error(viewerText(key, values));
@@ -25799,6 +25654,9 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       });
 
       function runExport(format) {
+        if (!Object.prototype.hasOwnProperty.call(SUPPORTED_EXPORT_FORMATS, format)) {
+          return Promise.reject(new Error(&#39;Unsupported export format: &#39; + String(format)));
+        }
         var base = diagramFilename();
         close(true);
         clearExportReceipt();
@@ -26401,9 +26259,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         resetReachabilityButtons();
         reachStatus.textContent = &#39;&#39;;
         reachStatus.hidden = true;
-        if (Archify.exportMenu &amp;&amp; typeof Archify.exportMenu.syncReachShare === &#39;function&#39;) {
-          Archify.exportMenu.syncReachShare();
-        }
         if (options.updateUrl === true &amp;&amp; activeIds.length === 1) {
           try {
             history.replaceState(null, &#39;&#39;, location.pathname + location.search + &#39;#focus=&#39; + encodeURIComponent(activeIds[0]));
@@ -26480,9 +26335,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           hops: result.maxDepth
         });
         reachStatus.hidden = false;
-        if (Archify.exportMenu &amp;&amp; typeof Archify.exportMenu.syncReachShare === &#39;function&#39;) {
-          Archify.exportMenu.syncReachShare();
-        }
         if (options.updateUrl !== false) {
           try {
             history.replaceState(null, &#39;&#39;, location.pathname + location.search + &#39;#focus=&#39; +
@@ -26494,98 +26346,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         }
         requestLensPlacement();
         return true;
-      }
-      function reachabilitySnapshot() {
-        if (!activeReachability || activeIds.length !== 1 ||
-            (reachabilityMode !== &#39;upstream&#39; &amp;&amp; reachabilityMode !== &#39;downstream&#39;) ||
-            activeReachability.direction !== reachabilityMode ||
-            activeReachability.originId !== activeIds[0] ||
-            svg.getAttribute(&#39;data-reach-active&#39;) !== reachabilityMode) return null;
-
-        var originId = activeReachability.originId;
-        var nodeIds = activeReachability.nodeIds.slice();
-        var edgeKeys = activeReachability.edgeKeys.slice();
-        if (nodeIds.length &lt; 2 || nodeIds[0] !== originId || !edgeKeys.length ||
-            !activeReachability.depths || !Number.isInteger(activeReachability.maxDepth) ||
-            activeReachability.maxDepth &lt; 1) return null;
-
-        var allNodes = nodes();
-        var allEdges = edges();
-        var seenNodeIds = Object.create(null);
-        var seenEdgeKeys = Object.create(null);
-        var nodeIdSet = Object.create(null);
-        var depths = Object.create(null);
-        var originNode = null;
-        var measuredMaxDepth = 0;
-
-        if (nodeIds.some(function (id) {
-          var depth = activeReachability.depths[id];
-          var matches = allNodes.filter(function (node) {
-            return node.getAttribute(&#39;data-node-id&#39;) === id;
-          });
-          if (typeof id !== &#39;string&#39; || !id || seenNodeIds[id] || matches.length !== 1 ||
-              !matches[0].hasAttribute(&#39;data-reach-match&#39;) ||
-              !Number.isInteger(depth) || depth &lt; 0 || depth &gt; activeReachability.maxDepth ||
-              (id === originId
-                ? (!matches[0].hasAttribute(&#39;data-reach-origin&#39;) || depth !== 0)
-                : depth &lt; 1)) return true;
-          seenNodeIds[id] = true;
-          nodeIdSet[id] = true;
-          depths[id] = depth;
-          measuredMaxDepth = Math.max(measuredMaxDepth, depth);
-          if (id === originId) originNode = matches[0];
-          return false;
-        }) || !originNode || measuredMaxDepth !== activeReachability.maxDepth ||
-            allNodes.filter(function (node) { return node.hasAttribute(&#39;data-reach-match&#39;); }).length !== nodeIds.length) return null;
-
-        var edgeRecords = [];
-        if (edgeKeys.some(function (key) {
-          if (typeof key !== &#39;string&#39; || !key || seenEdgeKeys[key]) return true;
-          var fragments = allEdges.filter(function (edge) {
-            return edge.getAttribute(&#39;data-edge-key&#39;) === key;
-          });
-          var drawableFragments = fragments.filter(hasDrawableGeometry);
-          if (!fragments.length || drawableFragments.length !== 1 ||
-              !fragments.every(function (fragment) { return fragment.hasAttribute(&#39;data-reach-match&#39;); })) return true;
-          var first = fragments[0];
-          var from = first.getAttribute(&#39;data-edge-from&#39;);
-          var to = first.getAttribute(&#39;data-edge-to&#39;);
-          var id = first.getAttribute(&#39;data-edge-id&#39;) || &#39;&#39;;
-          var labelValue = first.getAttribute(&#39;data-edge-label&#39;) || &#39;&#39;;
-          if (!nodeIdSet[from] || !nodeIdSet[to] || !fragments.every(function (fragment) {
-            return fragment.getAttribute(&#39;data-edge-from&#39;) === from &amp;&amp;
-              fragment.getAttribute(&#39;data-edge-to&#39;) === to &amp;&amp;
-              (fragment.getAttribute(&#39;data-edge-id&#39;) || &#39;&#39;) === id;
-          })) return true;
-          seenEdgeKeys[key] = true;
-          edgeRecords.push({
-            key: key,
-            id: id,
-            from: from,
-            to: to,
-            label: labelValue,
-            depth: Math.max(depths[from], depths[to])
-          });
-          return false;
-        })) return null;
-
-        var liveEdgeKeys = Object.create(null);
-        if (allEdges.some(function (edge) {
-          if (!edge.hasAttribute(&#39;data-reach-match&#39;)) return false;
-          var key = edge.getAttribute(&#39;data-edge-key&#39;);
-          if (!key || !seenEdgeKeys[key]) return true;
-          liveEdgeKeys[key] = true;
-          return false;
-        }) || Object.keys(liveEdgeKeys).length !== edgeKeys.length) return null;
-
-        return {
-          direction: reachabilityMode,
-          origin: { id: originId, label: nodeLabel(originNode, originId) },
-          nodeIds: nodeIds,
-          depths: depths,
-          maxDepth: activeReachability.maxDepth,
-          edges: edgeRecords
-        };
       }
       function setPassportValue(element, value) {
         var normalized = value == null ? &#39;&#39; : String(value).trim();
@@ -27675,7 +27435,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         copyLink: copyFocusLink,
         reach: applyReachability,
         clearReach: clearReachability,
-        reachabilitySnapshot: reachabilitySnapshot,
         inspectRelationship: inspectRelationship,
         inspectRelationshipById: inspectRelationshipById,
         reposition: requestLensPlacement,
@@ -31703,54 +31462,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         return node.getAttribute(&#39;data-node-label&#39;) ||
           (node.getAttribute(&#39;aria-label&#39;) || fallback).replace(/^Focus\s+/, &#39;&#39;).split(&#39;,&#39;)[0];
       }
-      function exportSnapshot() {
-        if (mode !== &#39;result&#39; || activeNodeIds.length &lt; 2 || activeEdges.length !== activeNodeIds.length - 1) return null;
-        var allNodes = nodes();
-        var byId = nodesById();
-        var seenNodeIds = Object.create(null);
-        var seenEdgeKeys = Object.create(null);
-        if (startId !== activeNodeIds[0] || endId !== activeNodeIds[activeNodeIds.length - 1] ||
-            activeNodeIds.some(function (id) {
-              if (seenNodeIds[id] || allNodes.filter(function (node) {
-                return node.getAttribute(&#39;data-node-id&#39;) === id;
-              }).length !== 1) return true;
-              seenNodeIds[id] = true;
-              return !byId[id];
-            }) ||
-            activeEdges.some(function (edge, index) {
-              if (!edge || !svg.contains(edge)) return true;
-              var edgeKey = edge.getAttribute(&#39;data-edge-key&#39;);
-              var edgeId = edge.getAttribute(&#39;data-edge-id&#39;) || &#39;&#39;;
-              if (!edgeKey || seenEdgeKeys[edgeKey]) return true;
-              seenEdgeKeys[edgeKey] = true;
-              var fragments = Array.prototype.slice.call(svg.querySelectorAll(&#39;[data-edge-key]&#39;)).filter(function (candidate) {
-                return candidate.getAttribute(&#39;data-edge-key&#39;) === edgeKey;
-              });
-              var drawableFragments = fragments.filter(hasDrawableGeometry);
-              return !fragments.length || !fragments.every(function (fragment) {
-                return fragment.getAttribute(&#39;data-edge-from&#39;) === activeNodeIds[index] &amp;&amp;
-                  fragment.getAttribute(&#39;data-edge-to&#39;) === activeNodeIds[index + 1] &amp;&amp;
-                  (fragment.getAttribute(&#39;data-edge-id&#39;) || &#39;&#39;) === edgeId;
-              }) || drawableFragments.length !== 1 || drawableFragments[0] !== edge ||
-                edge.getAttribute(&#39;data-edge-from&#39;) !== activeNodeIds[index] ||
-                edge.getAttribute(&#39;data-edge-to&#39;) !== activeNodeIds[index + 1];
-            })) return null;
-        return {
-          source: { id: startId, label: nodeLabel(byId[startId], startId) },
-          target: { id: endId, label: nodeLabel(byId[endId], endId) },
-          nodeIds: activeNodeIds.slice(),
-          hops: activeEdges.length,
-          edges: activeEdges.map(function (edge) {
-            return {
-              key: edge.getAttribute(&#39;data-edge-key&#39;),
-              id: edge.getAttribute(&#39;data-edge-id&#39;) || &#39;&#39;,
-              from: edge.getAttribute(&#39;data-edge-from&#39;),
-              to: edge.getAttribute(&#39;data-edge-to&#39;),
-              label: edge.getAttribute(&#39;data-edge-label&#39;) || &#39;&#39;
-            };
-          })
-        };
-      }
       function edgeShapes(edge) {
         if (/^(path|line|polyline)$/i.test(edge.tagName)) return [edge];
         return Array.prototype.slice.call(edge.querySelectorAll(&#39;path, line, polyline&#39;));
@@ -31903,7 +31614,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         findBtn.setAttribute(&#39;aria-label&#39;, viewerText(&#39;viewer.route.start.find.aria&#39;));
         copyBtn.hidden = true;
         copyBtn.textContent = viewerText(&#39;viewer.route.copy&#39;);
-        if (Archify.exportMenu &amp;&amp; typeof Archify.exportMenu.syncRouteShare === &#39;function&#39;) Archify.exportMenu.syncRouteShare();
         setTrigger(false);
         if (wasActive &amp;&amp; options.preserveView !== true &amp;&amp; Archify.view &amp;&amp; typeof Archify.view.reset === &#39;function&#39;) {
           Archify.view.reset({ automatic: true });
@@ -32398,7 +32108,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         findBtn.hidden = true;
         copyBtn.hidden = false;
         setTrigger(true);
-        if (Archify.exportMenu &amp;&amp; typeof Archify.exportMenu.syncRouteShare === &#39;function&#39;) Archify.exportMenu.syncRouteShare();
         if (options.updateUrl !== false) {
           replaceRouteHash(encodeURIComponent(startId) + &#39;~&#39; + encodeURIComponent(endId));
         }
@@ -32672,7 +32381,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         finderOpening: finderOpening,
         finderClosed: finderClosed,
         openFinder: openFinder,
-        exportSnapshot: exportSnapshot,
         active: function () { return mode === &#39;idle&#39; ? null : mode; },
         result: function () {
           return mode === &#39;result&#39;
