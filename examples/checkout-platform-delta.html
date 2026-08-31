@@ -9752,9 +9752,9 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         &lt;/div&gt;
         &lt;div class=&quot;export-menu-section&quot; role=&quot;group&quot; aria-label=&quot;Share&quot;&gt;
           &lt;span class=&quot;export-menu-heading&quot; aria-hidden=&quot;true&quot;&gt;Share&lt;/span&gt;
-          &lt;button data-format=&quot;share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot;&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;1200&amp;times;630 PNG&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
-          &lt;button data-action=&quot;route-share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot; hidden disabled&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Route Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;1200&amp;times;630 PNG&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
-          &lt;button data-action=&quot;reach-share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot; hidden disabled&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Reach Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;1200&amp;times;630 PNG&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
+          &lt;button data-format=&quot;share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot;&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;1200&amp;times;630 @2x PNG&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
+          &lt;button data-action=&quot;route-share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot; hidden disabled&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Route Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;1200&amp;times;630 @2x PNG&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
+          &lt;button data-action=&quot;reach-share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot; hidden disabled&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Reach Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;1200&amp;times;630 @2x PNG&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
           &lt;button data-action=&quot;copy-share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot;&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Copy Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;PNG to clipboard&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
           &lt;button data-action=&quot;copy&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot;&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Copy diagram&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;PNG to clipboard&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
         &lt;/div&gt;
@@ -10469,6 +10469,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       var MOTION_FPS = 30;
       var SHARE_CARD_WIDTH = 1200;
       var SHARE_CARD_HEIGHT = 630;
+      var SHARE_CARD_PIXEL_RATIO = 2;
       var SHARE_CARD_PADDING = 36;
       var SHARE_CARD_HEADER = 112;
 
@@ -11132,7 +11133,11 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         if (routeSnapshot &amp;&amp; reachSnapshot) return Promise.reject(exportError(&#39;viewer.export.error.variantsCombined&#39;));
         var svg = document.querySelector(&#39;.diagram-container svg&#39;);
         var vb = svg.viewBox.baseVal;
-        var sourceScale = Math.min(2, pickSafeScale(vb.width, vb.height));
+        var availableWidth = SHARE_CARD_WIDTH - SHARE_CARD_PADDING * 2;
+        var availableHeight = SHARE_CARD_HEIGHT - SHARE_CARD_HEADER - SHARE_CARD_PADDING;
+        var logicalFit = Math.min(availableWidth / vb.width, availableHeight / vb.height);
+        var requiredSourceScale = Math.max(1, Math.ceil(logicalFit * SHARE_CARD_PIXEL_RATIO));
+        var sourceScale = Math.min(requiredSourceScale, pickSafeScale(vb.width, vb.height));
         var data = serializeSvg(sourceScale, { routeSnapshot: routeSnapshot, reachSnapshot: reachSnapshot });
         if (!data.canonicalStateClean) return Promise.reject(exportError(&#39;viewer.export.error.viewerState&#39;));
         if (routeSnapshot &amp;&amp; !data.routeStateClean) return Promise.reject(exportError(&#39;viewer.export.error.routeState&#39;));
@@ -11145,9 +11150,10 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           img.onload = function () {
             try {
               var canvas = document.createElement(&#39;canvas&#39;);
-              canvas.width = SHARE_CARD_WIDTH;
-              canvas.height = SHARE_CARD_HEIGHT;
+              canvas.width = SHARE_CARD_WIDTH * SHARE_CARD_PIXEL_RATIO;
+              canvas.height = SHARE_CARD_HEIGHT * SHARE_CARD_PIXEL_RATIO;
               var ctx = canvas2dOrThrow(canvas, viewerText(&#39;viewer.export.shareCard&#39;));
+              ctx.scale(SHARE_CARD_PIXEL_RATIO, SHARE_CARD_PIXEL_RATIO);
               var computed = getComputedStyle(document.documentElement);
               var bg = computed.getPropertyValue(&#39;--bg&#39;).trim() || currentBg();
               var text = computed.getPropertyValue(&#39;--text&#39;).trim() || &#39;#ffffff&#39;;
@@ -11213,8 +11219,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
               ctx.fillText(cardLabel, SHARE_CARD_WIDTH - SHARE_CARD_PADDING, 50);
               ctx.textAlign = &#39;left&#39;;
 
-              var availableWidth = SHARE_CARD_WIDTH - SHARE_CARD_PADDING * 2;
-              var availableHeight = SHARE_CARD_HEIGHT - SHARE_CARD_HEADER - SHARE_CARD_PADDING;
               var fit = Math.min(availableWidth / data.width, availableHeight / data.height);
               var drawWidth = data.width * fit;
               var drawHeight = data.height * fit;
@@ -11672,7 +11676,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         if (format === &#39;webm&#39;) toast(viewerText(&#39;viewer.export.recording&#39;));
         return (format === &#39;share-card&#39;
           ? rasterizeShareCard().then(function (blob) {
-              recordExportReceipt(&#39;share-card&#39;, blob, true, { width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT });
+              recordExportReceipt(&#39;share-card&#39;, blob, true, { width: SHARE_CARD_WIDTH * SHARE_CARD_PIXEL_RATIO, height: SHARE_CARD_HEIGHT * SHARE_CARD_PIXEL_RATIO });
               download(blob, base + &#39;-share-card.png&#39;);
               toast(viewerText(&#39;viewer.export.downloadedShare&#39;));
             })
@@ -11721,7 +11725,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           ? renderShareCard({ routeSnapshot: snapshot })
           : Promise.reject(exportError(&#39;viewer.export.routeRequired&#39;));
         return blobPromise.then(function (blob) {
-          recordExportReceipt(&#39;share-card&#39;, blob, false, { width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT }, &#39;route&#39;, true);
+          recordExportReceipt(&#39;share-card&#39;, blob, false, { width: SHARE_CARD_WIDTH * SHARE_CARD_PIXEL_RATIO, height: SHARE_CARD_HEIGHT * SHARE_CARD_PIXEL_RATIO }, &#39;route&#39;, true);
           download(blob, diagramFilename() + &#39;-route-share-card.png&#39;);
           toast(viewerText(&#39;viewer.export.downloadedRoute&#39;));
           return blob;
@@ -11745,7 +11749,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           ? renderShareCard({ reachSnapshot: snapshot })
           : Promise.reject(exportError(&#39;viewer.export.reachRequired&#39;));
         return blobPromise.then(function (blob) {
-          recordExportReceipt(&#39;share-card&#39;, blob, false, { width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT }, &#39;reach&#39;, false, true);
+          recordExportReceipt(&#39;share-card&#39;, blob, false, { width: SHARE_CARD_WIDTH * SHARE_CARD_PIXEL_RATIO, height: SHARE_CARD_HEIGHT * SHARE_CARD_PIXEL_RATIO }, &#39;reach&#39;, false, true);
           download(blob, diagramFilename() + &#39;-&#39; + snapshot.direction + &#39;-reach-share-card.png&#39;);
           toast(viewerText(&#39;viewer.export.downloadedReach&#39;));
           return blob;
@@ -11826,7 +11830,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var blobPromise = rasterizeShareCard();
         return writePngToClipboard(blobPromise).then(function () {
           return blobPromise.then(function (blob) {
-            recordExportReceipt(&#39;share-card&#39;, blob, true, { width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT });
+            recordExportReceipt(&#39;share-card&#39;, blob, true, { width: SHARE_CARD_WIDTH * SHARE_CARD_PIXEL_RATIO, height: SHARE_CARD_HEIGHT * SHARE_CARD_PIXEL_RATIO });
             toast(viewerText(&#39;viewer.export.copiedShare&#39;));
           });
         }).catch(function (err) {
@@ -24827,9 +24831,9 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         &lt;/div&gt;
         &lt;div class=&quot;export-menu-section&quot; role=&quot;group&quot; aria-label=&quot;Share&quot;&gt;
           &lt;span class=&quot;export-menu-heading&quot; aria-hidden=&quot;true&quot;&gt;Share&lt;/span&gt;
-          &lt;button data-format=&quot;share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot;&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;1200&amp;times;630 PNG&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
-          &lt;button data-action=&quot;route-share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot; hidden disabled&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Route Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;1200&amp;times;630 PNG&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
-          &lt;button data-action=&quot;reach-share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot; hidden disabled&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Reach Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;1200&amp;times;630 PNG&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
+          &lt;button data-format=&quot;share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot;&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;1200&amp;times;630 @2x PNG&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
+          &lt;button data-action=&quot;route-share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot; hidden disabled&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Route Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;1200&amp;times;630 @2x PNG&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
+          &lt;button data-action=&quot;reach-share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot; hidden disabled&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Reach Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;1200&amp;times;630 @2x PNG&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
           &lt;button data-action=&quot;copy-share-card&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot;&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Copy Share Card&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;PNG to clipboard&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
           &lt;button data-action=&quot;copy&quot; type=&quot;button&quot; role=&quot;menuitem&quot; tabindex=&quot;-1&quot;&gt;&lt;span class=&quot;export-item-copy&quot;&gt;&lt;strong&gt;Copy diagram&lt;/strong&gt;&lt;small class=&quot;hint&quot;&gt;PNG to clipboard&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
         &lt;/div&gt;
@@ -25549,6 +25553,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       var MOTION_FPS = 30;
       var SHARE_CARD_WIDTH = 1200;
       var SHARE_CARD_HEIGHT = 630;
+      var SHARE_CARD_PIXEL_RATIO = 2;
       var SHARE_CARD_PADDING = 36;
       var SHARE_CARD_HEADER = 112;
 
@@ -26212,7 +26217,11 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         if (routeSnapshot &amp;&amp; reachSnapshot) return Promise.reject(exportError(&#39;viewer.export.error.variantsCombined&#39;));
         var svg = document.querySelector(&#39;.diagram-container svg&#39;);
         var vb = svg.viewBox.baseVal;
-        var sourceScale = Math.min(2, pickSafeScale(vb.width, vb.height));
+        var availableWidth = SHARE_CARD_WIDTH - SHARE_CARD_PADDING * 2;
+        var availableHeight = SHARE_CARD_HEIGHT - SHARE_CARD_HEADER - SHARE_CARD_PADDING;
+        var logicalFit = Math.min(availableWidth / vb.width, availableHeight / vb.height);
+        var requiredSourceScale = Math.max(1, Math.ceil(logicalFit * SHARE_CARD_PIXEL_RATIO));
+        var sourceScale = Math.min(requiredSourceScale, pickSafeScale(vb.width, vb.height));
         var data = serializeSvg(sourceScale, { routeSnapshot: routeSnapshot, reachSnapshot: reachSnapshot });
         if (!data.canonicalStateClean) return Promise.reject(exportError(&#39;viewer.export.error.viewerState&#39;));
         if (routeSnapshot &amp;&amp; !data.routeStateClean) return Promise.reject(exportError(&#39;viewer.export.error.routeState&#39;));
@@ -26225,9 +26234,10 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           img.onload = function () {
             try {
               var canvas = document.createElement(&#39;canvas&#39;);
-              canvas.width = SHARE_CARD_WIDTH;
-              canvas.height = SHARE_CARD_HEIGHT;
+              canvas.width = SHARE_CARD_WIDTH * SHARE_CARD_PIXEL_RATIO;
+              canvas.height = SHARE_CARD_HEIGHT * SHARE_CARD_PIXEL_RATIO;
               var ctx = canvas2dOrThrow(canvas, viewerText(&#39;viewer.export.shareCard&#39;));
+              ctx.scale(SHARE_CARD_PIXEL_RATIO, SHARE_CARD_PIXEL_RATIO);
               var computed = getComputedStyle(document.documentElement);
               var bg = computed.getPropertyValue(&#39;--bg&#39;).trim() || currentBg();
               var text = computed.getPropertyValue(&#39;--text&#39;).trim() || &#39;#ffffff&#39;;
@@ -26293,8 +26303,6 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
               ctx.fillText(cardLabel, SHARE_CARD_WIDTH - SHARE_CARD_PADDING, 50);
               ctx.textAlign = &#39;left&#39;;
 
-              var availableWidth = SHARE_CARD_WIDTH - SHARE_CARD_PADDING * 2;
-              var availableHeight = SHARE_CARD_HEIGHT - SHARE_CARD_HEADER - SHARE_CARD_PADDING;
               var fit = Math.min(availableWidth / data.width, availableHeight / data.height);
               var drawWidth = data.width * fit;
               var drawHeight = data.height * fit;
@@ -26752,7 +26760,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         if (format === &#39;webm&#39;) toast(viewerText(&#39;viewer.export.recording&#39;));
         return (format === &#39;share-card&#39;
           ? rasterizeShareCard().then(function (blob) {
-              recordExportReceipt(&#39;share-card&#39;, blob, true, { width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT });
+              recordExportReceipt(&#39;share-card&#39;, blob, true, { width: SHARE_CARD_WIDTH * SHARE_CARD_PIXEL_RATIO, height: SHARE_CARD_HEIGHT * SHARE_CARD_PIXEL_RATIO });
               download(blob, base + &#39;-share-card.png&#39;);
               toast(viewerText(&#39;viewer.export.downloadedShare&#39;));
             })
@@ -26801,7 +26809,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           ? renderShareCard({ routeSnapshot: snapshot })
           : Promise.reject(exportError(&#39;viewer.export.routeRequired&#39;));
         return blobPromise.then(function (blob) {
-          recordExportReceipt(&#39;share-card&#39;, blob, false, { width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT }, &#39;route&#39;, true);
+          recordExportReceipt(&#39;share-card&#39;, blob, false, { width: SHARE_CARD_WIDTH * SHARE_CARD_PIXEL_RATIO, height: SHARE_CARD_HEIGHT * SHARE_CARD_PIXEL_RATIO }, &#39;route&#39;, true);
           download(blob, diagramFilename() + &#39;-route-share-card.png&#39;);
           toast(viewerText(&#39;viewer.export.downloadedRoute&#39;));
           return blob;
@@ -26825,7 +26833,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           ? renderShareCard({ reachSnapshot: snapshot })
           : Promise.reject(exportError(&#39;viewer.export.reachRequired&#39;));
         return blobPromise.then(function (blob) {
-          recordExportReceipt(&#39;share-card&#39;, blob, false, { width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT }, &#39;reach&#39;, false, true);
+          recordExportReceipt(&#39;share-card&#39;, blob, false, { width: SHARE_CARD_WIDTH * SHARE_CARD_PIXEL_RATIO, height: SHARE_CARD_HEIGHT * SHARE_CARD_PIXEL_RATIO }, &#39;reach&#39;, false, true);
           download(blob, diagramFilename() + &#39;-&#39; + snapshot.direction + &#39;-reach-share-card.png&#39;);
           toast(viewerText(&#39;viewer.export.downloadedReach&#39;));
           return blob;
@@ -26906,7 +26914,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var blobPromise = rasterizeShareCard();
         return writePngToClipboard(blobPromise).then(function () {
           return blobPromise.then(function (blob) {
-            recordExportReceipt(&#39;share-card&#39;, blob, true, { width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT });
+            recordExportReceipt(&#39;share-card&#39;, blob, true, { width: SHARE_CARD_WIDTH * SHARE_CARD_PIXEL_RATIO, height: SHARE_CARD_HEIGHT * SHARE_CARD_PIXEL_RATIO });
             toast(viewerText(&#39;viewer.export.copiedShare&#39;));
           });
         }).catch(function (err) {

@@ -33,11 +33,11 @@ function svgBlock(html) {
   return html.match(/<svg\b[\s\S]*?<\/svg>/)?.[0] || '';
 }
 
-test('all five renderers expose one explicit 1200x630 Share Card export', () => {
+test('all five renderers expose one explicit 1200x630 @2x Share Card export', () => {
   for (const mode of Object.keys(CASES)) {
     const html = render(mode);
     assert.match(html, /data-format="share-card"/, mode);
-    assert.match(html, /Share Card[\s\S]*?1200(?:&times;|×)630 PNG/, mode);
+    assert.match(html, /Share Card[\s\S]*?1200(?:&times;|×)630 @2x PNG/, mode);
     assert.match(html, /var SHARE_CARD_WIDTH = 1200;/, mode);
     assert.match(html, /var SHARE_CARD_HEIGHT = 630;/, mode);
     assert.match(html, /function rasterizeShareCard\(options\)/, mode);
@@ -62,9 +62,20 @@ test('Share Card uses contain-only canonical geometry with fixed safe areas', ()
   assert.doesNotMatch(svgBlock(html), /share-card|Share Card|ARCHIFY ·/);
 });
 
-test('Share Card is a canonical PNG with exact receipt dimensions and filename', () => {
+test('Share Card renders its 1200x630 layout at 2x pixels for high-DPI sharing', () => {
+  const html = render('architecture');
+  assert.match(html, /var SHARE_CARD_PIXEL_RATIO = 2;/);
+  assert.match(html, /canvas\.width = SHARE_CARD_WIDTH \* SHARE_CARD_PIXEL_RATIO;/);
+  assert.match(html, /canvas\.height = SHARE_CARD_HEIGHT \* SHARE_CARD_PIXEL_RATIO;/);
+  assert.match(html, /ctx\.scale\(SHARE_CARD_PIXEL_RATIO, SHARE_CARD_PIXEL_RATIO\);/);
+  assert.match(html, /width: SHARE_CARD_WIDTH \* SHARE_CARD_PIXEL_RATIO/);
+  assert.match(html, /height: SHARE_CARD_HEIGHT \* SHARE_CARD_PIXEL_RATIO/);
+  assert.match(html, /1200(?:&times;|×)630 @2x PNG/);
+});
+
+test('Share Card is a canonical high-DPI PNG with exact receipt dimensions and filename', () => {
   const html = render('workflow');
-  assert.match(html, /recordExportReceipt\('share-card', blob, true, \{ width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT \}\)/);
+  assert.match(html, /recordExportReceipt\('share-card', blob, true, \{ width: SHARE_CARD_WIDTH \* SHARE_CARD_PIXEL_RATIO, height: SHARE_CARD_HEIGHT \* SHARE_CARD_PIXEL_RATIO \}\)/);
   assert.match(html, /base \+ '-share-card\.png'/);
   assert.match(html, /data-last-export-width/);
   assert.match(html, /data-last-export-height/);
@@ -81,7 +92,7 @@ test('Copy Share Card reuses one canonical card blob and writes only PNG to the 
   assert.equal((copyBlock.match(/rasterizeShareCard\(\)/g) || []).length, 1);
   assert.match(copyBlock, /writePngToClipboard\(blobPromise\)/);
   assert.match(html, /new ClipboardItem\(\{ 'image\/png': blobPromise \}\)/);
-  assert.match(copyBlock, /recordExportReceipt\('share-card', blob, true, \{ width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT \}\)/);
+  assert.match(copyBlock, /recordExportReceipt\('share-card', blob, true, \{ width: SHARE_CARD_WIDTH \* SHARE_CARD_PIXEL_RATIO, height: SHARE_CARD_HEIGHT \* SHARE_CARD_PIXEL_RATIO \}\)/);
   assert.match(copyBlock, /toast\(viewerText\('viewer\.export\.copiedShare'\)\)/);
   assert.match(html, /copyShareCard: runCopyShareCard/);
 });
@@ -116,7 +127,7 @@ test('Share Card stays viewer-only and reuses export cleanup instead of source s
 
 test('the skill and every README make the optional Share Card discoverable', () => {
   const viewer = fs.readFileSync(path.join(skillRoot, 'references', 'viewer-runtime.md'), 'utf8');
-  assert.match(viewer, /optional 1200(?:×|x)630 Share Card PNG/i);
+  assert.match(viewer, /optional 1200(?:×|x)630 @2x Share Card PNG/i);
   assert.match(viewer, /current theme and visual preset/i);
   assert.match(viewer, /never claim(?:s|ing)? validation/i);
   assert.match(viewer, /Copy Share Card/i);

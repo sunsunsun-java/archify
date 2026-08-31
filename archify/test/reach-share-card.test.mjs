@@ -36,7 +36,7 @@ function canonicalSvg(html) {
 test('all five renderers inherit one active-reach-only Reach Share Card item', () => {
   for (const [mode, example] of Object.entries(CASES)) {
     const html = render(mode, example);
-    assert.match(html, /data-action="reach-share-card"[^>]*hidden disabled[^>]*>[\s\S]*?Reach Share Card[\s\S]*?1200(?:&times;|×)630 PNG/, mode);
+    assert.match(html, /data-action="reach-share-card"[^>]*hidden disabled[^>]*>[\s\S]*?Reach Share Card[\s\S]*?1200(?:&times;|×)630 @2x PNG/, mode);
     assert.match(html, /function syncReachShareItem\(\)/, mode);
     assert.match(html, /reachShareItem\.hidden = !snapshot;/, mode);
     assert.match(html, /reachShareItem\.disabled = !snapshot;/, mode);
@@ -114,7 +114,7 @@ test('Reach Share Card reuses the 1200x630 seam and publishes a truthful scoped 
   assert.match(html, /reachSnapshot\.nodeIds\.length - 1/);
   assert.match(html, /reachSnapshot\.edges\.length/);
   assert.match(html, /reachSnapshot\.maxDepth/);
-  assert.match(html, /recordExportReceipt\('share-card', blob, false, \{ width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT \}, 'reach', false, true\)/);
+  assert.match(html, /recordExportReceipt\('share-card', blob, false, \{ width: SHARE_CARD_WIDTH \* SHARE_CARD_PIXEL_RATIO, height: SHARE_CARD_HEIGHT \* SHARE_CARD_PIXEL_RATIO \}, 'reach', false, true\)/);
   assert.match(html, /'-' \+ snapshot\.direction \+ '-reach-share-card\.png'/);
   assert.match(html, /data-last-export-reach-state-clean/);
   assert.match(html, /Trace authored reach before exporting a Reach Share Card/);

@@ -219,7 +219,7 @@ Semantic Passport offers two native, count-bearing actions: `Upstream` follows a
 
 ### Reach Share Card
 
-An active reach query may expose one contextual **Export → Reach Share Card** item. The 1200×630 card keeps the full diagram as quiet context, preserves the selected origin and every matched authored node and link, and writes direction, origin, node count, link count, and maximum hops into the card header. Upstream retains Repository Violet; downstream retains Proof Green; Blueprint stays filter-free. The card is an explicit non-canonical reading variant, not runtime impact, causality, or breakage evidence. No animated state, live focus glow, camera transform, or unrelated viewer chrome enters the clone.
+An active reach query may expose one contextual **Export → Reach Share Card** item. The 1200×630 logical card renders at @2x (2400×1260 physical pixels), keeps the full diagram as quiet context, preserves the selected origin and every matched authored node and link, and writes direction, origin, node count, link count, and maximum hops into the card header. Upstream retains Repository Violet; downstream retains Proof Green; Blueprint stays filter-free. The card is an explicit non-canonical reading variant, not runtime impact, causality, or breakage evidence. No animated state, live focus glow, camera transform, or unrelated viewer chrome enters the clone.
 
 ## Do's and Don'ts
 

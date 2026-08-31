@@ -17,7 +17,7 @@ Archify is a Node.js rendering and validation system for Cursor, Claude Code, Co
 - **Open it and present** — five diagram types, four presets, dark/light themes, built-in brand marks, and finite motion
 - **Review architecture changes before merge** — compare two validated snapshots as Before / Delta / After, with exact added, removed, changed, moved, and rerouted facts
 - **Every interaction stays grounded** — search nodes, optionally open revision-verified source, trace upstream/downstream authored reach and exact routes, compare roles, and play guided stories without inventing topology
-- **One file, ready to trust and share** — typed JSON IR and deterministic checks produce self-contained HTML plus PNG, SVG, WebM, and 1200×630 share cards
+- **One file, ready to trust and share** — typed JSON IR and deterministic checks produce self-contained HTML plus PNG, SVG, WebM, and high-DPI 1200×630 @2x share cards
 
 ![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)
 ![Agent Skill](https://img.shields.io/badge/Agent-Skill-7C3AED?style=flat-square)
@@ -79,9 +79,9 @@ The Export menu copies PNG to the clipboard and downloads static or motion forma
 
 ![Export menu](docs/assets/archify-menu.png)
 
-Use **Copy Share Card** when you want a canonical 1200×630 image for a README, release, or social post.
+Use **Copy Share Card** when you want a canonical 1200×630 @2x image (2400×1260 physical pixels) for a README, release, or social post.
 
-After tracing a route, **Export → Route Share Card** downloads that authored path as a 1200×630 PNG with the full diagram retained for context.
+After tracing a route, **Export → Route Share Card** downloads that authored path as a high-DPI 1200×630 @2x PNG with the full diagram retained for context.
 
 ![Route Share Card showing the exact Users to API Server path with the full architecture retained as context](docs/assets/archify-route-share-card.png)
 
