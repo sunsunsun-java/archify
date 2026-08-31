@@ -456,8 +456,10 @@ async function finalGeometry(browser, sessionId) {
       : 0;
     var minimumProjectedNodeTextPx = null;
     if (svg && projectedScale > 0) {
-      Array.from(svg.querySelectorAll('text[data-node-label], text[data-boundary-label], text[data-detail="context"]')).forEach(function (text) {
-        if (text.hasAttribute('data-detail') && !text.closest('[data-node-id]')) return;
+      Array.from(svg.querySelectorAll('text[data-node-label], text[data-boundary-label], text[data-detail="context"], [data-detail="context"] text')).forEach(function (text) {
+        var detailNode = text.closest('[data-detail]');
+        if (!text.hasAttribute('data-node-label') && !text.hasAttribute('data-boundary-label') &&
+            (!detailNode || detailNode.getAttribute('data-detail') !== 'context')) return;
         var sourceFontPx = parseFloat(text.getAttribute('font-size') || '');
         if (!Number.isFinite(sourceFontPx)) return;
         var projectedFontPx = sourceFontPx * projectedScale;

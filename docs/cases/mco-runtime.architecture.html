@@ -5182,7 +5182,7 @@
     <!-- Main Diagram -->
     <div class="diagram-container" data-detail-level="read"
          data-preset-badge-editorial-plate="ARCHIFY / PLATE 04">
-      <svg viewBox="0 0 1310 648" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="signal-flow" data-quality-profile="showcase">
+      <svg viewBox="0 0 1240 600" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="signal-flow" data-quality-profile="showcase">
         <title id="archify-diagram-title">MCO Runtime Architecture</title>
         <desc id="archify-diagram-description">mco-org/mco · explicit provider policy · parallel invocation · durable raw answers</desc>
         <!-- Definitions -->
@@ -5208,27 +5208,27 @@
         <rect width="100%" height="100%" fill="url(#grid)" />
 
         <!-- Boundaries (behind everything) -->
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="0" data-composition-frame-label="mco local package / Python runtime" x="145" y="80" width="1125" height="420" rx="12" class="c-region" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="0" data-composition-frame-label="mco local package / Python runtime" x="130" y="80" width="1110" height="420" rx="12" class="c-region" stroke-width="1"/>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="security-group" data-composition-frame-id="1" data-composition-frame-label="explicit execution-policy boundary" x="535" y="220" width="735" height="110" rx="8" class="c-security-group" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="security-group" data-composition-frame-id="1" data-composition-frame-label="explicit execution-policy boundary" x="515" y="220" width="725" height="110" rx="8" class="c-security-group" stroke-width="1"/>
 
         <!-- Connection paths (before components for correct z-order) -->
-        <path data-edge-from="callers" data-edge-to="entry" data-edge-key="0" data-edge-id="caller-entry" data-composition-points="135,280;175,280" d="M 135 280 L 175 280" class="a-emphasis" data-animate="edge" style="--step:0" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="entry" data-edge-to="router" data-edge-key="1" data-edge-id="entry-route" data-composition-points="335,280;360,280" d="M 335 280 L 360 280" class="a-emphasis" data-animate="edge" style="--step:1" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="router" data-edge-to="policy" data-edge-key="2" data-edge-id="route-policy" data-composition-points="540,280;565,280" d="M 540 280 L 565 280" class="a-security" data-animate="edge" style="--step:2" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="config" data-edge-to="policy" data-edge-key="3" data-edge-id="config-policy" data-composition-points="652.5,170;652.5,250" d="M 652.5 170 L 652.5 250" class="a-security" data-animate="edge" style="--step:3" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="policy" data-edge-to="workflow" data-edge-key="4" data-edge-id="policy-workflow" data-composition-points="740,280;765,280" d="M 740 280 L 765 280" class="a-emphasis" data-animate="edge" style="--step:4" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="workflow" data-edge-to="adapters" data-edge-key="5" data-edge-id="workflow-adapters" data-composition-points="985,280;1010,280" d="M 985 280 L 1010 280" class="a-emphasis" data-animate="edge" style="--step:5" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="adapters" data-edge-to="provider_clis" data-edge-label="native CLI / ACP" data-edge-key="6" data-edge-id="adapters-providers" data-composition-points="1125,250;1125,60" d="M 1125 250 L 1125 60" class="a-emphasis" data-animate="edge" style="--step:6" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="adapters" data-edge-to="answer_transport" data-edge-label="decode events" data-edge-key="7" data-edge-id="adapters-answer" data-composition-points="1125,310;1125,365;860,365;860,420" d="M 1125 310 L 1125 357 Q 1125 365 1117 365 L 868 365 Q 860 365 860 373 L 860 420" class="a-default" data-animate="edge" style="--step:7" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="answer_transport" data-edge-to="artifacts" data-edge-key="8" data-edge-id="answer-artifacts" data-composition-points="955,450;1010,450" d="M 955 450 L 1010 450" class="a-emphasis" data-animate="edge" style="--step:8" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="artifacts" data-edge-to="consumers" data-edge-label="raw answers" data-edge-key="9" data-edge-id="artifacts-consumers" data-composition-points="1095,480;1095,520" d="M 1095 480 L 1095 520" class="a-emphasis" data-animate="edge" style="--step:9" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="router" data-edge-to="session_daemon" data-edge-label="start · send · resume" data-edge-key="10" data-edge-id="router-session" data-composition-points="450,310;450,420" d="M 450 310 L 450 420" class="a-dashed" data-animate="edge" style="--step:10" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="session_daemon" data-edge-to="session_state" data-edge-label="persist" data-edge-key="11" data-edge-id="session-state" data-composition-points="535,450;565,450" d="M 535 450 L 565 450" class="a-dashed" data-animate="edge" style="--step:11" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="callers" data-edge-to="entry" data-edge-key="0" data-edge-id="caller-entry" data-composition-points="135,280;160,280" d="M 135 280 L 160 280" class="a-emphasis" data-animate="edge" style="--step:0" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="entry" data-edge-to="router" data-edge-key="1" data-edge-id="entry-route" data-composition-points="315,280;340,280" d="M 315 280 L 340 280" class="a-emphasis" data-animate="edge" style="--step:1" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="router" data-edge-to="policy" data-edge-key="2" data-edge-id="route-policy" data-composition-points="520,280;545,280" d="M 520 280 L 545 280" class="a-security" data-animate="edge" style="--step:2" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="config" data-edge-to="policy" data-edge-key="3" data-edge-id="config-policy" data-composition-points="632.5,170;632.5,250" d="M 632.5 170 L 632.5 250" class="a-security" data-animate="edge" style="--step:3" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="policy" data-edge-to="workflow" data-edge-key="4" data-edge-id="policy-workflow" data-composition-points="720,280;745,280" d="M 720 280 L 745 280" class="a-emphasis" data-animate="edge" style="--step:4" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="workflow" data-edge-to="adapters" data-edge-key="5" data-edge-id="workflow-adapters" data-composition-points="965,280;990,280" d="M 965 280 L 990 280" class="a-emphasis" data-animate="edge" style="--step:5" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="adapters" data-edge-to="provider_clis" data-edge-label="native CLI / ACP" data-edge-key="6" data-edge-id="adapters-providers" data-composition-points="1100,250;1100,60" d="M 1100 250 L 1100 60" class="a-emphasis" data-animate="edge" style="--step:6" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="adapters" data-edge-to="answer_transport" data-edge-label="decode events" data-edge-key="7" data-edge-id="adapters-answer" data-composition-points="1100,310;1100,365;840,365;840,420" d="M 1100 310 L 1100 357 Q 1100 365 1092 365 L 848 365 Q 840 365 840 373 L 840 420" class="a-default" data-animate="edge" style="--step:7" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="answer_transport" data-edge-to="artifacts" data-edge-key="8" data-edge-id="answer-artifacts" data-composition-points="935,450;990,450" d="M 935 450 L 990 450" class="a-emphasis" data-animate="edge" style="--step:8" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="artifacts" data-edge-to="consumers" data-edge-label="raw answers" data-edge-key="9" data-edge-id="artifacts-consumers" data-composition-points="1075,480;1075,520" d="M 1075 480 L 1075 520" class="a-emphasis" data-animate="edge" style="--step:9" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="router" data-edge-to="session_daemon" data-edge-label="start · send · resume" data-edge-key="10" data-edge-id="router-session" data-composition-points="430,310;430,420" d="M 430 310 L 430 420" class="a-dashed" data-animate="edge" style="--step:10" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="session_daemon" data-edge-to="session_state" data-edge-label="persist" data-edge-key="11" data-edge-id="session-state" data-composition-points="515,450;545,450" d="M 515 450 L 545 450" class="a-dashed" data-animate="edge" style="--step:11" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
 
         <!-- Components -->
-        <g id="node-callers" data-node-id="callers" data-node-label="Callers" tabindex="0" role="button" aria-label="Focus Callers, human · coding agent, Architecture component" aria-pressed="false" data-node-kind="external" data-node-sublabel="human · coding agent" data-node-context="Architecture component">
-          <title>Callers · human · coding agent · Architecture component</title>
+        <g id="node-callers" data-node-id="callers" data-node-label="Callers" tabindex="0" role="button" aria-label="Focus Callers, human · agent, Architecture component" aria-pressed="false" data-node-kind="external" data-node-sublabel="human · agent" data-node-context="Architecture component">
+          <title>Callers · human · agent · Architecture component</title>
           <rect x="5" y="250" width="130" height="60" rx="6" class="c-mask"/>
           <rect x="5" y="250" width="130" height="60" rx="6" class="c-external" data-animate="node" style="--step:0" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(11 256) scale(0.6875)">
@@ -5236,157 +5236,157 @@
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="70" y="278" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Callers</text>
-        <text data-detail="context" x="70" y="294" class="t-muted" font-size="9" text-anchor="middle">human · coding agent</text>
+        <text data-detail="context" x="70" y="294" class="t-muted" font-size="9" text-anchor="middle">human · agent</text>
         </g>
 
-        <g id="node-entry" data-node-id="entry" data-node-label="Entry Surfaces" tabindex="0" role="button" aria-label="Focus Entry Surfaces, npm shim · Python CLI · MCP, mco local package / Python runtime" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="npm shim · Python CLI · MCP" data-node-context="mco local package / Python runtime">
-          <title>Entry Surfaces · npm shim · Python CLI · MCP · mco local package / Python runtime</title>
-          <rect x="175" y="250" width="160" height="60" rx="6" class="c-mask"/>
-          <rect x="175" y="250" width="160" height="60" rx="6" class="c-frontend" data-animate="node" style="--step:1" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(181 256) scale(0.6875)">
+        <g id="node-entry" data-node-id="entry" data-node-label="Entry Surfaces" tabindex="0" role="button" aria-label="Focus Entry Surfaces, npm · CLI · MCP, mco local package / Python runtime" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="npm · CLI · MCP" data-node-context="mco local package / Python runtime">
+          <title>Entry Surfaces · npm · CLI · MCP · mco local package / Python runtime</title>
+          <rect x="160" y="250" width="155" height="60" rx="6" class="c-mask"/>
+          <rect x="160" y="250" width="155" height="60" rx="6" class="c-frontend" data-animate="node" style="--step:1" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(166 256) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="255" y="278" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Entry Surfaces</text>
-        <text data-detail="context" x="255" y="294" class="t-muted" font-size="9" text-anchor="middle">npm shim · Python CLI · MCP</text>
+          <text data-node-label="" data-detail-anchor="" x="237.5" y="278" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Entry Surfaces</text>
+        <text data-detail="context" x="237.5" y="294" class="t-muted" font-size="9" text-anchor="middle">npm · CLI · MCP</text>
         </g>
 
-        <g id="node-router" data-node-id="router" data-node-label="Command Router" tabindex="0" role="button" aria-label="Focus Command Router, run · review · doctor · session, mco local package / Python runtime" aria-pressed="false" data-node-kind="backend" data-node-sublabel="run · review · doctor · session" data-node-context="mco local package / Python runtime">
-          <title>Command Router · run · review · doctor · session · mco local package / Python runtime</title>
-          <rect x="360" y="250" width="180" height="60" rx="6" class="c-mask"/>
-          <rect x="360" y="250" width="180" height="60" rx="6" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(366 256) scale(0.6875)">
+        <g id="node-router" data-node-id="router" data-node-label="Command Router" tabindex="0" role="button" aria-label="Focus Command Router, run · review · doctor, mco local package / Python runtime" aria-pressed="false" data-node-kind="backend" data-node-sublabel="run · review · doctor" data-node-context="mco local package / Python runtime">
+          <title>Command Router · run · review · doctor · mco local package / Python runtime</title>
+          <rect x="340" y="250" width="180" height="60" rx="6" class="c-mask"/>
+          <rect x="340" y="250" width="180" height="60" rx="6" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(346 256) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="450" y="278" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Command Router</text>
-        <text data-detail="context" x="450" y="294" class="t-muted" font-size="9" text-anchor="middle">run · review · doctor · session</text>
+          <text data-node-label="" data-detail-anchor="" x="430" y="278" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Command Router</text>
+        <text data-detail="context" x="430" y="294" class="t-muted" font-size="9" text-anchor="middle">run · review · doctor</text>
         </g>
 
         <g id="node-config" data-node-id="config" data-node-label="Config + Selection" tabindex="0" role="button" aria-label="Focus Config + Selection, files · explicit provider team, mco local package / Python runtime" aria-pressed="false" data-node-kind="database" data-node-sublabel="files · explicit provider team" data-node-tag="no silent team" data-node-context="mco local package / Python runtime">
           <title>Config + Selection · files · explicit provider team · mco local package / Python runtime · no silent team</title>
-          <rect x="565" y="110" width="175" height="60" rx="6" class="c-mask"/>
-          <rect x="565" y="110" width="175" height="60" rx="6" class="c-database" data-animate="node" style="--step:3" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(571 116) scale(0.6875)">
+          <rect x="545" y="110" width="175" height="60" rx="6" class="c-mask"/>
+          <rect x="545" y="110" width="175" height="60" rx="6" class="c-database" data-animate="node" style="--step:3" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(551 116) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="652.5" y="138" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Config + Selection</text>
-        <text data-detail="context" x="652.5" y="154" class="t-muted" font-size="9" text-anchor="middle">files · explicit provider team</text>
-        <text data-detail="fine" x="652.5" y="162" class="t-database" font-size="7" text-anchor="middle">no silent team</text>
+          <text data-node-label="" data-detail-anchor="" x="632.5" y="138" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Config + Selection</text>
+        <text data-detail="context" x="632.5" y="154" class="t-muted" font-size="9" text-anchor="middle">files · explicit provider team</text>
+        <text data-detail="fine" x="632.5" y="162" class="t-database" font-size="7" text-anchor="middle">no silent team</text>
         </g>
 
         <g id="node-policy" data-node-id="policy" data-node-label="Execution Policy" tabindex="0" role="button" aria-label="Focus Execution Policy, read_only · write · yolo, mco local package / Python runtime › explicit execution-policy boundary" aria-pressed="false" data-node-kind="security" data-node-sublabel="read_only · write · yolo" data-node-tag="explicit boundary" data-node-context="mco local package / Python runtime › explicit execution-policy boundary">
           <title>Execution Policy · read_only · write · yolo · mco local package / Python runtime › explicit execution-policy boundary · explicit boundary</title>
-          <rect x="565" y="250" width="175" height="60" rx="6" class="c-mask"/>
-          <rect x="565" y="250" width="175" height="60" rx="6" class="c-security" data-animate="node" style="--step:3" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(571 256) scale(0.6875)">
+          <rect x="545" y="250" width="175" height="60" rx="6" class="c-mask"/>
+          <rect x="545" y="250" width="175" height="60" rx="6" class="c-security" data-animate="node" style="--step:3" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(551 256) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="652.5" y="278" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Execution Policy</text>
-        <text data-detail="context" x="652.5" y="294" class="t-muted" font-size="9" text-anchor="middle">read_only · write · yolo</text>
-        <text data-detail="fine" x="652.5" y="302" class="t-security" font-size="7" text-anchor="middle">explicit boundary</text>
+          <text data-node-label="" data-detail-anchor="" x="632.5" y="278" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Execution Policy</text>
+        <text data-detail="context" x="632.5" y="294" class="t-muted" font-size="9" text-anchor="middle">read_only · write · yolo</text>
+        <text data-detail="fine" x="632.5" y="302" class="t-security" font-size="7" text-anchor="middle">explicit boundary</text>
         </g>
 
-        <g id="node-workflow" data-node-id="workflow" data-node-label="Invocation Workflow" tabindex="0" role="button" aria-label="Focus Invocation Workflow, parallel · chain · debate · synthesize, mco local package / Python runtime › explicit execution-policy boundary" aria-pressed="false" data-node-kind="backend" data-node-sublabel="parallel · chain · debate · synthesize" data-node-context="mco local package / Python runtime › explicit execution-policy boundary">
-          <title>Invocation Workflow · parallel · chain · debate · synthesize · mco local package / Python runtime › explicit execution-policy boundary</title>
-          <rect x="765" y="250" width="220" height="60" rx="6" class="c-mask"/>
-          <rect x="765" y="250" width="220" height="60" rx="6" class="c-backend" data-animate="node" style="--step:5" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(771 256) scale(0.6875)">
+        <g id="node-workflow" data-node-id="workflow" data-node-label="Invocation Workflow" tabindex="0" role="button" aria-label="Focus Invocation Workflow, parallel · chain · debate, mco local package / Python runtime › explicit execution-policy boundary" aria-pressed="false" data-node-kind="backend" data-node-sublabel="parallel · chain · debate" data-node-context="mco local package / Python runtime › explicit execution-policy boundary">
+          <title>Invocation Workflow · parallel · chain · debate · mco local package / Python runtime › explicit execution-policy boundary</title>
+          <rect x="745" y="250" width="220" height="60" rx="6" class="c-mask"/>
+          <rect x="745" y="250" width="220" height="60" rx="6" class="c-backend" data-animate="node" style="--step:5" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(751 256) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="875" y="278" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Invocation Workflow</text>
-        <text data-detail="context" x="875" y="294" class="t-muted" font-size="9" text-anchor="middle">parallel · chain · debate · synthesize</text>
+          <text data-node-label="" data-detail-anchor="" x="855" y="278" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Invocation Workflow</text>
+        <text data-detail="context" x="855" y="294" class="t-muted" font-size="9" text-anchor="middle">parallel · chain · debate</text>
         </g>
 
-        <g id="node-adapters" data-node-id="adapters" data-node-label="Provider Adapters" tabindex="0" role="button" aria-label="Focus Provider Adapters, shim / ACP · detect · run · poll · cancel, mco local package / Python runtime › explicit execution-policy boundary" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="shim / ACP · detect · run · poll · cancel" data-node-context="mco local package / Python runtime › explicit execution-policy boundary">
-          <title>Provider Adapters · shim / ACP · detect · run · poll · cancel · mco local package / Python runtime › explicit execution-policy boundary</title>
-          <rect x="1010" y="250" width="230" height="60" rx="6" class="c-mask"/>
-          <rect x="1010" y="250" width="230" height="60" rx="6" class="c-messagebus" data-animate="node" style="--step:6" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(1016 256) scale(0.6875)">
+        <g id="node-adapters" data-node-id="adapters" data-node-label="Provider Adapters" tabindex="0" role="button" aria-label="Focus Provider Adapters, shim / ACP · detect · run, mco local package / Python runtime › explicit execution-policy boundary" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="shim / ACP · detect · run" data-node-context="mco local package / Python runtime › explicit execution-policy boundary">
+          <title>Provider Adapters · shim / ACP · detect · run · mco local package / Python runtime › explicit execution-policy boundary</title>
+          <rect x="990" y="250" width="220" height="60" rx="6" class="c-mask"/>
+          <rect x="990" y="250" width="220" height="60" rx="6" class="c-messagebus" data-animate="node" style="--step:6" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(996 256) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="1125" y="278" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Provider Adapters</text>
-        <text data-detail="context" x="1125" y="294" class="t-muted" font-size="9" text-anchor="middle">shim / ACP · detect · run · poll · cancel</text>
+          <text data-node-label="" data-detail-anchor="" x="1100" y="278" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Provider Adapters</text>
+        <text data-detail="context" x="1100" y="294" class="t-muted" font-size="9" text-anchor="middle">shim / ACP · detect · run</text>
         </g>
 
         <g id="node-provider_clis" data-node-id="provider_clis" data-node-label="Provider CLIs" tabindex="0" role="button" aria-label="Focus Provider CLIs, Claude · Codex · Pi · 7 more, Architecture component" aria-pressed="false" data-node-kind="external" data-node-sublabel="Claude · Codex · Pi · 7 more" data-node-context="Architecture component">
           <title>Provider CLIs · Claude · Codex · Pi · 7 more · Architecture component</title>
-          <rect x="1035" y="0" width="180" height="60" rx="6" class="c-mask"/>
-          <rect x="1035" y="0" width="180" height="60" rx="6" class="c-external" data-animate="node" style="--step:7" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(1041 6) scale(0.6875)">
+          <rect x="1010" y="0" width="180" height="60" rx="6" class="c-mask"/>
+          <rect x="1010" y="0" width="180" height="60" rx="6" class="c-external" data-animate="node" style="--step:7" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(1016 6) scale(0.6875)">
             <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="1125" y="28" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Provider CLIs</text>
-        <text data-detail="context" x="1125" y="44" class="t-muted" font-size="9" text-anchor="middle">Claude · Codex · Pi · 7 more</text>
+          <text data-node-label="" data-detail-anchor="" x="1100" y="28" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Provider CLIs</text>
+        <text data-detail="context" x="1100" y="44" class="t-muted" font-size="9" text-anchor="middle">Claude · Codex · Pi · 7 more</text>
         </g>
 
         <g id="node-answer_transport" data-node-id="answer_transport" data-node-label="Answer Transport" tabindex="0" role="button" aria-label="Focus Answer Transport, plain · JSON · JSONL · ACP events, mco local package / Python runtime" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="plain · JSON · JSONL · ACP events" data-node-context="mco local package / Python runtime">
           <title>Answer Transport · plain · JSON · JSONL · ACP events · mco local package / Python runtime</title>
-          <rect x="765" y="420" width="190" height="60" rx="6" class="c-mask"/>
-          <rect x="765" y="420" width="190" height="60" rx="6" class="c-messagebus" data-animate="node" style="--step:8" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(771 426) scale(0.6875)">
+          <rect x="745" y="420" width="190" height="60" rx="6" class="c-mask"/>
+          <rect x="745" y="420" width="190" height="60" rx="6" class="c-messagebus" data-animate="node" style="--step:8" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(751 426) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="860" y="448" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Answer Transport</text>
-        <text data-detail="context" x="860" y="464" class="t-muted" font-size="9" text-anchor="middle">plain · JSON · JSONL · ACP events</text>
+          <text data-node-label="" data-detail-anchor="" x="840" y="448" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Answer Transport</text>
+        <text data-detail="context" x="840" y="464" class="t-muted" font-size="9" text-anchor="middle">plain · JSON · JSONL · ACP events</text>
         </g>
 
         <g id="node-artifacts" data-node-id="artifacts" data-node-label="Invocation Artifacts" tabindex="0" role="button" aria-label="Focus Invocation Artifacts, answers · result.md · run.json, mco local package / Python runtime" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="answers · result.md · run.json" data-node-tag="raw evidence" data-node-context="mco local package / Python runtime">
           <title>Invocation Artifacts · answers · result.md · run.json · mco local package / Python runtime · raw evidence</title>
-          <rect x="1010" y="420" width="170" height="60" rx="6" class="c-mask"/>
-          <rect x="1010" y="420" width="170" height="60" rx="6" class="c-cloud" data-animate="node" style="--step:9" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(1016 426) scale(0.6875)">
+          <rect x="990" y="420" width="170" height="60" rx="6" class="c-mask"/>
+          <rect x="990" y="420" width="170" height="60" rx="6" class="c-cloud" data-animate="node" style="--step:9" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(996 426) scale(0.6875)">
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="1095" y="448" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Invocation Artifacts</text>
-        <text data-detail="context" x="1095" y="464" class="t-muted" font-size="9" text-anchor="middle">answers · result.md · run.json</text>
-        <text data-detail="fine" x="1095" y="472" class="t-cloud" font-size="7" text-anchor="middle">raw evidence</text>
+          <text data-node-label="" data-detail-anchor="" x="1075" y="448" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Invocation Artifacts</text>
+        <text data-detail="context" x="1075" y="464" class="t-muted" font-size="9" text-anchor="middle">answers · result.md · run.json</text>
+        <text data-detail="fine" x="1075" y="472" class="t-cloud" font-size="7" text-anchor="middle">raw evidence</text>
         </g>
 
         <g id="node-consumers" data-node-id="consumers" data-node-label="Output Consumers" tabindex="0" role="button" aria-label="Focus Output Consumers, terminal · calling agent · CI, Architecture component" aria-pressed="false" data-node-kind="external" data-node-sublabel="terminal · calling agent · CI" data-node-context="Architecture component">
           <title>Output Consumers · terminal · calling agent · CI · Architecture component</title>
-          <rect x="1005" y="520" width="180" height="60" rx="6" class="c-mask"/>
-          <rect x="1005" y="520" width="180" height="60" rx="6" class="c-external" data-animate="node" style="--step:10" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(1011 526) scale(0.6875)">
+          <rect x="985" y="520" width="180" height="60" rx="6" class="c-mask"/>
+          <rect x="985" y="520" width="180" height="60" rx="6" class="c-external" data-animate="node" style="--step:10" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(991 526) scale(0.6875)">
             <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="1095" y="548" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Output Consumers</text>
-        <text data-detail="context" x="1095" y="564" class="t-muted" font-size="9" text-anchor="middle">terminal · calling agent · CI</text>
+          <text data-node-label="" data-detail-anchor="" x="1075" y="548" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Output Consumers</text>
+        <text data-detail="context" x="1075" y="564" class="t-muted" font-size="9" text-anchor="middle">terminal · calling agent · CI</text>
         </g>
 
         <g id="node-session_daemon" data-node-id="session_daemon" data-node-label="Session Daemon" tabindex="0" role="button" aria-label="Focus Session Daemon, detached worker · Unix socket, mco local package / Python runtime" aria-pressed="false" data-node-kind="backend" data-node-sublabel="detached worker · Unix socket" data-node-context="mco local package / Python runtime">
           <title>Session Daemon · detached worker · Unix socket · mco local package / Python runtime</title>
-          <rect x="365" y="420" width="170" height="60" rx="6" class="c-mask"/>
-          <rect x="365" y="420" width="170" height="60" rx="6" class="c-backend" data-animate="node" style="--step:11" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(371 426) scale(0.6875)">
+          <rect x="345" y="420" width="170" height="60" rx="6" class="c-mask"/>
+          <rect x="345" y="420" width="170" height="60" rx="6" class="c-backend" data-animate="node" style="--step:11" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(351 426) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="450" y="448" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Session Daemon</text>
-        <text data-detail="context" x="450" y="464" class="t-muted" font-size="9" text-anchor="middle">detached worker · Unix socket</text>
+          <text data-node-label="" data-detail-anchor="" x="430" y="448" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Session Daemon</text>
+        <text data-detail="context" x="430" y="464" class="t-muted" font-size="9" text-anchor="middle">detached worker · Unix socket</text>
         </g>
 
         <g id="node-session_state" data-node-id="session_state" data-node-label="Session State" tabindex="0" role="button" aria-label="Focus Session State, state.json · history.jsonl, mco local package / Python runtime" aria-pressed="false" data-node-kind="database" data-node-sublabel="state.json · history.jsonl" data-node-tag=".mco/sessions" data-node-context="mco local package / Python runtime">
           <title>Session State · state.json · history.jsonl · mco local package / Python runtime · .mco/sessions</title>
-          <rect x="565" y="420" width="170" height="60" rx="6" class="c-mask"/>
-          <rect x="565" y="420" width="170" height="60" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(571 426) scale(0.6875)">
+          <rect x="545" y="420" width="170" height="60" rx="6" class="c-mask"/>
+          <rect x="545" y="420" width="170" height="60" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(551 426) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="650" y="448" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Session State</text>
-        <text data-detail="context" x="650" y="464" class="t-muted" font-size="9" text-anchor="middle">state.json · history.jsonl</text>
-        <text data-detail="fine" x="650" y="472" class="t-database" font-size="7" text-anchor="middle">.mco/sessions</text>
+          <text data-node-label="" data-detail-anchor="" x="630" y="448" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Session State</text>
+        <text data-detail="context" x="630" y="464" class="t-muted" font-size="9" text-anchor="middle">state.json · history.jsonl</text>
+        <text data-detail="fine" x="630" y="472" class="t-database" font-size="7" text-anchor="middle">.mco/sessions</text>
         </g>
 
         <!-- Connection labels -->
@@ -5397,70 +5397,40 @@
 
 
         <g data-detail="context" data-edge-from="adapters" data-edge-to="provider_clis" data-edge-label="native CLI / ACP" data-edge-key="6" data-edge-id="adapters-providers">
-          <rect x="1081.6" y="230" width="86.8" height="14" rx="3" class="c-mask"/>
-          <text x="1125" y="240" class="t-backend" font-size="8" text-anchor="middle">native CLI / ACP</text>
+          <rect x="1056.6" y="230" width="86.8" height="14" rx="3" class="c-mask"/>
+          <text x="1100" y="240" class="t-backend" font-size="8" text-anchor="middle">native CLI / ACP</text>
         </g>
         <g data-detail="context" data-edge-from="adapters" data-edge-to="answer_transport" data-edge-label="decode events" data-edge-key="7" data-edge-id="adapters-answer">
-          <rect x="958.8" y="355" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="995" y="365" class="t-muted" font-size="8" text-anchor="middle">decode events</text>
+          <rect x="938.8" y="355" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="975" y="365" class="t-muted" font-size="8" text-anchor="middle">decode events</text>
         </g>
 
         <g data-detail="context" data-edge-from="artifacts" data-edge-to="consumers" data-edge-label="raw answers" data-edge-key="9" data-edge-id="artifacts-consumers">
-          <rect x="1063.6" y="500" width="62.8" height="14" rx="3" class="c-mask"/>
-          <text x="1095" y="510" class="t-backend" font-size="8" text-anchor="middle">raw answers</text>
+          <rect x="1043.6" y="500" width="62.8" height="14" rx="3" class="c-mask"/>
+          <text x="1075" y="510" class="t-backend" font-size="8" text-anchor="middle">raw answers</text>
         </g>
         <g data-detail="context" data-edge-from="router" data-edge-to="session_daemon" data-edge-label="start · send · resume" data-edge-key="10" data-edge-id="router-session">
-          <rect x="394.6" y="355" width="110.8" height="14" rx="3" class="c-mask"/>
-          <text x="450" y="365" class="t-messagebus" font-size="8" text-anchor="middle">start · send · resume</text>
+          <rect x="374.6" y="355" width="110.8" height="14" rx="3" class="c-mask"/>
+          <text x="430" y="365" class="t-messagebus" font-size="8" text-anchor="middle">start · send · resume</text>
         </g>
         <g data-detail="context" data-edge-from="session_daemon" data-edge-to="session_state" data-edge-label="persist" data-edge-key="11" data-edge-id="session-state">
-          <rect x="528.2" y="396" width="43.6" height="14" rx="3" class="c-mask"/>
-          <text x="550" y="406" class="t-messagebus" font-size="8" text-anchor="middle">persist</text>
+          <rect x="508.2" y="396" width="43.6" height="14" rx="3" class="c-mask"/>
+          <text x="530" y="406" class="t-messagebus" font-size="8" text-anchor="middle">persist</text>
         </g>
 
         <!-- Boundary labels (foreground masks keep routes out of titles) -->
         <g data-graph-role="structural-frame-label" data-composition-frame-id="0" data-composition-frame-kind="region" data-composition-frame-label="mco local package / Python runtime">
-          <rect data-graph-role="structural-frame-label-mask" x="149" y="90" width="193.6" height="16" rx="3" class="c-mask"/>
-          <text data-boundary-label="" x="153" y="103" class="t-cloud" font-size="9" font-weight="600">mco local package / Python runtime</text>
+          <rect data-graph-role="structural-frame-label-mask" x="134" y="90" width="193.6" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="138" y="103" class="t-cloud" font-size="9" font-weight="600">mco local package / Python runtime</text>
         </g>
 
         <g data-graph-role="structural-frame-label" data-composition-frame-id="1" data-composition-frame-kind="security-group" data-composition-frame-label="explicit execution-policy boundary">
-          <rect data-graph-role="structural-frame-label-mask" x="539" y="230" width="193.6" height="16" rx="3" class="c-mask"/>
-          <text data-boundary-label="" x="543" y="243" class="t-security" font-size="9" font-weight="600">explicit execution-policy boundary</text>
+          <rect data-graph-role="structural-frame-label-mask" x="519" y="230" width="193.6" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="523" y="243" class="t-security" font-size="9" font-weight="600">explicit execution-policy boundary</text>
         </g>
 
         <!-- Legend -->
-        <g data-legend="" data-legend-bridge="">
-          <text x="40" y="612" class="t-primary" font-size="12" font-weight="650">Legend</text>
-          <g data-legend-semantic-kind="frontend" data-legend-kind="frontend" data-legend-label="Frontend" data-legend-x="40" data-legend-baseline="632" data-legend-width="83">
-            <rect x="40" y="623" width="16" height="10" rx="2.5" class="c-frontend" stroke-width="1"/>
-            <text x="62" y="632" class="t-muted" font-size="10" font-weight="500">Frontend</text>
-          </g>
-          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="Backend" data-legend-x="145" data-legend-baseline="632" data-legend-width="78">
-            <rect x="145" y="623" width="16" height="10" rx="2.5" class="c-backend" stroke-width="1"/>
-            <text x="167" y="632" class="t-muted" font-size="10" font-weight="500">Backend</text>
-          </g>
-          <g data-legend-semantic-kind="database" data-legend-kind="database" data-legend-label="Database" data-legend-x="245" data-legend-baseline="632" data-legend-width="83">
-            <rect x="245" y="623" width="16" height="10" rx="2.5" class="c-database" stroke-width="1"/>
-            <text x="267" y="632" class="t-muted" font-size="10" font-weight="500">Database</text>
-          </g>
-          <g data-legend-semantic-kind="cloud" data-legend-kind="cloud" data-legend-label="Cloud" data-legend-x="350" data-legend-baseline="632" data-legend-width="68">
-            <rect x="350" y="623" width="16" height="10" rx="2.5" class="c-cloud" stroke-width="1"/>
-            <text x="372" y="632" class="t-muted" font-size="10" font-weight="500">Cloud</text>
-          </g>
-          <g data-legend-semantic-kind="security" data-legend-kind="security" data-legend-label="Security" data-legend-x="440" data-legend-baseline="632" data-legend-width="83">
-            <rect x="440" y="623" width="16" height="10" rx="2.5" class="c-security" stroke-width="1"/>
-            <text x="462" y="632" class="t-muted" font-size="10" font-weight="500">Security</text>
-          </g>
-          <g data-legend-semantic-kind="messagebus" data-legend-kind="messagebus" data-legend-label="Message bus" data-legend-x="545" data-legend-baseline="632" data-legend-width="98">
-            <rect x="545" y="623" width="16" height="10" rx="2.5" class="c-messagebus" stroke-width="1"/>
-            <text x="567" y="632" class="t-muted" font-size="10" font-weight="500">Message bus</text>
-          </g>
-          <g data-legend-semantic-kind="external" data-legend-kind="external" data-legend-label="External" data-legend-x="665" data-legend-baseline="632" data-legend-width="83">
-            <rect x="665" y="623" width="16" height="10" rx="2.5" class="c-external" stroke-width="1"/>
-            <text x="687" y="632" class="t-muted" font-size="10" font-weight="500">External</text>
-          </g>
-        </g>
+
       </svg>
       <p class="intent-trace-status no-print" id="intent-trace-status" role="status" aria-live="polite" aria-atomic="true"></p>
       <div class="share-chapter-cue no-print" id="share-chapter-cue" hidden role="status" aria-live="polite">

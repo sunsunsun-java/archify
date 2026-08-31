@@ -397,11 +397,13 @@ export class ChromeVisualBrowser {
       var scale = viewBoxWidth > 0 ? Math.min(1, diagramWidth / viewBoxWidth) : 0;
       var minimum = null;
       if (svg && scale > 0) {
-        Array.from(svg.querySelectorAll('text[data-node-label], text[data-boundary-label], text[data-detail="context"]')).forEach(function (text) {
+        Array.from(svg.querySelectorAll('text[data-node-label], text[data-boundary-label], text[data-detail], [data-detail="context"] text')).forEach(function (text) {
+          var detailNode = text.closest('[data-detail]');
+          var semanticDetail = detailNode ? detailNode.getAttribute('data-detail') : '';
           var detail = text.hasAttribute('data-node-label')
             ? 'primary'
-            : text.hasAttribute('data-boundary-label') ? 'boundary' : 'context';
-          if (detail === 'context' && !text.closest('[data-node-id]')) return;
+            : text.hasAttribute('data-boundary-label') ? 'boundary' : semanticDetail;
+          if (detail !== 'primary' && detail !== 'boundary' && detail !== 'context') return;
           var sourceFontPx = parseFloat(text.getAttribute('font-size') || '');
           if (!Number.isFinite(sourceFontPx)) return;
           var projectedFontPx = sourceFontPx * scale;

@@ -5384,46 +5384,46 @@
 
         <!-- Connection labels -->
         <g data-detail="context" data-edge-from="clients" data-edge-to="edge" data-edge-label="HTTPS" data-edge-key="0">
-          <rect x="178" y="310" width="34" height="14" rx="3" class="c-mask"/>
-          <text x="195" y="320" class="t-backend" font-size="8" text-anchor="middle">HTTPS</text>
+          <rect x="176.65" y="309.1" width="36.7" height="14.9" rx="3" class="c-mask"/>
+          <text x="195" y="320" class="t-backend" font-size="8.9" text-anchor="middle">HTTPS</text>
         </g>
         <g data-detail="context" data-edge-from="edge" data-edge-to="gateway" data-edge-label="mTLS" data-edge-key="1">
-          <rect x="378" y="310" width="30" height="14" rx="3" class="c-mask"/>
-          <text x="393" y="320" class="t-security" font-size="8" text-anchor="middle">mTLS</text>
+          <rect x="377.32" y="309.1" width="31.36" height="14.9" rx="3" class="c-mask"/>
+          <text x="393" y="320" class="t-security" font-size="8.9" text-anchor="middle">mTLS</text>
         </g>
         <g data-detail="context" data-edge-from="gateway" data-edge-to="api_a" data-edge-label="VPC route" data-edge-key="2">
-          <rect x="567.4" y="265" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="594" y="275" class="t-backend" font-size="8" text-anchor="middle">VPC route</text>
+          <rect x="564.97" y="264.1" width="58.06" height="14.9" rx="3" class="c-mask"/>
+          <text x="594" y="275" class="t-backend" font-size="8.9" text-anchor="middle">VPC route</text>
         </g>
         <g data-detail="context" data-edge-from="gateway" data-edge-to="api_b" data-edge-label="VPC route" data-edge-key="3">
-          <rect x="567.4" y="375" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="594" y="385" class="t-backend" font-size="8" text-anchor="middle">VPC route</text>
+          <rect x="564.97" y="374.1" width="58.06" height="14.9" rx="3" class="c-mask"/>
+          <text x="594" y="385" class="t-backend" font-size="8.9" text-anchor="middle">VPC route</text>
         </g>
         <g data-detail="context" data-edge-from="api_a" data-edge-to="redis" data-edge-label="cache" data-edge-key="4">
-          <rect x="786" y="206" width="34" height="14" rx="3" class="c-mask"/>
-          <text x="803" y="216" class="t-muted" font-size="8" text-anchor="middle">cache</text>
+          <rect x="784.65" y="205.1" width="36.7" height="14.9" rx="3" class="c-mask"/>
+          <text x="803" y="216" class="t-muted" font-size="8.9" text-anchor="middle">cache</text>
         </g>
         <g data-detail="context" data-edge-from="api_b" data-edge-to="postgres" data-edge-label="SQL" data-edge-key="5">
-          <rect x="788" y="416" width="30" height="14" rx="3" class="c-mask"/>
-          <text x="803" y="426" class="t-muted" font-size="8" text-anchor="middle">SQL</text>
+          <rect x="788" y="415.1" width="30" height="14.9" rx="3" class="c-mask"/>
+          <text x="803" y="426" class="t-muted" font-size="8.9" text-anchor="middle">SQL</text>
         </g>
         <g data-detail="context" data-edge-from="api_a" data-edge-to="events" data-edge-label="publish" data-edge-key="6">
-          <rect x="878.7" y="150" width="43.6" height="14" rx="3" class="c-mask"/>
-          <text x="900.5" y="160" class="t-messagebus" font-size="8" text-anchor="middle">publish</text>
+          <rect x="876.81" y="149.1" width="47.38" height="14.9" rx="3" class="c-mask"/>
+          <text x="900.5" y="160" class="t-messagebus" font-size="8.9" text-anchor="middle">publish</text>
         </g>
 
 
         <g data-detail="context" data-edge-from="postgres" data-edge-to="replica" data-edge-label="cross-region WAL" data-edge-key="9">
-          <rect x="959.6" y="519" width="86.8" height="14" rx="3" class="c-mask"/>
-          <text x="1003" y="529" class="t-security" font-size="8" text-anchor="middle">cross-region WAL</text>
+          <rect x="955.28" y="518.1" width="95.44" height="14.9" rx="3" class="c-mask"/>
+          <text x="1003" y="529" class="t-security" font-size="8.9" text-anchor="middle">cross-region WAL</text>
         </g>
         <g data-detail="context" data-edge-from="worker" data-edge-to="audit" data-edge-label="evidence" data-edge-key="10">
-          <rect x="1228.8" y="398" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="1253" y="408" class="t-messagebus" font-size="8" text-anchor="middle">evidence</text>
+          <rect x="1226.64" y="397.1" width="52.72" height="14.9" rx="3" class="c-mask"/>
+          <text x="1253" y="408" class="t-messagebus" font-size="8.9" text-anchor="middle">evidence</text>
         </g>
         <g data-detail="context" data-edge-from="worker" data-edge-to="observability" data-edge-label="OTLP" data-edge-key="11">
-          <rect x="1238" y="203.5" width="30" height="14" rx="3" class="c-mask"/>
-          <text x="1253" y="213.5" class="t-messagebus" font-size="8" text-anchor="middle">OTLP</text>
+          <rect x="1237.32" y="202.6" width="31.36" height="14.9" rx="3" class="c-mask"/>
+          <text x="1253" y="213.5" class="t-messagebus" font-size="8.9" text-anchor="middle">OTLP</text>
         </g>
 
         <!-- Boundary labels (foreground masks keep routes out of titles) -->
