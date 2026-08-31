@@ -205,10 +205,10 @@ test('compact Passport visual action order matches keyboard order', browserTest,
       };
     })()`);
     assert.deepEqual(order.dom, order.visual, JSON.stringify(order));
-    assert.deepEqual(order.visual, ['btn-focus-details', 'btn-focus-clear'], JSON.stringify(order));
-    await evaluate(browser, sessionId, `document.getElementById('btn-focus-details').focus()`);
+    assert.deepEqual(order.visual, ['btn-focus-clear', 'btn-focus-details'], JSON.stringify(order));
+    await evaluate(browser, sessionId, `document.getElementById('btn-focus-clear').focus()`);
     await pressKey(browser, sessionId, 'Tab');
-    assert.equal(await evaluate(browser, sessionId, `document.activeElement.id`), 'btn-focus-clear');
+    assert.equal(await evaluate(browser, sessionId, `document.activeElement.id`), 'btn-focus-details');
   } finally {
     await browser.close();
   }
