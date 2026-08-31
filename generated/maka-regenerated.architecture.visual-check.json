@@ -1,94 +1,21 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 1,
   "ok": true,
   "command": "visual-check",
   "status": "pass",
   "visualReview": "pending",
   "artifact": {
     "path": "/Users/sunhonghao/.codex/worktrees/7377/archify/generated/maka-regenerated.architecture.html",
-    "sha256": "1b39a233fc7443b5d1ce6d15b4723035f12c45f9485f973a9afab0fc8d17e32e",
-    "bytes": 723650,
-    "verification": {
-      "before": {
-        "sha256": "1b39a233fc7443b5d1ce6d15b4723035f12c45f9485f973a9afab0fc8d17e32e",
-        "bytes": 723650
-      },
-      "after": {
-        "sha256": "1b39a233fc7443b5d1ce6d15b4723035f12c45f9485f973a9afab0fc8d17e32e",
-        "bytes": 723650
-      },
-      "unchanged": true
-    }
+    "sha256": "ae8497f839fc5d5b209f62591beb5b586e79138a5a3372e1e24fd46b122bbb61",
+    "bytes": 683200
   },
   "state": {
     "detail": "read",
-    "motion": "still",
-    "status": "pass",
-    "observations": [
-      {
-        "width": 1440,
-        "height": 900,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "ok": true
-      },
-      {
-        "width": 1600,
-        "height": 1000,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "ok": true
-      },
-      {
-        "width": 1920,
-        "height": 1080,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "ok": true
-      },
-      {
-        "width": 2048,
-        "height": 1320,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "ok": true
-      },
-      {
-        "width": 1440,
-        "height": 900,
-        "requestedTheme": "dark",
-        "resolvedTheme": "dark",
-        "detailLevel": "read",
-        "motion": "still",
-        "ok": true
-      },
-      {
-        "width": 2048,
-        "height": 1320,
-        "requestedTheme": "dark",
-        "resolvedTheme": "dark",
-        "detailLevel": "read",
-        "motion": "still",
-        "ok": true
-      }
-    ]
+    "motion": "still"
   },
   "chrome": {
     "status": "available",
-    "executable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    "sandbox": {
-      "status": "disabled-explicitly",
-      "automaticOptOut": false,
-      "optOutEnvironment": "ARCHIFY_CHROME_NO_SANDBOX"
-    }
+    "executable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
   },
   "diagnostics": [],
   "containment": {
@@ -104,8 +31,6 @@
         "scrollHeight": 900,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1118,
         "diagramWidth": 1088,
@@ -125,30 +50,7 @@
         "viewerChromeReserve": 51,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1118,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 292,
-          "availableSvgHeight": 608,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 12,
-            "diagramChrome": 75,
-            "header": 41,
-            "guidedViews": 0,
-            "cards": 152,
-            "safeBottomGap": 12
-          }
-        }
+        "resolvedTheme": "light"
       },
       {
         "width": 1600,
@@ -160,8 +62,6 @@
         "scrollHeight": 1000,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1161,
         "diagramWidth": 1131,
@@ -181,30 +81,7 @@
         "viewerChromeReserve": 51,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1161,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 368,
-          "availableSvgHeight": 632,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 64,
-            "diagramChrome": 81,
-            "header": 49,
-            "guidedViews": 0,
-            "cards": 162,
-            "safeBottomGap": 12
-          }
-        }
+        "resolvedTheme": "light"
       },
       {
         "width": 1920,
@@ -216,8 +93,6 @@
         "scrollHeight": 1080,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1365,
         "diagramWidth": 1335,
@@ -237,30 +112,7 @@
         "viewerChromeReserve": 51,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1365,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 334,
-          "availableSvgHeight": 746,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 64,
-            "diagramChrome": 81,
-            "header": 49,
-            "guidedViews": 0,
-            "cards": 128,
-            "safeBottomGap": 12
-          }
-        }
+        "resolvedTheme": "light"
       },
       {
         "width": 2048,
@@ -272,8 +124,6 @@
         "scrollHeight": 1320,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1740,
         "diagramWidth": 1690,
@@ -293,30 +143,7 @@
         "viewerChromeReserve": 41,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1740,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 376,
-          "availableSvgHeight": 944,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 64,
-            "diagramChrome": 91,
-            "header": 57,
-            "guidedViews": 0,
-            "cards": 152,
-            "safeBottomGap": 12
-          }
-        }
+        "resolvedTheme": "light"
       }
     ]
   },
@@ -334,8 +161,6 @@
         "scrollHeight": 900,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1118,
         "diagramWidth": 1088,
@@ -355,30 +180,7 @@
         "viewerChromeReserve": 51,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1118,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 292,
-          "availableSvgHeight": 608,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 12,
-            "diagramChrome": 75,
-            "header": 41,
-            "guidedViews": 0,
-            "cards": 152,
-            "safeBottomGap": 12
-          }
-        }
+        "resolvedTheme": "light"
       },
       {
         "width": 1600,
@@ -390,8 +192,6 @@
         "scrollHeight": 1000,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1161,
         "diagramWidth": 1131,
@@ -411,30 +211,7 @@
         "viewerChromeReserve": 51,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1161,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 368,
-          "availableSvgHeight": 632,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 64,
-            "diagramChrome": 81,
-            "header": 49,
-            "guidedViews": 0,
-            "cards": 162,
-            "safeBottomGap": 12
-          }
-        }
+        "resolvedTheme": "light"
       },
       {
         "width": 1920,
@@ -446,8 +223,6 @@
         "scrollHeight": 1080,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1365,
         "diagramWidth": 1335,
@@ -467,30 +242,7 @@
         "viewerChromeReserve": 51,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1365,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 334,
-          "availableSvgHeight": 746,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 64,
-            "diagramChrome": 81,
-            "header": 49,
-            "guidedViews": 0,
-            "cards": 128,
-            "safeBottomGap": 12
-          }
-        }
+        "resolvedTheme": "light"
       },
       {
         "width": 2048,
@@ -502,8 +254,6 @@
         "scrollHeight": 1320,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1740,
         "diagramWidth": 1690,
@@ -523,30 +273,7 @@
         "viewerChromeReserve": 41,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1740,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 376,
-          "availableSvgHeight": 944,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 64,
-            "diagramChrome": 91,
-            "header": 57,
-            "guidedViews": 0,
-            "cards": 152,
-            "safeBottomGap": 12
-          }
-        }
+        "resolvedTheme": "light"
       }
     ]
   },
@@ -563,8 +290,6 @@
         "scrollHeight": 900,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1118,
         "diagramWidth": 1088,
@@ -584,30 +309,7 @@
         "viewerChromeReserve": 51,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1118,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 292,
-          "availableSvgHeight": 608,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 12,
-            "diagramChrome": 75,
-            "header": 41,
-            "guidedViews": 0,
-            "cards": 152,
-            "safeBottomGap": 12
-          }
-        }
+        "resolvedTheme": "light"
       },
       {
         "width": 1600,
@@ -619,8 +321,6 @@
         "scrollHeight": 1000,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1161,
         "diagramWidth": 1131,
@@ -640,30 +340,7 @@
         "viewerChromeReserve": 51,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1161,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 368,
-          "availableSvgHeight": 632,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 64,
-            "diagramChrome": 81,
-            "header": 49,
-            "guidedViews": 0,
-            "cards": 162,
-            "safeBottomGap": 12
-          }
-        }
+        "resolvedTheme": "light"
       },
       {
         "width": 1920,
@@ -675,8 +352,6 @@
         "scrollHeight": 1080,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1365,
         "diagramWidth": 1335,
@@ -696,30 +371,7 @@
         "viewerChromeReserve": 51,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1365,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 334,
-          "availableSvgHeight": 746,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 64,
-            "diagramChrome": 81,
-            "header": 49,
-            "guidedViews": 0,
-            "cards": 128,
-            "safeBottomGap": 12
-          }
-        }
+        "resolvedTheme": "light"
       },
       {
         "width": 2048,
@@ -731,8 +383,6 @@
         "scrollHeight": 1320,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1740,
         "diagramWidth": 1690,
@@ -752,30 +402,7 @@
         "viewerChromeReserve": 41,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
-        "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1740,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 376,
-          "availableSvgHeight": 944,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 64,
-            "diagramChrome": 91,
-            "header": 57,
-            "guidedViews": 0,
-            "cards": 152,
-            "safeBottomGap": 12
-          }
-        }
+        "resolvedTheme": "light"
       }
     ]
   },
@@ -792,8 +419,6 @@
         "scrollHeight": 900,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1118,
         "diagramWidth": 1088,
@@ -813,34 +438,7 @@
         "viewerChromeReserve": 51,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
         "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1118,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 292,
-          "availableSvgHeight": 608,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 12,
-            "diagramChrome": 75,
-            "header": 41,
-            "guidedViews": 0,
-            "cards": 152,
-            "safeBottomGap": 12
-          }
-        },
-        "sha256": "f9cffc39a97a399e3116361ae57d2c1e7655150a19f1e1e495a6bd575b6c42f9",
-        "bytes": 165842,
-        "pixelWidth": 1440,
-        "pixelHeight": 900,
         "file": "maka-regenerated.architecture.visual-check.1440x900.light.png"
       },
       {
@@ -853,8 +451,6 @@
         "scrollHeight": 900,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1118,
         "diagramWidth": 1088,
@@ -874,34 +470,7 @@
         "viewerChromeReserve": 51,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "dark",
         "resolvedTheme": "dark",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1118,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 292,
-          "availableSvgHeight": 608,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 12,
-            "diagramChrome": 75,
-            "header": 41,
-            "guidedViews": 0,
-            "cards": 152,
-            "safeBottomGap": 12
-          }
-        },
-        "sha256": "d604415696a760e0e5cb98dbbe4c717f24826a634128b4b5d181e491af041d62",
-        "bytes": 167363,
-        "pixelWidth": 1440,
-        "pixelHeight": 900,
         "file": "maka-regenerated.architecture.visual-check.1440x900.dark.png"
       },
       {
@@ -914,8 +483,6 @@
         "scrollHeight": 1320,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1740,
         "diagramWidth": 1690,
@@ -935,34 +502,7 @@
         "viewerChromeReserve": 41,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "light",
         "resolvedTheme": "light",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1740,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 376,
-          "availableSvgHeight": 944,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 64,
-            "diagramChrome": 91,
-            "header": 57,
-            "guidedViews": 0,
-            "cards": 152,
-            "safeBottomGap": 12
-          }
-        },
-        "sha256": "988b737cb338dcdcc03e24c94bfaa29c0387c4508d4ae066ed717ccff07c0b55",
-        "bytes": 233115,
-        "pixelWidth": 2048,
-        "pixelHeight": 1320,
         "file": "maka-regenerated.architecture.visual-check.2048x1320.light.png"
       },
       {
@@ -975,8 +515,6 @@
         "scrollHeight": 1320,
         "overflowX": false,
         "overflowY": false,
-        "overflowXBy": 0,
-        "overflowYBy": 0,
         "ok": true,
         "readerWidth": 1740,
         "diagramWidth": 1690,
@@ -996,34 +534,7 @@
         "viewerChromeReserve": 41,
         "viewerChromeActive": true,
         "viewerChromeOk": true,
-        "requestedTheme": "dark",
         "resolvedTheme": "dark",
-        "detailLevel": "read",
-        "motion": "still",
-        "themeStateOk": true,
-        "detailStateOk": true,
-        "motionStateOk": true,
-        "stateOk": true,
-        "readerLayout": {
-          "active": true,
-          "overflowState": null,
-          "width": 1740,
-          "ratio": 1.7899408284023668,
-          "fixedHeight": 376,
-          "availableSvgHeight": 944,
-          "fixedHeightBreakdown": {
-            "bodyChrome": 64,
-            "diagramChrome": 91,
-            "header": 57,
-            "guidedViews": 0,
-            "cards": 152,
-            "safeBottomGap": 12
-          }
-        },
-        "sha256": "aa3e61c6278ae0d1fdb6b3e879b5724d96e715f5bf2583947b326589165594a7",
-        "bytes": 233943,
-        "pixelWidth": 2048,
-        "pixelHeight": 1320,
         "file": "maka-regenerated.architecture.visual-check.2048x1320.dark.png"
       }
     ],
