@@ -10472,6 +10472,194 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       var SHARE_CARD_PIXEL_RATIO = 2;
       var SHARE_CARD_PADDING = 36;
       var SHARE_CARD_HEADER = 112;
+      var SHARE_CARD_MIN_PRIMARY_TEXT_PX = 8;
+      var SHARE_CARD_MIN_CONTEXT_TEXT_PX = 7;
+
+      function planShareCardSimplification(metrics) {
+        var sourceFit = Math.min(
+          metrics.availableWidth / metrics.sourceBounds.width,
+          metrics.availableHeight / metrics.sourceBounds.height
+        );
+        var projectedPrimary = metrics.primaryFontPx * sourceFit;
+        var projectedContext = metrics.contextFontPx &gt; 0
+          ? metrics.contextFontPx * sourceFit
+          : projectedPrimary;
+        if (projectedPrimary &gt;= SHARE_CARD_MIN_PRIMARY_TEXT_PX &amp;&amp;
+            projectedContext &gt;= SHARE_CARD_MIN_CONTEXT_TEXT_PX) {
+          return {
+            mode: &#39;full&#39;,
+            cropTo: &#39;source&#39;,
+            hideContext: false,
+            hideFine: false,
+            hideLegend: false,
+            projectedPrimaryFontPx: projectedPrimary,
+            bounds: metrics.sourceBounds
+          };
+        }
+
+        var contentFit = Math.min(
+          metrics.availableWidth / metrics.contentBounds.width,
+          metrics.availableHeight / metrics.contentBounds.height
+        );
+        var contentPrimary = metrics.primaryFontPx * contentFit;
+        var hasFocus = metrics.focusBounds &amp;&amp; metrics.focusNodeCount &gt;= 2 &amp;&amp;
+          metrics.focusNodeCount &lt; metrics.nodeCount;
+        if (hasFocus) {
+          var focusFit = Math.min(
+            metrics.availableWidth / metrics.focusBounds.width,
+            metrics.availableHeight / metrics.focusBounds.height
+          );
+          var focusPrimary = metrics.primaryFontPx * focusFit;
+          if (focusPrimary &gt;= SHARE_CARD_MIN_PRIMARY_TEXT_PX) {
+            return {
+              mode: &#39;focus&#39;,
+              cropTo: &#39;focus&#39;,
+              hideContext: true,
+              hideFine: true,
+              hideLegend: true,
+              projectedPrimaryFontPx: focusPrimary,
+              bounds: metrics.focusBounds
+            };
+          }
+        }
+
+        return {
+          mode: &#39;compact&#39;,
+          cropTo: &#39;content&#39;,
+          hideContext: true,
+          hideFine: true,
+          hideLegend: true,
+          projectedPrimaryFontPx: contentPrimary,
+          bounds: metrics.contentBounds
+        };
+      }
+
+      function shareCardBounds(elements, fallback) {
+        var left = null;
+        var top = null;
+        var right = null;
+        var bottom = null;
+        Array.prototype.forEach.call(elements || [], function (element) {
+          var box;
+          try { box = element.getBBox(); } catch (_) { box = null; }
+          if (!box || ![box.x, box.y, box.width, box.height].every(Number.isFinite) ||
+              box.width &lt; 0 || box.height &lt; 0) return;
+          left = left === null ? box.x : Math.min(left, box.x);
+          top = top === null ? box.y : Math.min(top, box.y);
+          right = right === null ? box.x + box.width : Math.max(right, box.x + box.width);
+          bottom = bottom === null ? box.y + box.height : Math.max(bottom, box.y + box.height);
+        });
+        if (left === null || top === null || right === null || bottom === null ||
+            right &lt;= left || bottom &lt;= top) {
+          return fallback;
+        }
+        return { x: left, y: top, width: right - left, height: bottom - top };
+      }
+
+      function paddedShareCardBounds(bounds, sourceBounds) {
+        var padding = 24;
+        var x = Math.max(sourceBounds.x, bounds.x - padding);
+        var y = Math.max(sourceBounds.y, bounds.y - padding);
+        var right = Math.min(sourceBounds.x + sourceBounds.width, bounds.x + bounds.width + padding);
+        var bottom = Math.min(sourceBounds.y + sourceBounds.height, bounds.y + bounds.height + padding);
+        return { x: x, y: y, width: Math.max(1, right - x), height: Math.max(1, bottom - y) };
+      }
+
+      function minimumShareCardFont(svg, selector, fallback) {
+        var minimum = null;
+        Array.prototype.forEach.call(svg.querySelectorAll(selector), function (element) {
+          var size = Number.parseFloat(element.getAttribute(&#39;font-size&#39;) || &#39;&#39;);
+          if (Number.isFinite(size) &amp;&amp; size &gt; 0) minimum = minimum === null ? size : Math.min(minimum, size);
+        });
+        return minimum === null ? fallback : minimum;
+      }
+
+      function authoredShareCardFocusIds() {
+        var data = document.getElementById(&#39;archify-guided-views-data&#39;);
+        if (!data) return [];
+        var views;
+        try { views = JSON.parse(data.textContent || &#39;[]&#39;); } catch (_) { views = []; }
+        var first = Array.isArray(views) ? views.find(function (view) {
+          return view &amp;&amp; Array.isArray(view.focus) &amp;&amp; view.focus.length &gt;= 2;
+        }) : null;
+        return first ? first.focus.filter(function (id) { return typeof id === &#39;string&#39; &amp;&amp; id; }) : [];
+      }
+
+      function planShareCardForSvg(svg, availableWidth, availableHeight, focusIds) {
+        var vb = svg.viewBox.baseVal;
+        var sourceBounds = { x: vb.x, y: vb.y, width: vb.width, height: vb.height };
+        var nodes = Array.prototype.slice.call(svg.querySelectorAll(&#39;[data-node-id]&#39;));
+        var edges = Array.prototype.slice.call(svg.querySelectorAll(&#39;[data-edge-from][data-edge-to]&#39;));
+        var contentBounds = paddedShareCardBounds(shareCardBounds(nodes.concat(edges), sourceBounds), sourceBounds);
+        var focusSet = Object.create(null);
+        (focusIds || []).forEach(function (id) { focusSet[id] = true; });
+        var focusNodes = nodes.filter(function (node) {
+          return !!focusSet[node.getAttribute(&#39;data-node-id&#39;)];
+        });
+        var focusEdges = edges.filter(function (edge) {
+          return !!focusSet[edge.getAttribute(&#39;data-edge-from&#39;)] &amp;&amp; !!focusSet[edge.getAttribute(&#39;data-edge-to&#39;)];
+        });
+        var focusBounds = focusNodes.length &gt;= 2
+          ? paddedShareCardBounds(shareCardBounds(focusNodes.concat(focusEdges), contentBounds), sourceBounds)
+          : null;
+        var plan = planShareCardSimplification({
+          sourceBounds: sourceBounds,
+          contentBounds: contentBounds,
+          focusBounds: focusBounds,
+          availableWidth: availableWidth,
+          availableHeight: availableHeight,
+          primaryFontPx: minimumShareCardFont(svg, &#39;text[data-node-label]&#39;, 11),
+          contextFontPx: minimumShareCardFont(svg, &#39;[data-node-id] text[data-detail=&quot;context&quot;]&#39;, 0),
+          nodeCount: nodes.length,
+          focusNodeCount: focusNodes.length
+        });
+        plan.focusIds = plan.mode === &#39;focus&#39; ? Object.keys(focusSet) : [];
+        return plan;
+      }
+
+      function applyShareCardSimplification(clone, plan) {
+        if (!plan) return null;
+        clone.setAttribute(&#39;data-share-card-density&#39;, plan.mode);
+        if (plan.mode === &#39;full&#39;) return plan.bounds;
+
+        var focusSet = Object.create(null);
+        (plan.focusIds || []).forEach(function (id) { focusSet[id] = true; });
+        var focusEdgeSet = Object.create(null);
+        (plan.focusEdgeKeys || []).forEach(function (key) { focusEdgeSet[key] = true; });
+        var restrictEdges = (plan.focusEdgeKeys || []).length &gt; 0;
+        if (plan.mode === &#39;focus&#39;) {
+          Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-node-id]&#39;), function (node) {
+            if (!focusSet[node.getAttribute(&#39;data-node-id&#39;)]) node.remove();
+          });
+          Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-edge-from][data-edge-to]&#39;), function (edge) {
+            if (!focusSet[edge.getAttribute(&#39;data-edge-from&#39;)] || !focusSet[edge.getAttribute(&#39;data-edge-to&#39;)]) {
+              edge.remove();
+            } else if (restrictEdges &amp;&amp; !focusEdgeSet[edge.getAttribute(&#39;data-edge-key&#39;)]) {
+              edge.remove();
+            }
+          });
+        }
+        if (plan.hideContext) {
+          Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-detail=&quot;context&quot;]&#39;), function (element) {
+            element.remove();
+          });
+        }
+        if (plan.hideFine) {
+          Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-detail=&quot;fine&quot;]&#39;), function (element) {
+            element.remove();
+          });
+        }
+        if (plan.hideLegend) {
+          Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-legend]&#39;), function (element) {
+            element.remove();
+          });
+        }
+        Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-graph-role^=&quot;structural-frame&quot;]&#39;), function (element) {
+          element.remove();
+        });
+        clone.setAttribute(&#39;viewBox&#39;, [plan.bounds.x, plan.bounds.y, plan.bounds.width, plan.bounds.height].join(&#39; &#39;));
+        return plan.bounds;
+      }
 
       function exportError(key, values) {
         var error = new Error(viewerText(key, values));
@@ -10683,6 +10871,11 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var autoTheme = opts.autoTheme === true;
         var svg = document.querySelector(&#39;.diagram-container svg&#39;);
         var clone = svg.cloneNode(true);
+        var vb = svg.viewBox.baseVal;
+        var exportBounds = { x: vb.x, y: vb.y, width: vb.width, height: vb.height };
+        if (opts.shareCardPlan) {
+          exportBounds = applyShareCardSimplification(clone, opts.shareCardPlan) || exportBounds;
+        }
 
         // View transforms and neighborhood focus are HTML exploration state,
         // never part of a downloaded full-diagram artifact.
@@ -10865,9 +11058,9 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           !clone.style.getPropertyValue(&#39;clip-path&#39;) &amp;&amp;
           clone.querySelectorAll(&#39;[data-story-overlay], [data-story-carrier-overlay], [data-story-carrier-token], [data-story-step], [data-story-beat-state], [data-story-beat-step], [data-chapter-handoff-overlay], [data-chapter-role], [data-chapter-preview-role], [data-focus-match], [data-focus-selected], [data-reach-match], [data-reach-origin], [data-reach-depth], [data-semantic-lens-overlay], [data-lens-match], [data-lens-selected], [data-lens-peer], [data-legend-bridge], [data-legend-kind], [data-legend-bridge-runtime], [data-legend-count], [data-legend-zero], [data-legend-selected], [data-legend-preview-match], [data-legend-preview-selected], [data-legend-preview-peer], [data-relationship-hit-overlay], [data-relationship-pulse-overlay], [data-relationship-preview], [data-relationship-preview-node], [data-relationship-preview-source], [data-relationship-preview-target], [data-intent-trace-overlay], [data-intent-trace-match], [data-intent-trace-selected], [data-route-probe-overlay], [data-route-journey-overlay], [data-route-match], [data-route-start], [data-route-end], [data-route-step], [data-route-candidate], [data-route-journey-state], [data-route-journey-current], [data-share-route-match], [data-share-route-step], [data-share-route-start], [data-share-route-end], [data-share-route-middle], [data-share-reach-match], [data-share-reach-origin], [data-share-reach-depth], [data-source-evidence-beacon], [data-source-evidence-count], [data-source-evidence-original-label], [data-detail], [data-detail-anchor]&#39;).length === 0;
 
-        var vb = svg.viewBox.baseVal;
-        var finiteSvgDimensions = Number.isFinite(vb.x) &amp;&amp; Number.isFinite(vb.y) &amp;&amp;
-          Number.isFinite(vb.width) &amp;&amp; Number.isFinite(vb.height) &amp;&amp; vb.width &gt; 0 &amp;&amp; vb.height &gt; 0;
+        var finiteSvgDimensions = Number.isFinite(exportBounds.x) &amp;&amp; Number.isFinite(exportBounds.y) &amp;&amp;
+          Number.isFinite(exportBounds.width) &amp;&amp; Number.isFinite(exportBounds.height) &amp;&amp;
+          exportBounds.width &gt; 0 &amp;&amp; exportBounds.height &gt; 0;
         var routeStateClean = opts.routeSnapshot
           ? canonicalStateClean &amp;&amp; finiteSvgDimensions &amp;&amp; applyRouteSnapshot(clone, opts.routeSnapshot)
           : null;
@@ -10878,8 +11071,8 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         // resolution directly. viewBox stays unchanged so coordinates don&#39;t
         // shift. This is the key to sharp rasters — do NOT scale later via
         // canvas upscaling.
-        clone.setAttribute(&#39;width&#39;, vb.width * scale);
-        clone.setAttribute(&#39;height&#39;, vb.height * scale);
+        clone.setAttribute(&#39;width&#39;, exportBounds.width * scale);
+        clone.setAttribute(&#39;height&#39;, exportBounds.height * scale);
         clone.setAttribute(&#39;xmlns&#39;, &#39;http://www.w3.org/2000/svg&#39;);
 
         // Only the SVG-relevant rules: semantic classes, markers, and the
@@ -11018,11 +11211,12 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
 
         return {
           svgString: new XMLSerializer().serializeToString(clone),
-          width: vb.width * scale,
-          height: vb.height * scale,
+          width: exportBounds.width * scale,
+          height: exportBounds.height * scale,
           canonicalStateClean: canonicalStateClean,
           routeStateClean: routeStateClean,
-          reachStateClean: reachStateClean
+          reachStateClean: reachStateClean,
+          shareCardPlan: opts.shareCardPlan || null
         };
       }
 
@@ -11132,13 +11326,33 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var reachSnapshot = options.reachSnapshot || null;
         if (routeSnapshot &amp;&amp; reachSnapshot) return Promise.reject(exportError(&#39;viewer.export.error.variantsCombined&#39;));
         var svg = document.querySelector(&#39;.diagram-container svg&#39;);
-        var vb = svg.viewBox.baseVal;
         var availableWidth = SHARE_CARD_WIDTH - SHARE_CARD_PADDING * 2;
         var availableHeight = SHARE_CARD_HEIGHT - SHARE_CARD_HEADER - SHARE_CARD_PADDING;
-        var logicalFit = Math.min(availableWidth / vb.width, availableHeight / vb.height);
+        var focusIds = routeSnapshot
+          ? routeSnapshot.nodeIds
+          : reachSnapshot
+            ? reachSnapshot.nodeIds
+            : authoredShareCardFocusIds();
+        var densityPlan = planShareCardForSvg(svg, availableWidth, availableHeight, focusIds);
+        densityPlan.focusEdgeKeys = routeSnapshot
+          ? routeSnapshot.edges.map(function (edge) { return edge.key; })
+          : reachSnapshot
+            ? reachSnapshot.edges.map(function (edge) { return edge.key; })
+            : [];
+        var logicalFit = Math.min(
+          availableWidth / densityPlan.bounds.width,
+          availableHeight / densityPlan.bounds.height
+        );
         var requiredSourceScale = Math.max(1, Math.ceil(logicalFit * SHARE_CARD_PIXEL_RATIO));
-        var sourceScale = Math.min(requiredSourceScale, pickSafeScale(vb.width, vb.height));
-        var data = serializeSvg(sourceScale, { routeSnapshot: routeSnapshot, reachSnapshot: reachSnapshot });
+        var sourceScale = Math.min(
+          requiredSourceScale,
+          pickSafeScale(densityPlan.bounds.width, densityPlan.bounds.height)
+        );
+        var data = serializeSvg(sourceScale, {
+          routeSnapshot: routeSnapshot,
+          reachSnapshot: reachSnapshot,
+          shareCardPlan: densityPlan
+        });
         if (!data.canonicalStateClean) return Promise.reject(exportError(&#39;viewer.export.error.viewerState&#39;));
         if (routeSnapshot &amp;&amp; !data.routeStateClean) return Promise.reject(exportError(&#39;viewer.export.error.routeState&#39;));
         if (reachSnapshot &amp;&amp; !data.reachStateClean) return Promise.reject(exportError(&#39;viewer.export.error.reachState&#39;));
@@ -11233,7 +11447,18 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
 
               canvas.toBlob(function (blob) {
                 if (!blob) reject(exportError(&#39;viewer.export.error.toBlobNull&#39;, { label: viewerText(&#39;viewer.export.shareCard&#39;) }));
-                else resolve(blob);
+                else {
+                  document.documentElement.setAttribute(&#39;data-last-share-card-density&#39;, densityPlan.mode);
+                  document.documentElement.setAttribute(
+                    &#39;data-last-share-card-projected-primary&#39;,
+                    densityPlan.projectedPrimaryFontPx.toFixed(2)
+                  );
+                  document.documentElement.setAttribute(
+                    &#39;data-last-share-card-visible-nodes&#39;,
+                    String(densityPlan.mode === &#39;focus&#39; ? densityPlan.focusIds.length : svg.querySelectorAll(&#39;[data-node-id]&#39;).length)
+                  );
+                  resolve(blob);
+                }
               }, &#39;image/png&#39;);
             } catch (error) {
               URL.revokeObjectURL(svgUrl);
@@ -25556,6 +25781,194 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       var SHARE_CARD_PIXEL_RATIO = 2;
       var SHARE_CARD_PADDING = 36;
       var SHARE_CARD_HEADER = 112;
+      var SHARE_CARD_MIN_PRIMARY_TEXT_PX = 8;
+      var SHARE_CARD_MIN_CONTEXT_TEXT_PX = 7;
+
+      function planShareCardSimplification(metrics) {
+        var sourceFit = Math.min(
+          metrics.availableWidth / metrics.sourceBounds.width,
+          metrics.availableHeight / metrics.sourceBounds.height
+        );
+        var projectedPrimary = metrics.primaryFontPx * sourceFit;
+        var projectedContext = metrics.contextFontPx &gt; 0
+          ? metrics.contextFontPx * sourceFit
+          : projectedPrimary;
+        if (projectedPrimary &gt;= SHARE_CARD_MIN_PRIMARY_TEXT_PX &amp;&amp;
+            projectedContext &gt;= SHARE_CARD_MIN_CONTEXT_TEXT_PX) {
+          return {
+            mode: &#39;full&#39;,
+            cropTo: &#39;source&#39;,
+            hideContext: false,
+            hideFine: false,
+            hideLegend: false,
+            projectedPrimaryFontPx: projectedPrimary,
+            bounds: metrics.sourceBounds
+          };
+        }
+
+        var contentFit = Math.min(
+          metrics.availableWidth / metrics.contentBounds.width,
+          metrics.availableHeight / metrics.contentBounds.height
+        );
+        var contentPrimary = metrics.primaryFontPx * contentFit;
+        var hasFocus = metrics.focusBounds &amp;&amp; metrics.focusNodeCount &gt;= 2 &amp;&amp;
+          metrics.focusNodeCount &lt; metrics.nodeCount;
+        if (hasFocus) {
+          var focusFit = Math.min(
+            metrics.availableWidth / metrics.focusBounds.width,
+            metrics.availableHeight / metrics.focusBounds.height
+          );
+          var focusPrimary = metrics.primaryFontPx * focusFit;
+          if (focusPrimary &gt;= SHARE_CARD_MIN_PRIMARY_TEXT_PX) {
+            return {
+              mode: &#39;focus&#39;,
+              cropTo: &#39;focus&#39;,
+              hideContext: true,
+              hideFine: true,
+              hideLegend: true,
+              projectedPrimaryFontPx: focusPrimary,
+              bounds: metrics.focusBounds
+            };
+          }
+        }
+
+        return {
+          mode: &#39;compact&#39;,
+          cropTo: &#39;content&#39;,
+          hideContext: true,
+          hideFine: true,
+          hideLegend: true,
+          projectedPrimaryFontPx: contentPrimary,
+          bounds: metrics.contentBounds
+        };
+      }
+
+      function shareCardBounds(elements, fallback) {
+        var left = null;
+        var top = null;
+        var right = null;
+        var bottom = null;
+        Array.prototype.forEach.call(elements || [], function (element) {
+          var box;
+          try { box = element.getBBox(); } catch (_) { box = null; }
+          if (!box || ![box.x, box.y, box.width, box.height].every(Number.isFinite) ||
+              box.width &lt; 0 || box.height &lt; 0) return;
+          left = left === null ? box.x : Math.min(left, box.x);
+          top = top === null ? box.y : Math.min(top, box.y);
+          right = right === null ? box.x + box.width : Math.max(right, box.x + box.width);
+          bottom = bottom === null ? box.y + box.height : Math.max(bottom, box.y + box.height);
+        });
+        if (left === null || top === null || right === null || bottom === null ||
+            right &lt;= left || bottom &lt;= top) {
+          return fallback;
+        }
+        return { x: left, y: top, width: right - left, height: bottom - top };
+      }
+
+      function paddedShareCardBounds(bounds, sourceBounds) {
+        var padding = 24;
+        var x = Math.max(sourceBounds.x, bounds.x - padding);
+        var y = Math.max(sourceBounds.y, bounds.y - padding);
+        var right = Math.min(sourceBounds.x + sourceBounds.width, bounds.x + bounds.width + padding);
+        var bottom = Math.min(sourceBounds.y + sourceBounds.height, bounds.y + bounds.height + padding);
+        return { x: x, y: y, width: Math.max(1, right - x), height: Math.max(1, bottom - y) };
+      }
+
+      function minimumShareCardFont(svg, selector, fallback) {
+        var minimum = null;
+        Array.prototype.forEach.call(svg.querySelectorAll(selector), function (element) {
+          var size = Number.parseFloat(element.getAttribute(&#39;font-size&#39;) || &#39;&#39;);
+          if (Number.isFinite(size) &amp;&amp; size &gt; 0) minimum = minimum === null ? size : Math.min(minimum, size);
+        });
+        return minimum === null ? fallback : minimum;
+      }
+
+      function authoredShareCardFocusIds() {
+        var data = document.getElementById(&#39;archify-guided-views-data&#39;);
+        if (!data) return [];
+        var views;
+        try { views = JSON.parse(data.textContent || &#39;[]&#39;); } catch (_) { views = []; }
+        var first = Array.isArray(views) ? views.find(function (view) {
+          return view &amp;&amp; Array.isArray(view.focus) &amp;&amp; view.focus.length &gt;= 2;
+        }) : null;
+        return first ? first.focus.filter(function (id) { return typeof id === &#39;string&#39; &amp;&amp; id; }) : [];
+      }
+
+      function planShareCardForSvg(svg, availableWidth, availableHeight, focusIds) {
+        var vb = svg.viewBox.baseVal;
+        var sourceBounds = { x: vb.x, y: vb.y, width: vb.width, height: vb.height };
+        var nodes = Array.prototype.slice.call(svg.querySelectorAll(&#39;[data-node-id]&#39;));
+        var edges = Array.prototype.slice.call(svg.querySelectorAll(&#39;[data-edge-from][data-edge-to]&#39;));
+        var contentBounds = paddedShareCardBounds(shareCardBounds(nodes.concat(edges), sourceBounds), sourceBounds);
+        var focusSet = Object.create(null);
+        (focusIds || []).forEach(function (id) { focusSet[id] = true; });
+        var focusNodes = nodes.filter(function (node) {
+          return !!focusSet[node.getAttribute(&#39;data-node-id&#39;)];
+        });
+        var focusEdges = edges.filter(function (edge) {
+          return !!focusSet[edge.getAttribute(&#39;data-edge-from&#39;)] &amp;&amp; !!focusSet[edge.getAttribute(&#39;data-edge-to&#39;)];
+        });
+        var focusBounds = focusNodes.length &gt;= 2
+          ? paddedShareCardBounds(shareCardBounds(focusNodes.concat(focusEdges), contentBounds), sourceBounds)
+          : null;
+        var plan = planShareCardSimplification({
+          sourceBounds: sourceBounds,
+          contentBounds: contentBounds,
+          focusBounds: focusBounds,
+          availableWidth: availableWidth,
+          availableHeight: availableHeight,
+          primaryFontPx: minimumShareCardFont(svg, &#39;text[data-node-label]&#39;, 11),
+          contextFontPx: minimumShareCardFont(svg, &#39;[data-node-id] text[data-detail=&quot;context&quot;]&#39;, 0),
+          nodeCount: nodes.length,
+          focusNodeCount: focusNodes.length
+        });
+        plan.focusIds = plan.mode === &#39;focus&#39; ? Object.keys(focusSet) : [];
+        return plan;
+      }
+
+      function applyShareCardSimplification(clone, plan) {
+        if (!plan) return null;
+        clone.setAttribute(&#39;data-share-card-density&#39;, plan.mode);
+        if (plan.mode === &#39;full&#39;) return plan.bounds;
+
+        var focusSet = Object.create(null);
+        (plan.focusIds || []).forEach(function (id) { focusSet[id] = true; });
+        var focusEdgeSet = Object.create(null);
+        (plan.focusEdgeKeys || []).forEach(function (key) { focusEdgeSet[key] = true; });
+        var restrictEdges = (plan.focusEdgeKeys || []).length &gt; 0;
+        if (plan.mode === &#39;focus&#39;) {
+          Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-node-id]&#39;), function (node) {
+            if (!focusSet[node.getAttribute(&#39;data-node-id&#39;)]) node.remove();
+          });
+          Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-edge-from][data-edge-to]&#39;), function (edge) {
+            if (!focusSet[edge.getAttribute(&#39;data-edge-from&#39;)] || !focusSet[edge.getAttribute(&#39;data-edge-to&#39;)]) {
+              edge.remove();
+            } else if (restrictEdges &amp;&amp; !focusEdgeSet[edge.getAttribute(&#39;data-edge-key&#39;)]) {
+              edge.remove();
+            }
+          });
+        }
+        if (plan.hideContext) {
+          Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-detail=&quot;context&quot;]&#39;), function (element) {
+            element.remove();
+          });
+        }
+        if (plan.hideFine) {
+          Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-detail=&quot;fine&quot;]&#39;), function (element) {
+            element.remove();
+          });
+        }
+        if (plan.hideLegend) {
+          Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-legend]&#39;), function (element) {
+            element.remove();
+          });
+        }
+        Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-graph-role^=&quot;structural-frame&quot;]&#39;), function (element) {
+          element.remove();
+        });
+        clone.setAttribute(&#39;viewBox&#39;, [plan.bounds.x, plan.bounds.y, plan.bounds.width, plan.bounds.height].join(&#39; &#39;));
+        return plan.bounds;
+      }
 
       function exportError(key, values) {
         var error = new Error(viewerText(key, values));
@@ -25767,6 +26180,11 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var autoTheme = opts.autoTheme === true;
         var svg = document.querySelector(&#39;.diagram-container svg&#39;);
         var clone = svg.cloneNode(true);
+        var vb = svg.viewBox.baseVal;
+        var exportBounds = { x: vb.x, y: vb.y, width: vb.width, height: vb.height };
+        if (opts.shareCardPlan) {
+          exportBounds = applyShareCardSimplification(clone, opts.shareCardPlan) || exportBounds;
+        }
 
         // View transforms and neighborhood focus are HTML exploration state,
         // never part of a downloaded full-diagram artifact.
@@ -25949,9 +26367,9 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           !clone.style.getPropertyValue(&#39;clip-path&#39;) &amp;&amp;
           clone.querySelectorAll(&#39;[data-story-overlay], [data-story-carrier-overlay], [data-story-carrier-token], [data-story-step], [data-story-beat-state], [data-story-beat-step], [data-chapter-handoff-overlay], [data-chapter-role], [data-chapter-preview-role], [data-focus-match], [data-focus-selected], [data-reach-match], [data-reach-origin], [data-reach-depth], [data-semantic-lens-overlay], [data-lens-match], [data-lens-selected], [data-lens-peer], [data-legend-bridge], [data-legend-kind], [data-legend-bridge-runtime], [data-legend-count], [data-legend-zero], [data-legend-selected], [data-legend-preview-match], [data-legend-preview-selected], [data-legend-preview-peer], [data-relationship-hit-overlay], [data-relationship-pulse-overlay], [data-relationship-preview], [data-relationship-preview-node], [data-relationship-preview-source], [data-relationship-preview-target], [data-intent-trace-overlay], [data-intent-trace-match], [data-intent-trace-selected], [data-route-probe-overlay], [data-route-journey-overlay], [data-route-match], [data-route-start], [data-route-end], [data-route-step], [data-route-candidate], [data-route-journey-state], [data-route-journey-current], [data-share-route-match], [data-share-route-step], [data-share-route-start], [data-share-route-end], [data-share-route-middle], [data-share-reach-match], [data-share-reach-origin], [data-share-reach-depth], [data-source-evidence-beacon], [data-source-evidence-count], [data-source-evidence-original-label], [data-detail], [data-detail-anchor]&#39;).length === 0;
 
-        var vb = svg.viewBox.baseVal;
-        var finiteSvgDimensions = Number.isFinite(vb.x) &amp;&amp; Number.isFinite(vb.y) &amp;&amp;
-          Number.isFinite(vb.width) &amp;&amp; Number.isFinite(vb.height) &amp;&amp; vb.width &gt; 0 &amp;&amp; vb.height &gt; 0;
+        var finiteSvgDimensions = Number.isFinite(exportBounds.x) &amp;&amp; Number.isFinite(exportBounds.y) &amp;&amp;
+          Number.isFinite(exportBounds.width) &amp;&amp; Number.isFinite(exportBounds.height) &amp;&amp;
+          exportBounds.width &gt; 0 &amp;&amp; exportBounds.height &gt; 0;
         var routeStateClean = opts.routeSnapshot
           ? canonicalStateClean &amp;&amp; finiteSvgDimensions &amp;&amp; applyRouteSnapshot(clone, opts.routeSnapshot)
           : null;
@@ -25962,8 +26380,8 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         // resolution directly. viewBox stays unchanged so coordinates don&#39;t
         // shift. This is the key to sharp rasters — do NOT scale later via
         // canvas upscaling.
-        clone.setAttribute(&#39;width&#39;, vb.width * scale);
-        clone.setAttribute(&#39;height&#39;, vb.height * scale);
+        clone.setAttribute(&#39;width&#39;, exportBounds.width * scale);
+        clone.setAttribute(&#39;height&#39;, exportBounds.height * scale);
         clone.setAttribute(&#39;xmlns&#39;, &#39;http://www.w3.org/2000/svg&#39;);
 
         // Only the SVG-relevant rules: semantic classes, markers, and the
@@ -26102,11 +26520,12 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
 
         return {
           svgString: new XMLSerializer().serializeToString(clone),
-          width: vb.width * scale,
-          height: vb.height * scale,
+          width: exportBounds.width * scale,
+          height: exportBounds.height * scale,
           canonicalStateClean: canonicalStateClean,
           routeStateClean: routeStateClean,
-          reachStateClean: reachStateClean
+          reachStateClean: reachStateClean,
+          shareCardPlan: opts.shareCardPlan || null
         };
       }
 
@@ -26216,13 +26635,33 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var reachSnapshot = options.reachSnapshot || null;
         if (routeSnapshot &amp;&amp; reachSnapshot) return Promise.reject(exportError(&#39;viewer.export.error.variantsCombined&#39;));
         var svg = document.querySelector(&#39;.diagram-container svg&#39;);
-        var vb = svg.viewBox.baseVal;
         var availableWidth = SHARE_CARD_WIDTH - SHARE_CARD_PADDING * 2;
         var availableHeight = SHARE_CARD_HEIGHT - SHARE_CARD_HEADER - SHARE_CARD_PADDING;
-        var logicalFit = Math.min(availableWidth / vb.width, availableHeight / vb.height);
+        var focusIds = routeSnapshot
+          ? routeSnapshot.nodeIds
+          : reachSnapshot
+            ? reachSnapshot.nodeIds
+            : authoredShareCardFocusIds();
+        var densityPlan = planShareCardForSvg(svg, availableWidth, availableHeight, focusIds);
+        densityPlan.focusEdgeKeys = routeSnapshot
+          ? routeSnapshot.edges.map(function (edge) { return edge.key; })
+          : reachSnapshot
+            ? reachSnapshot.edges.map(function (edge) { return edge.key; })
+            : [];
+        var logicalFit = Math.min(
+          availableWidth / densityPlan.bounds.width,
+          availableHeight / densityPlan.bounds.height
+        );
         var requiredSourceScale = Math.max(1, Math.ceil(logicalFit * SHARE_CARD_PIXEL_RATIO));
-        var sourceScale = Math.min(requiredSourceScale, pickSafeScale(vb.width, vb.height));
-        var data = serializeSvg(sourceScale, { routeSnapshot: routeSnapshot, reachSnapshot: reachSnapshot });
+        var sourceScale = Math.min(
+          requiredSourceScale,
+          pickSafeScale(densityPlan.bounds.width, densityPlan.bounds.height)
+        );
+        var data = serializeSvg(sourceScale, {
+          routeSnapshot: routeSnapshot,
+          reachSnapshot: reachSnapshot,
+          shareCardPlan: densityPlan
+        });
         if (!data.canonicalStateClean) return Promise.reject(exportError(&#39;viewer.export.error.viewerState&#39;));
         if (routeSnapshot &amp;&amp; !data.routeStateClean) return Promise.reject(exportError(&#39;viewer.export.error.routeState&#39;));
         if (reachSnapshot &amp;&amp; !data.reachStateClean) return Promise.reject(exportError(&#39;viewer.export.error.reachState&#39;));
@@ -26317,7 +26756,18 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
 
               canvas.toBlob(function (blob) {
                 if (!blob) reject(exportError(&#39;viewer.export.error.toBlobNull&#39;, { label: viewerText(&#39;viewer.export.shareCard&#39;) }));
-                else resolve(blob);
+                else {
+                  document.documentElement.setAttribute(&#39;data-last-share-card-density&#39;, densityPlan.mode);
+                  document.documentElement.setAttribute(
+                    &#39;data-last-share-card-projected-primary&#39;,
+                    densityPlan.projectedPrimaryFontPx.toFixed(2)
+                  );
+                  document.documentElement.setAttribute(
+                    &#39;data-last-share-card-visible-nodes&#39;,
+                    String(densityPlan.mode === &#39;focus&#39; ? densityPlan.focusIds.length : svg.querySelectorAll(&#39;[data-node-id]&#39;).length)
+                  );
+                  resolve(blob);
+                }
               }, &#39;image/png&#39;);
             } catch (error) {
               URL.revokeObjectURL(svgUrl);

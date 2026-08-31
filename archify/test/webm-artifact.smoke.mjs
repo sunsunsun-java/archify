@@ -67,6 +67,17 @@ execFileSync(process.execPath, [
   sequenceOutput,
 ], { stdio: ['ignore', 'ignore', 'pipe'] });
 
+const denseSource = structuredClone(source);
+denseSource.meta.viewBox = [1800, 900];
+const denseInput = path.join(tmp, 'dense.architecture.json');
+const denseOutput = path.join(tmp, 'dense.html');
+fs.writeFileSync(denseInput, JSON.stringify(denseSource));
+execFileSync(process.execPath, [
+  path.join(skillRoot, 'renderers/architecture/render-architecture.mjs'),
+  denseInput,
+  denseOutput,
+], { stdio: ['ignore', 'ignore', 'pipe'] });
+
 const routeOutputs = {
   architecture: output,
   sequence: sequenceOutput,
@@ -869,7 +880,7 @@ try {
     console.log(`ok Architecture Delta navigator + export: exact identity, complete explorers, static SVG, and ${exportProof.size}-byte Share Card`);
   }
 
-  async function captureShareCard(file, label) {
+  async function captureShareCard(file, label, expectedDensity) {
     await navigateReady(file, '!!(window.Archify && Archify.exportMenu && Archify.exportMenu.shareCard)', label);
     const sharePayload = await withTimeout(evaluate(cdp, sessionId, String.raw`(async function () {
       try {
@@ -879,7 +890,16 @@ try {
         for (var offset = 0; offset < bytes.length; offset += 32768) {
           binary += String.fromCharCode.apply(null, bytes.subarray(offset, offset + 32768));
         }
-        return { ok: true, type: blob.type, size: blob.size, base64: btoa(binary) };
+        return {
+          ok: true,
+          type: blob.type,
+          size: blob.size,
+          base64: btoa(binary),
+          density: document.documentElement.getAttribute('data-last-share-card-density'),
+          projectedPrimary: Number(document.documentElement.getAttribute('data-last-share-card-projected-primary')),
+          visibleNodes: Number(document.documentElement.getAttribute('data-last-share-card-visible-nodes')),
+          totalNodes: document.querySelectorAll('.diagram-container svg [data-node-id]').length
+        };
       } catch (error) {
         return { ok: false, error: String(error && error.message || error) };
       }
@@ -891,8 +911,14 @@ try {
 
     const png = Buffer.from(sharePayload.base64, 'base64');
     assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${label} output is not a PNG`);
-    assert.equal(png.readUInt32BE(16), 1200, `${label} Share Card width`);
-    assert.equal(png.readUInt32BE(20), 630, `${label} Share Card height`);
+    assert.equal(png.readUInt32BE(16), 2400, `${label} Share Card width`);
+    assert.equal(png.readUInt32BE(20), 1260, `${label} Share Card height`);
+    assert.ok(['full', 'focus', 'compact'].includes(sharePayload.density), `${label} exposed no density mode`);
+    if (expectedDensity) assert.equal(sharePayload.density, expectedDensity, `${label} density mode`);
+    if (sharePayload.density === 'focus') {
+      assert.ok(sharePayload.projectedPrimary >= 8, `${label} projected primary text stayed too small`);
+      assert.ok(sharePayload.visibleNodes < sharePayload.totalNodes, `${label} focus mode did not simplify nodes`);
+    }
 
     const pngPath = path.join(tmp, `${label}.share-card.png`);
     fs.writeFileSync(pngPath, png);
@@ -915,7 +941,7 @@ try {
     const largestColorShare = Math.max(...counts.values()) / (pixels.length / 3);
     assert.ok(colors.size >= 24, `${label} Share Card has only ${colors.size} sampled colors`);
     assert.ok(largestColorShare < 0.96, `${label} Share Card is visually near-blank (${Math.round(largestColorShare * 100)}% one color)`);
-    console.log(`ok ${label} Share Card: ${sharePayload.size} bytes, 1200x630, ${colors.size} sampled colors`);
+    console.log(`ok ${label} Share Card: ${sharePayload.size} bytes, 2400x1260 @2x, ${sharePayload.density}, ${colors.size} sampled colors`);
   }
 
   async function captureCopiedShareCard(file, label) {
@@ -966,12 +992,12 @@ try {
     assert.ok(copiedPayload.size > 20_000, `${label} copied Share Card is unexpectedly small`);
     const png = Buffer.from(copiedPayload.base64, 'base64');
     assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${label} copied output is not a PNG`);
-    assert.equal(png.readUInt32BE(16), 1200, `${label} copied Share Card width`);
-    assert.equal(png.readUInt32BE(20), 630, `${label} copied Share Card height`);
+    assert.equal(png.readUInt32BE(16), 2400, `${label} copied Share Card width`);
+    assert.equal(png.readUInt32BE(20), 1260, `${label} copied Share Card height`);
     assert.deepEqual(copiedPayload.receipt, {
       format: 'share-card',
-      width: '1200',
-      height: '630',
+      width: '2400',
+      height: '1260',
       canonical: 'true',
       error: null,
     });
@@ -1242,6 +1268,7 @@ try {
             matchedEdgeKeys: matchedEdgeKeys,
             expectedEdgeKeys: expectedEdgeKeys,
             routeShare: routeSvg.hasAttribute('data-share-route'),
+            density: routeSvg.getAttribute('data-share-card-density'),
             routeLiveResidue: routeSvg.querySelectorAll('[data-route-match], [data-route-step], [data-route-start], [data-route-end], [data-route-journey-state], [data-route-journey-current], [data-route-journey-overlay]').length,
             routeMotionResidue: (routeSvg.hasAttribute('data-animation') ? 1 : 0) + routeSvg.querySelectorAll('[data-animate]').length,
             routeNodeIds: routeNodeIds,
@@ -1296,8 +1323,8 @@ try {
     assert.ok(routePayload.size > 20_000, `${label} Route Card is unexpectedly small (${routePayload.size} bytes)`);
     const png = Buffer.from(routePayload.base64, 'base64');
     assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${label} Route Card is not a PNG`);
-    assert.equal(png.readUInt32BE(16), 1200, `${label} Route Card width`);
-    assert.equal(png.readUInt32BE(20), 630, `${label} Route Card height`);
+    assert.equal(png.readUInt32BE(16), 2400, `${label} Route Card width`);
+    assert.equal(png.readUInt32BE(20), 1260, `${label} Route Card height`);
     const pngPath = path.join(tmp, `${label}.route-share-card.png`);
     fs.writeFileSync(pngPath, png);
     const sampledPixels = execFileSync(ffmpeg, [
@@ -1319,8 +1346,14 @@ try {
     assert.deepEqual(routePayload.matchedEdgeKeys, routePayload.expectedEdgeKeys);
     assert.equal(routePayload.routeLiveResidue, 0);
     assert.equal(routePayload.routeMotionResidue, 0);
-    assert.deepEqual(routePayload.routeNodeIds, routePayload.liveNodeIds);
-    assert.deepEqual(routePayload.routeEdgeKeys, routePayload.liveEdgeKeys);
+    assert.deepEqual(
+      routePayload.routeNodeIds,
+      routePayload.density === 'focus' ? routePayload.snapshot.nodeIds.slice().sort() : routePayload.liveNodeIds,
+    );
+    assert.deepEqual(
+      routePayload.routeEdgeKeys,
+      routePayload.density === 'focus' ? routePayload.expectedEdgeKeys.slice().sort() : routePayload.liveEdgeKeys,
+    );
     assert.equal(routePayload.canonicalRouteResidue, 0);
     assert.equal(routePayload.canonicalRouteActive, false);
     assert.equal(routePayload.liveUnchanged, true, routePayload.liveDiff);
@@ -1351,8 +1384,8 @@ try {
     assert.deepEqual(routePayload.routeReceipt, {
       format: 'share-card',
       variant: 'route',
-      width: '1200',
-      height: '630',
+      width: '2400',
+      height: '1260',
       canonical: 'false',
       routeStateClean: 'true',
       error: null,
@@ -1360,8 +1393,8 @@ try {
     assert.deepEqual(routePayload.ordinaryReceipt, {
       format: 'share-card',
       variant: null,
-      width: '1200',
-      height: '630',
+      width: '2400',
+      height: '1260',
       canonical: 'true',
       routeStateClean: null,
       error: null,
@@ -1481,8 +1514,8 @@ try {
     assert.equal(matrix.results.length, 8);
     for (const result of matrix.results) {
       assert.equal(result.type, 'image/png', `${label} ${result.preset}/${result.theme} MIME`);
-      assert.equal(result.width, 1200, `${label} ${result.preset}/${result.theme} width`);
-      assert.equal(result.height, 630, `${label} ${result.preset}/${result.theme} height`);
+      assert.equal(result.width, 2400, `${label} ${result.preset}/${result.theme} width`);
+      assert.equal(result.height, 1260, `${label} ${result.preset}/${result.theme} height`);
       assert.ok(result.size > 20_000, `${label} ${result.preset}/${result.theme} is unexpectedly small`);
       assert.equal(result.identity, matrix.identity, `${label} ${result.preset}/${result.theme} changed route identity`);
     }
@@ -1663,6 +1696,7 @@ try {
             matchedEdgeKeys: matchedEdgeKeys,
             expectedEdgeKeys: snapshot.edges.map(function (edge) { return edge.key; }),
             reachDirection: reachSvg.getAttribute('data-share-reach'),
+            density: reachSvg.getAttribute('data-share-card-density'),
             originCount: reachSvg.querySelectorAll('[data-node-id][data-share-reach-origin]').length,
             reachLiveResidue: reachSvg.hasAttribute('data-reach-active') || reachSvg.querySelectorAll('[data-reach-match], [data-reach-origin], [data-reach-depth]').length > 0,
             routeResidue: reachSvg.hasAttribute('data-share-route') || reachSvg.querySelectorAll('[data-share-route-match], [data-share-route-step], [data-route-match], [data-route-step]').length > 0,
@@ -1701,8 +1735,8 @@ try {
     assert.ok(reachPayload.size > 20_000, `${label} Reach Card is unexpectedly small (${reachPayload.size} bytes)`);
     const png = Buffer.from(reachPayload.base64, 'base64');
     assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${label} Reach Card is not a PNG`);
-    assert.equal(png.readUInt32BE(16), 1200, `${label} Reach Card width`);
-    assert.equal(png.readUInt32BE(20), 630, `${label} Reach Card height`);
+    assert.equal(png.readUInt32BE(16), 2400, `${label} Reach Card width`);
+    assert.equal(png.readUInt32BE(20), 1260, `${label} Reach Card height`);
     if (options.outputPath) {
       fs.mkdirSync(path.dirname(options.outputPath), { recursive: true });
       fs.writeFileSync(options.outputPath, png);
@@ -1715,8 +1749,14 @@ try {
     assert.equal(reachPayload.routeResidue, false);
     assert.equal(reachPayload.motionResidue, false);
     assert.equal(reachPayload.blueprintStaticRule, true);
-    assert.deepEqual(reachPayload.reachNodeIds, reachPayload.liveNodeIds);
-    assert.deepEqual(reachPayload.reachEdgeKeys, reachPayload.liveEdgeKeys);
+    assert.deepEqual(
+      reachPayload.reachNodeIds,
+      reachPayload.density === 'focus' ? reachPayload.snapshot.nodeIds.slice().sort() : reachPayload.liveNodeIds,
+    );
+    assert.deepEqual(
+      reachPayload.reachEdgeKeys,
+      reachPayload.density === 'focus' ? reachPayload.expectedEdgeKeys.slice().sort() : reachPayload.liveEdgeKeys,
+    );
     assert.equal(reachPayload.liveUnchanged, true);
     assert.equal(reachPayload.menuResolved, true);
     assert.equal(reachPayload.duplicateGeometryRejected, true);
@@ -1726,8 +1766,8 @@ try {
     assert.deepEqual(reachPayload.reachReceipt, {
       format: 'share-card',
       variant: 'reach',
-      width: '1200',
-      height: '630',
+      width: '2400',
+      height: '1260',
       canonical: 'false',
       routeStateClean: null,
       reachStateClean: 'true',
@@ -1747,8 +1787,8 @@ try {
       assert.equal(new Set(reachPayload.matrix.map((entry) => entry.hash)).size, 8, `${label} Reach presets/themes should produce eight distinct PNGs`);
       for (const entry of reachPayload.matrix) {
         assert.equal(entry.type, 'image/png');
-        assert.equal(entry.width, 1200);
-        assert.equal(entry.height, 630);
+        assert.equal(entry.width, 2400);
+        assert.equal(entry.height, 1260);
         assert.ok(entry.size > 20_000);
       }
     }
@@ -1759,6 +1799,7 @@ try {
   await verifySemanticPassportDismissal(path.resolve(skillRoot, '../docs/gallery/artifacts/production-deployment.architecture.html'));
   await verifyArchitectureDeltaNavigator(path.resolve(skillRoot, '../examples/checkout-platform-delta.html'));
   await captureShareCard(output, 'architecture-wide');
+  await captureShareCard(denseOutput, 'architecture-dense', 'focus');
   await captureShareCard(sequenceOutput, 'sequence-tall');
   await captureCopiedShareCard(output, 'architecture-wide');
   await captureRouteShareCard(routeOutputs.architecture, 'architecture-route', 'users', 'api', { journeyInvariance: true });

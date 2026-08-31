@@ -105,7 +105,7 @@ test('Route variant decorates only a finite canonical clone with dedicated stati
   assert.match(applyBlock, /clone\.removeAttribute\('data-animation'\)/);
   assert.doesNotMatch(applyBlock, /setAttribute\('data-route-(?:match|step|start|end|active|journey)/);
   assert.match(html, /canonicalStateClean && finiteSvgDimensions && applyRouteSnapshot\(clone, opts\.routeSnapshot\)/);
-  assert.match(html, /Number\.isFinite\(vb\.width\)[\s\S]*?vb\.width > 0 && vb\.height > 0/);
+  assert.match(html, /Number\.isFinite\(exportBounds\.width\)[\s\S]*?exportBounds\.width > 0 && exportBounds\.height > 0/);
   assert.ok(html.indexOf('var canonicalStateClean =') < html.indexOf('applyRouteSnapshot(clone, opts.routeSnapshot)'), 'canonical cleanup must precede route decoration');
 });
 

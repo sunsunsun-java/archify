@@ -30,7 +30,7 @@ The export menu can copy/download full-diagram PNG, download JPEG/WebP, download
 
 ### Share Card
 
-The optional 1200×630 @2x Share Card PNG is for README, release, social, or launch previews. It preserves a standard 1200×630 layout while exporting 2400×1260 physical pixels for high-DPI displays. It uses the current theme and visual preset, contains the complete canonical diagram without cropping, and never claims validation. Copy Share Card reuses the same canonical PNG when clipboard image writes are supported.
+The optional 1200×630 @2x Share Card PNG is for README, release, social, or launch previews. It preserves a standard 1200×630 layout while exporting 2400×1260 physical pixels for high-DPI displays. It uses the current theme and visual preset. When the complete diagram keeps primary text at or above the readability threshold, the card retains the full canonical view. Dense diagrams automatically remove secondary detail and crop to the first authored guided view; if no usable view exists, they crop to actual content. Route and reach cards prefer their exact resolved snapshot. This export-only simplification never claims validation and never changes the authored artifact. Copy Share Card reuses the same PNG when clipboard image writes are supported.
 
 ### Route Share Card
 
