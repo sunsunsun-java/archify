@@ -87,6 +87,7 @@ test('Relationship Lens renders one Semantic Passport and copyable stable focus 
   assert.match(html, /target\.closest\('\[data-node-id\], \[data-relationship-hit-key\], \.overview-map'\)/);
   assert.match(html, /document\.addEventListener\('click',[\s\S]+?clear\(\);\s+\}, true\);/);
   assert.match(html, /Archify\.focus\.clear\(\{ restoreFocus: true \}\)/);
+  assert.match(html, /relationshipBody\.contains\(document\.activeElement\)[\s\S]*document\.activeElement === detailsBtn[\s\S]*document\.activeElement === copyBtn[\s\S]*document\.activeElement === relationsBtn[\s\S]*clearBtn\.focus/);
 });
 
 test('Node Finder searches and presents the same passport facts', () => {

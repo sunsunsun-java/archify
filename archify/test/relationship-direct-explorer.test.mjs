@@ -65,8 +65,8 @@ test('one roving target represents each exact stable edge key and authored direc
 test('fine-pointer and keyboard intent preview the exact edge before activation', () => {
   assert.match(template, /function directRelationshipBlocked\(\)/);
   assert.match(template, /function scheduleDirectRelationshipPreview\(target\)/);
-  assert.match(template, /if \(pinnedRelationshipKey \|\| hoveredRelationship !== target/);
-  assert.match(template, /previewRelationship\(target, \{ direct: true \}\)/);
+  assert.match(template, /if \(pinnedRelationshipKey \|\| focusedRelationship \|\| hoveredRelationship !== target/);
+  assert.match(template, /syncRelationshipPreview\(\)/);
   assert.match(template, /event\.pointerType === 'touch'/);
   assert.match(template, /finePointerQuery && !finePointerQuery\.matches/);
   assert.match(template, /addEventListener\('pointerover'/);
@@ -93,7 +93,7 @@ test('activation opens the existing source passport and pins its exact relations
   assert.match(template, /copyBtn\.textContent = viewerText\('viewer\.passport\.copyNode'\)/);
   assert.match(template, /previewRelationship\(row\)/);
   assert.match(template, /if \(options\.reveal !== false\) revealPinnedRelationship\(record\)/);
-  assert.match(template, /inspectRelationshipById\(relation, \{[\s\S]*?reveal: false/);
+  assert.match(template, /inspectRelationshipById\(relation, \{[^}]*reveal: false[^}]*\}\)/);
   assert.ok((template.match(/showAll\(\{ clearFocus: false, updateUrl: false, resetView: false \}\)/g) || []).length >= 3);
   assert.match(template, /inspectRelationship: inspectRelationship/);
   assert.match(template, /event\.key !== 'ArrowRight'/);
@@ -101,6 +101,7 @@ test('activation opens the existing source passport and pins its exact relations
   assert.match(template, /event\.key !== 'Home'/);
   assert.match(template, /event\.key !== 'End'/);
   assert.match(template, /event\.key === 'Enter' \|\| event\.key === ' '/);
+  assert.match(template, /if \(event\.repeat\) return;[\s\S]*directRelationshipBlocked\(\)/);
 });
 
 test('direct relationship targets support one-tap touch, yield to stronger states, and stay export-clean', () => {
@@ -115,6 +116,15 @@ test('direct relationship targets support one-tap touch, yield to stronger state
   assert.match(template, /clone\.removeAttribute\('data-relationship-pin-active'\)/);
   assert.match(template, /clone\.querySelectorAll\('\[data-relationship-hit-overlay\]'\)/);
   assert.match(template, /\[data-relationship-hit-overlay\][^']*\[data-relationship-pulse-overlay\]/);
+});
+
+test('blocked direct relationship targets leave the keyboard order until they are available again', () => {
+  assert.match(template, /function syncRelationshipHitAvailability\(\)/);
+  assert.match(template, /if \(blocked\) \{[\s\S]*target\.setAttribute\('aria-disabled', 'true'\)[\s\S]*target\.setAttribute\('tabindex', '-1'\)/);
+  assert.match(template, /target\.removeAttribute\('aria-disabled'\)/);
+  assert.match(template, /target\.setAttribute\('tabindex', target === roving \? '0' : '-1'\)/);
+  assert.match(template, /new MutationObserver\(requestRelationshipHitAvailability\)/);
+  assert.match(template, /attributeFilter: \[[\s\S]*'data-focus-active'[\s\S]*'data-relationship-pin-active'[\s\S]*\]/);
 });
 
 process.on('exit', () => fs.rmSync(tmp, { recursive: true, force: true }));

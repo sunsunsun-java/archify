@@ -318,10 +318,18 @@ async function waitForRelationshipReveal(browser, sessionId, targetId) {
         var targetRect = target.getBoundingClientRect();
         var passportRect = passport.getBoundingClientRect();
         var containerRect = container.getBoundingClientRect();
+        var visible = {
+          left: Math.max(0, containerRect.left),
+          top: Math.max(0, containerRect.top),
+          right: Math.min(window.innerWidth, containerRect.right),
+          bottom: Math.min(window.innerHeight, containerRect.bottom)
+        };
         var overlap = Math.max(0, Math.min(targetRect.right, passportRect.right) - Math.max(targetRect.left, passportRect.left)) *
           Math.max(0, Math.min(targetRect.bottom, passportRect.bottom) - Math.max(targetRect.top, passportRect.top));
-        var fullyVisible = targetRect.left >= containerRect.left - 0.5 && targetRect.top >= containerRect.top - 0.5 &&
-          targetRect.right <= containerRect.right + 0.5 && targetRect.bottom <= containerRect.bottom + 0.5;
+        var fullyVisible = targetRect.width > 0 && targetRect.height > 0 &&
+          visible.right > visible.left && visible.bottom > visible.top &&
+          targetRect.left >= visible.left - 0.5 && targetRect.top >= visible.top - 0.5 &&
+          targetRect.right <= visible.right + 0.5 && targetRect.bottom <= visible.bottom + 0.5;
         var moving = container.hasAttribute('data-camera-transaction');
         lastReceipt = { overlap: overlap, fullyVisible: fullyVisible, moving: moving };
         safeFrames = overlap === 0 && fullyVisible && !moving ? safeFrames + 1 : 0;
@@ -338,6 +346,76 @@ async function waitForRelationshipReveal(browser, sessionId, targetId) {
       requestAnimationFrame(sample);
     });
   })()`, true);
+}
+
+async function activateRelationshipRow(browser, sessionId, selector = null) {
+  const targetId = await evaluate(browser, sessionId, `(function () {
+    var container = document.querySelector('.diagram-container');
+    var row = ${selector ? `document.querySelector(${JSON.stringify(selector)})` : 'document.activeElement'};
+    var originalReset = Archify.view.reset;
+    var originalReveal = Archify.view.reveal;
+    var probe = {
+      targetId: row.getAttribute('data-relationship-target'),
+      resetCalls: 0,
+      revealCalls: [],
+      transactionStarts: 0,
+      previousMoving: container.hasAttribute('data-camera-transaction'),
+      originalReset: originalReset,
+      originalReveal: originalReveal
+    };
+    Archify.view.reset = function () {
+      probe.resetCalls += 1;
+      return originalReset.apply(Archify.view, arguments);
+    };
+    Archify.view.reveal = function (ids, options) {
+      probe.revealCalls.push({ ids: ids.slice(), reason: options && options.reason });
+      return originalReveal.apply(Archify.view, arguments);
+    };
+    probe.observer = new MutationObserver(function () {
+      var moving = container.hasAttribute('data-camera-transaction');
+      if (moving && !probe.previousMoving) probe.transactionStarts += 1;
+      probe.previousMoving = moving;
+    });
+    probe.observer.observe(container, { attributes: true, attributeFilter: ['data-camera-transaction'] });
+    window.__relationshipActivationProbe = probe;
+    row.click();
+    return probe.targetId;
+  })()`);
+  await waitForRelationshipReveal(browser, sessionId, targetId);
+  return evaluate(browser, sessionId, `(function () {
+    var probe = window.__relationshipActivationProbe;
+    var container = document.querySelector('.diagram-container');
+    probe.observer.disconnect();
+    Archify.view.reset = probe.originalReset;
+    Archify.view.reveal = probe.originalReveal;
+    delete window.__relationshipActivationProbe;
+    var target = document.querySelector('[data-node-id="' + probe.targetId + '"]');
+    var rect = target.getBoundingClientRect();
+    var containerRect = container.getBoundingClientRect();
+    var passportRect = document.getElementById('focus-chip').getBoundingClientRect();
+    var visible = {
+      left: Math.max(0, containerRect.left),
+      top: Math.max(0, containerRect.top),
+      right: Math.min(window.innerWidth, containerRect.right),
+      bottom: Math.min(window.innerHeight, containerRect.bottom)
+    };
+    return {
+      targetId: probe.targetId,
+      hash: location.hash,
+      focused: document.querySelector('.diagram-container > svg').getAttribute('data-focus-active'),
+      camera: Archify.view.state(),
+      resetCalls: probe.resetCalls,
+      revealCalls: probe.revealCalls,
+      transactionStarts: probe.transactionStarts,
+      moving: container.hasAttribute('data-camera-transaction'),
+      relationsExpanded: document.getElementById('focus-chip').getAttribute('data-relations-expanded'),
+      overlap: Math.max(0, Math.min(rect.right, passportRect.right) - Math.max(rect.left, passportRect.left)) *
+        Math.max(0, Math.min(rect.bottom, passportRect.bottom) - Math.max(rect.top, passportRect.top)),
+      fullyVisible: rect.width > 0 && rect.height > 0 &&
+        rect.left >= visible.left - 0.5 && rect.top >= visible.top - 0.5 &&
+        rect.right <= visible.right + 0.5 && rect.bottom <= visible.bottom + 0.5
+    };
+  })()`);
 }
 
 async function finalGeometry(browser, sessionId) {
@@ -410,6 +488,9 @@ async function finalGeometry(browser, sessionId) {
       navRect: navRect ? { left: navRect.left, right: navRect.right, top: navRect.top, bottom: navRect.bottom } : null,
       passportRect: passportRect ? { left: passportRect.left, right: passportRect.right, top: passportRect.top, bottom: passportRect.bottom } : null,
       radarRect: radarRect ? { left: radarRect.left, right: radarRect.right, top: radarRect.top, bottom: radarRect.bottom } : null,
+      lensVisible: Boolean(lensRect && lensRect.width > 0 && lensRect.height > 0),
+      radarVisible: Boolean(radarRect && radarRect.width > 0 && radarRect.height > 0),
+      passportVisible: Boolean(passportRect && passportRect.width > 0 && passportRect.height > 0),
       hasLegend: Boolean(legendRect && legendRect.width && legendRect.height),
       scrollWidth: document.documentElement.scrollWidth,
       scrollHeight: document.documentElement.scrollHeight,
@@ -494,6 +575,35 @@ async function focusSelector(browser, sessionId, selector) {
   }, sessionId);
   assert.ok(match.nodeId, `Expected focus target: ${selector}`);
   await browser.cdp.send('DOM.focus', { nodeId: match.nodeId }, sessionId);
+}
+
+async function relationshipHitPoint(browser, sessionId, relationshipId) {
+  return evaluate(browser, sessionId, `(function () {
+    var target = document.querySelector('[data-relationship-hit-key][data-relationship-id="${relationshipId}"]');
+    if (!target) return null;
+    var rails = Array.from(target.querySelectorAll('.relationship-hit-rail'));
+    for (var railIndex = 0; railIndex < rails.length; railIndex += 1) {
+      var rail = rails[railIndex];
+      if (typeof rail.getTotalLength !== 'function' || typeof rail.getPointAtLength !== 'function') continue;
+      var length = rail.getTotalLength();
+      var matrix = rail.getScreenCTM();
+      if (!matrix || !Number.isFinite(length) || length <= 0) continue;
+      for (var step = 1; step < 20; step += 1) {
+        var point = rail.getPointAtLength(length * step / 20);
+        var screen = new DOMPoint(point.x, point.y).matrixTransform(matrix);
+        var hit = document.elementFromPoint(screen.x, screen.y);
+        if (hit && hit.closest('[data-relationship-hit-key]') === target) {
+          return {
+            x: screen.x,
+            y: screen.y,
+            key: target.getAttribute('data-relationship-key'),
+            id: target.getAttribute('data-relationship-id')
+          };
+        }
+      }
+    }
+    return null;
+  })()`);
 }
 
 async function installFinePointerEmulation(browser) {
@@ -1538,6 +1648,7 @@ test('Semantic Lens and Radar protect the final Legend and Dock rectangles', {
     await evaluate(browser, sessionId, `document.getElementById('btn-semantic-lens').click()`);
     await waitForLayout(browser, sessionId);
     let receipt = await finalGeometry(browser, sessionId);
+    assert.equal(receipt.lensVisible, true, JSON.stringify(receipt));
     assert.equal(receipt.legendLensIntersectionArea, 0, JSON.stringify(receipt));
     assert.equal(receipt.navLensIntersectionArea, 0, JSON.stringify(receipt));
 
@@ -1547,6 +1658,7 @@ test('Semantic Lens and Radar protect the final Legend and Dock rectangles', {
     })()`);
     await waitForLayout(browser, sessionId);
     receipt = await finalGeometry(browser, sessionId);
+    assert.equal(receipt.radarVisible, true, JSON.stringify(receipt));
     assert.equal(receipt.legendRadarIntersectionArea, 0, JSON.stringify(receipt));
     assert.equal(receipt.navRadarIntersectionArea, 0, JSON.stringify(receipt));
   } finally {
@@ -1576,6 +1688,10 @@ test('Radar, Passport, Legend, and Dock remain mutually clear on desktop and nar
       const receipt = await finalGeometry(browser, sessionId);
       const message = viewport.label + ': ' + JSON.stringify(receipt);
 
+      assert.equal(receipt.passportVisible, true, message);
+      assert.equal(receipt.radarVisible, true, message);
+      assert.equal(receipt.hasLegend, true, message);
+      assert.ok(receipt.navRect, message);
       assert.equal(receipt.legendDockIntersectionArea, 0, message);
       assert.equal(receipt.legendPassportIntersectionArea, 0, message);
       assert.equal(receipt.navPassportIntersectionArea, 0, message);
@@ -1810,6 +1926,192 @@ test('relationship hover stability fixture renders the reported topology before 
   assert.match(html, /data-edge-from="agent-kernel"[^>]+data-edge-to="ai-router"/);
 });
 
+test('relationship exploration never restores stale camera work or repeats keyboard activation', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  const artifact = renderRelationshipHoverStabilityStress();
+  try {
+    await installFinePointerEmulation(browser);
+    const sessionId = await load(browser, artifact, { width: 1396, height: 700 });
+    const receipt = await evaluate(browser, sessionId, `(async function () {
+      var container = document.querySelector('.diagram-container');
+      var spacer = document.createElement('div');
+      spacer.style.height = '500px';
+      document.body.appendChild(spacer);
+      window.scrollTo(0, Math.max(0, container.offsetTop + container.offsetHeight - 100));
+
+      Archify.view.reveal(['operator', 'models'], {
+        fitAll: true,
+        minimumScale: 0.58,
+        reason: 'stale-reveal-regression'
+      });
+      Archify.view.reset();
+      await new Promise(function (resolve) {
+        requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+      });
+      var afterReset = Archify.view.state();
+
+      window.scrollTo(0, Math.max(0, container.offsetTop));
+      Archify.view.reveal(['operator', 'models'], {
+        fitAll: true,
+        minimumScale: 0.58,
+        instant: true,
+        reason: 'sub-one-regression'
+      });
+      var beforeZoomOut = Archify.view.state();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: '-', bubbles: true }));
+      var afterZoomOut = Archify.view.state();
+
+      Archify.focus.clear({ updateUrl: false, preserveView: true });
+      var first = document.querySelector('[data-relationship-hit-key][data-relationship-id="agent-ai"]');
+      first.focus({ preventScroll: true });
+      first.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, repeat: false }));
+      first.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, repeat: true }));
+      var afterRepeat = {
+        relation: Archify.focus.relationship(),
+        pressed: first.getAttribute('aria-pressed')
+      };
+
+      Archify.focus.clearRelationship({ updateUrl: false, reveal: false });
+      Archify.focus.clear({ updateUrl: false, preserveView: true });
+      await new Promise(function (resolve) {
+        requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+      });
+      Archify.focus.set('operator', { toggle: false, updateUrl: false });
+      await new Promise(function (resolve) {
+        requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+      });
+      var blockedTargets = Array.from(document.querySelectorAll('[data-relationship-hit-key]'));
+      var blockedKeyboardState = {
+        disabled: blockedTargets.every(function (target) { return target.getAttribute('aria-disabled') === 'true'; }),
+        tabbable: blockedTargets.filter(function (target) { return target.getAttribute('tabindex') === '0'; }).length
+      };
+      Archify.focus.clear({ updateUrl: false, preserveView: true });
+      await new Promise(function (resolve) {
+        requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+      });
+      var availableTargets = Array.from(document.querySelectorAll('[data-relationship-hit-key]'));
+      var availableKeyboardState = {
+        disabled: availableTargets.some(function (target) { return target.hasAttribute('aria-disabled'); }),
+        tabbable: availableTargets.filter(function (target) { return target.getAttribute('tabindex') === '0'; }).length
+      };
+      var hovered = document.querySelector('[data-relationship-hit-key][data-relationship-id="agent-ai"]');
+      var focused = document.querySelector('[data-relationship-hit-key][data-relationship-id="agent-tools"]');
+      hovered.dispatchEvent(new PointerEvent('pointerover', {
+        bubbles: true,
+        pointerType: 'mouse'
+      }));
+      focused.focus({ preventScroll: true });
+      focused.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      await new Promise(function (resolve) { setTimeout(resolve, 140); });
+      return {
+        afterReset: afterReset,
+        beforeZoomOut: beforeZoomOut,
+        afterZoomOut: afterZoomOut,
+        afterRepeat: afterRepeat,
+        blockedKeyboardState: blockedKeyboardState,
+        availableKeyboardState: availableKeyboardState,
+        focusedPreview: document.querySelector('.diagram-container > svg')
+          .getAttribute('data-relationship-preview-active'),
+        focusedKey: focused.getAttribute('data-relationship-key')
+      };
+    })()`, true);
+
+    assert.equal(receipt.afterReset.mode, 'overview', JSON.stringify(receipt));
+    assert.ok(receipt.beforeZoomOut.scale < 1, JSON.stringify(receipt));
+    assert.ok(receipt.afterZoomOut.scale <= receipt.beforeZoomOut.scale + 0.001, JSON.stringify(receipt));
+    assert.ok(receipt.afterRepeat.relation, JSON.stringify(receipt));
+    assert.equal(receipt.afterRepeat.pressed, 'true', JSON.stringify(receipt));
+    assert.deepEqual(receipt.blockedKeyboardState, { disabled: true, tabbable: 0 }, JSON.stringify(receipt));
+    assert.deepEqual(receipt.availableKeyboardState, { disabled: false, tabbable: 1 }, JSON.stringify(receipt));
+    assert.equal(receipt.focusedPreview, receipt.focusedKey, JSON.stringify(receipt));
+  } finally {
+    await browser.close();
+  }
+});
+
+test('direct relationship rails receive physical hover and click without moving the hover camera', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  const artifact = renderRelationshipHoverStabilityStress();
+  try {
+    await installFinePointerEmulation(browser);
+    const sessionId = await load(browser, artifact, { width: 1396, height: 894 });
+    const point = await relationshipHitPoint(browser, sessionId, 'agent-ai');
+    assert.ok(point, 'expected a physically hittable relationship rail');
+    await browser.cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved', x: 1, y: 1, button: 'none', buttons: 0,
+    }, sessionId);
+    await evaluate(browser, sessionId, `(function () {
+      var container = document.querySelector('.diagram-container');
+      var svg = document.querySelector('.diagram-container > svg');
+      window.__directRelationshipProbe = {
+        camera: Archify.view.state(),
+        transactionStarts: 0,
+        previousMoving: container.hasAttribute('data-camera-transaction'),
+        activeStarts: 0,
+        previousActive: svg.getAttribute('data-relationship-preview-active')
+      };
+      var probe = window.__directRelationshipProbe;
+      probe.observer = new MutationObserver(function () {
+        var moving = container.hasAttribute('data-camera-transaction');
+        if (moving && !probe.previousMoving) probe.transactionStarts += 1;
+        probe.previousMoving = moving;
+        var active = svg.getAttribute('data-relationship-preview-active');
+        if (active && active !== probe.previousActive) probe.activeStarts += 1;
+        probe.previousActive = active;
+      });
+      probe.observer.observe(container, { attributes: true, attributeFilter: ['data-camera-transaction'] });
+      probe.observer.observe(svg, { attributes: true, attributeFilter: ['data-relationship-preview-active'] });
+    })()`);
+    await browser.cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved', x: point.x, y: point.y, button: 'none', buttons: 0,
+    }, sessionId);
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    const hover = await evaluate(browser, sessionId, `(function () {
+      var probe = window.__directRelationshipProbe;
+      probe.observer.disconnect();
+      var target = document.elementFromPoint(${point.x}, ${point.y});
+      return {
+        key: document.querySelector('.diagram-container > svg').getAttribute('data-relationship-preview-active'),
+        hitKey: target && target.closest('[data-relationship-hit-key]') &&
+          target.closest('[data-relationship-hit-key]').getAttribute('data-relationship-key'),
+        camera: Archify.view.state(),
+        baseline: probe.camera,
+        transactionStarts: probe.transactionStarts,
+        activeStarts: probe.activeStarts
+      };
+    })()`);
+    assert.equal(hover.key, point.key, JSON.stringify(hover));
+    assert.equal(hover.hitKey, point.key, JSON.stringify(hover));
+    assert.deepEqual(hover.camera, hover.baseline, JSON.stringify(hover));
+    assert.equal(hover.transactionStarts, 0, JSON.stringify(hover));
+    assert.equal(hover.activeStarts, 1, JSON.stringify(hover));
+
+    await browser.cdp.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed', x: point.x, y: point.y,
+      button: 'left', buttons: 1, clickCount: 1,
+    }, sessionId);
+    await browser.cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased', x: point.x, y: point.y,
+      button: 'left', buttons: 0, clickCount: 1,
+    }, sessionId);
+    await waitForRelationshipReveal(browser, sessionId, 'ai-router');
+    const click = await evaluate(browser, sessionId, `(function () {
+      var relation = Archify.focus.relationship();
+      return {
+        id: relation && relation.id,
+        pressed: document.querySelector('[data-relationship-id="agent-ai"]').getAttribute('aria-pressed')
+      };
+    })()`);
+    assert.deepEqual(click, { id: 'agent-ai', pressed: 'true' });
+  } finally {
+    await browser.close();
+  }
+});
+
 test('relationship hover only highlights while explicit activation owns camera movement', {
   skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
 }, async () => {
@@ -1870,21 +2172,14 @@ test('relationship hover only highlights while explicit activation owns camera m
         button: 'none',
         buttons: 0,
       }, sessionId);
-      await browser.cdp.send('Input.dispatchMouseEvent', {
-        type: 'mouseMoved',
-        x: point.x,
-        y: point.y,
-        button: 'none',
-        buttons: 0,
-      }, sessionId);
-      const receipt = await evaluate(browser, sessionId, `(function () {
+      const receiptPromise = evaluate(browser, sessionId, `(function () {
         var point = ${JSON.stringify(point)};
         var container = document.querySelector('.diagram-container');
         var svg = document.querySelector('.diagram-container > svg');
         var row = document.querySelector('.relationship-lens-row[data-relationship-target="ai-router"]');
         var rowKey = row.getAttribute('data-relationship-key');
         return new Promise(function (resolve) {
-          var frames = 0;
+          var startedAt = performance.now();
           var previousActiveKey = svg.getAttribute('data-relationship-preview-active');
           var previousMoving = container.hasAttribute('data-camera-transaction');
           var previousUnder = true;
@@ -1914,7 +2209,6 @@ test('relationship hover only highlights while explicit activation owns camera m
             return direction;
           }
           function sample() {
-            frames += 1;
             var activeKey = svg.getAttribute('data-relationship-preview-active');
             if (activeKey !== previousActiveKey) {
               if (activeKey) activeStarts += 1;
@@ -1944,7 +2238,7 @@ test('relationship hover only highlights while explicit activation owns camera m
             scales.push(scale);
             xs.push(camera.x);
             ys.push(camera.y);
-            if (frames >= 240) {
+            if (performance.now() - startedAt >= 1200) {
               var scaleTail = scales.slice(-30);
               var xTail = xs.slice(-30);
               var yTail = ys.slice(-30);
@@ -1993,6 +2287,14 @@ test('relationship hover only highlights while explicit activation owns camera m
           requestAnimationFrame(sample);
         });
       })()`, true);
+      await browser.cdp.send('Input.dispatchMouseEvent', {
+        type: 'mouseMoved',
+        x: point.x,
+        y: point.y,
+        button: 'none',
+        buttons: 0,
+      }, sessionId);
+      const receipt = await receiptPromise;
       const message = `${scenario.label}: ${JSON.stringify(receipt)}`;
       assert.equal(receipt.activeStarts, 1, message);
       assert.equal(receipt.clears, 0, message);
@@ -2276,54 +2578,11 @@ test('relationship hover only highlights while explicit activation owns camera m
       assert.ok(Math.abs(camera.y - boundary.camera.y) <= 0.001, JSON.stringify(camera));
     });
 
-    const activated = await evaluate(browser, boundarySessionId, `(function () {
-      var container = document.querySelector('.diagram-container');
-      var resetCalls = 0;
-      var revealCalls = [];
-      var originalReset = Archify.view.reset;
-      var originalReveal = Archify.view.reveal;
-      Archify.view.reset = function () {
-        resetCalls += 1;
-        return originalReset.apply(Archify.view, arguments);
-      };
-      Archify.view.reveal = function (ids, options) {
-        revealCalls.push({ ids: ids.slice(), reason: options && options.reason });
-        return originalReveal.apply(Archify.view, arguments);
-      };
-      var previousMoving = container.hasAttribute('data-camera-transaction');
-      var transactionStarts = previousMoving ? 1 : 0;
-      var observer = new MutationObserver(function () {
-        var moving = container.hasAttribute('data-camera-transaction');
-        if (moving && !previousMoving) transactionStarts += 1;
-        previousMoving = moving;
-      });
-      observer.observe(container, { attributes: true, attributeFilter: ['data-camera-transaction'] });
-      document.querySelector('.relationship-lens-row[data-relationship-target="tools"]').click();
-      return new Promise(function (resolve) {
-        window.setTimeout(function () {
-          observer.disconnect();
-          Archify.view.reset = originalReset;
-          Archify.view.reveal = originalReveal;
-          var target = document.querySelector('[data-node-id="tools"]');
-          var rect = target.getBoundingClientRect();
-          var containerRect = container.getBoundingClientRect();
-          var passportRect = document.getElementById('focus-chip').getBoundingClientRect();
-          resolve({
-            hash: location.hash,
-            focused: document.querySelector('.diagram-container > svg').getAttribute('data-focus-active'),
-            camera: Archify.view.state(),
-            resetCalls: resetCalls,
-            revealCalls: revealCalls,
-            transactionStarts: transactionStarts,
-            moving: container.hasAttribute('data-camera-transaction'),
-            overlap: Math.max(0, Math.min(rect.right, passportRect.right) - Math.max(rect.left, passportRect.left)) *
-              Math.max(0, Math.min(rect.bottom, passportRect.bottom) - Math.max(rect.top, passportRect.top)),
-            visible: rect.left >= containerRect.left - 0.5 && rect.top >= containerRect.top - 0.5 &&
-              rect.right <= containerRect.right + 0.5 && rect.bottom <= containerRect.bottom + 0.5
-          });
-        }, 900);
-      });
-    })()`, true);
+    const activated = await activateRelationshipRow(
+      browser,
+      boundarySessionId,
+      '.relationship-lens-row[data-relationship-target="tools"]',
+    );
     assert.equal(activated.hash, '#focus=tools', JSON.stringify(activated));
     assert.equal(activated.focused, 'tools', JSON.stringify(activated));
     assert.equal(activated.resetCalls, 0, JSON.stringify(activated));
@@ -2331,7 +2590,7 @@ test('relationship hover only highlights while explicit activation owns camera m
     assert.equal(activated.transactionStarts, 1, JSON.stringify(activated));
     assert.equal(activated.moving, false, JSON.stringify(activated));
     assert.equal(activated.overlap, 0, JSON.stringify(activated));
-    assert.equal(activated.visible, true, JSON.stringify(activated));
+    assert.equal(activated.fullyVisible, true, JSON.stringify(activated));
   } finally {
     await browser.close();
   }
@@ -2909,56 +3168,7 @@ test('mobile relationship exploration keeps every result outside compact and exp
     assert.deepEqual(preview.camera, previewCameraBaseline, JSON.stringify(preview));
     assert.equal(previewControls.reachVisible, true, JSON.stringify(previewControls));
     assert.equal(previewControls.detailsHidden, true, JSON.stringify(previewControls));
-    const listActivation = await evaluate(browser, sessionId, `(function () {
-      var container = document.querySelector('.diagram-container');
-      var row = document.activeElement;
-      var targetId = row.getAttribute('data-relationship-target');
-      var originalReset = Archify.view.reset;
-      var originalReveal = Archify.view.reveal;
-      var resetCalls = 0;
-      var revealCalls = [];
-      var transactionStarts = 0;
-      var previousMoving = container.hasAttribute('data-camera-transaction');
-      Archify.view.reset = function () {
-        resetCalls += 1;
-        return originalReset.apply(Archify.view, arguments);
-      };
-      Archify.view.reveal = function (ids, options) {
-        revealCalls.push({ ids: ids.slice(), reason: options && options.reason });
-        return originalReveal.apply(Archify.view, arguments);
-      };
-      var observer = new MutationObserver(function () {
-        var moving = container.hasAttribute('data-camera-transaction');
-        if (moving && !previousMoving) transactionStarts += 1;
-        previousMoving = moving;
-      });
-      observer.observe(container, { attributes: true, attributeFilter: ['data-camera-transaction'] });
-      row.click();
-      return new Promise(function (resolve) {
-        window.setTimeout(function () {
-          observer.disconnect();
-          Archify.view.reset = originalReset;
-          Archify.view.reveal = originalReveal;
-          var target = document.querySelector('[data-node-id="' + targetId + '"]');
-          var targetRect = target.getBoundingClientRect();
-          var passportRect = document.getElementById('focus-chip').getBoundingClientRect();
-          var containerRect = container.getBoundingClientRect();
-          var overlap = Math.max(0, Math.min(targetRect.right, passportRect.right) - Math.max(targetRect.left, passportRect.left)) *
-            Math.max(0, Math.min(targetRect.bottom, passportRect.bottom) - Math.max(targetRect.top, passportRect.top));
-          resolve({
-            targetId: targetId,
-            focused: document.querySelector('.diagram-container > svg').getAttribute('data-focus-active'),
-            resetCalls: resetCalls,
-            revealCalls: revealCalls,
-            transactionStarts: transactionStarts,
-            relationsExpanded: document.getElementById('focus-chip').getAttribute('data-relations-expanded'),
-            overlap: overlap,
-            fullyVisible: targetRect.left >= containerRect.left - 0.5 && targetRect.top >= containerRect.top - 0.5 &&
-              targetRect.right <= containerRect.right + 0.5 && targetRect.bottom <= containerRect.bottom + 0.5
-          });
-        }, 900);
-      });
-    })()`, true);
+    const listActivation = await activateRelationshipRow(browser, sessionId);
     assert.equal(listActivation.focused, listActivation.targetId, JSON.stringify(listActivation));
     assert.equal(listActivation.resetCalls, 0, JSON.stringify(listActivation));
     assert.deepEqual(listActivation.revealCalls, [{

@@ -173,7 +173,8 @@ test('Semantic Radar tracks desktop camera and mobile contained scroll', () => {
   const html = render('sequence', CASES.sequence);
   assert.match(html, /function logicalViewport\(\)/);
   assert.match(html, /var matrix = svg\.getScreenCTM\(\)/);
-  assert.match(html, /first = first\.matrixTransform\(inverse\)/);
+  assert.match(html, /visibleTopLeft = visibleTopLeft\.matrixTransform\(inverse\)/);
+  assert.match(html, /visibleBottomRight = visibleBottomRight\.matrixTransform\(inverse\)/);
   assert.match(html, /x = viewBox\.x \+ \(\(\(container\.scrollLeft - state\.x\) \/ state\.scale\) - metrics\.offsetX\) \/ metrics\.scale/);
   assert.match(html, /width = Math\.min\(viewBox\.width, Math\.max\(1, container\.clientWidth \/ state\.scale \/ metrics\.scale\)\)/);
   assert.match(html, /height = Math\.min\(viewBox\.height, Math\.max\(1, metrics\.height \/ state\.scale \/ metrics\.scale\)\)/);

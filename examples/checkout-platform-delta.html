@@ -12535,6 +12535,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       var relationshipHitTargets = [];
       var directPreviewTimer = null;
       var relationshipPreviewTimer = null;
+      var relationshipAvailabilityFrame = 0;
       var reachabilityMode = null;
       var activeReachability = null;
       var svgNamespace = &#39;http://www.w3.org/2000/svg&#39;;
@@ -13338,9 +13339,30 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         if (pinnedRelationshipKey) return;
         directPreviewTimer = window.setTimeout(function () {
           directPreviewTimer = null;
-          if (pinnedRelationshipKey || hoveredRelationship !== target || directRelationshipBlocked()) return;
-          previewRelationship(target, { direct: true });
+          if (pinnedRelationshipKey || focusedRelationship || hoveredRelationship !== target || directRelationshipBlocked()) return;
+          syncRelationshipPreview();
         }, reducedMotionQuery &amp;&amp; reducedMotionQuery.matches ? 0 : 90);
+      }
+      function syncRelationshipHitAvailability() {
+        relationshipAvailabilityFrame = 0;
+        if (!relationshipHitTargets.length) return;
+        var blocked = directRelationshipBlocked();
+        var roving = relationshipHitTargets.find(function (target) {
+          return target.getAttribute(&#39;tabindex&#39;) === &#39;0&#39;;
+        }) || relationshipHitTargets[0];
+        relationshipHitTargets.forEach(function (target) {
+          if (blocked) {
+            target.setAttribute(&#39;aria-disabled&#39;, &#39;true&#39;);
+            target.setAttribute(&#39;tabindex&#39;, &#39;-1&#39;);
+          } else {
+            target.removeAttribute(&#39;aria-disabled&#39;);
+            target.setAttribute(&#39;tabindex&#39;, target === roving ? &#39;0&#39; : &#39;-1&#39;);
+          }
+        });
+      }
+      function requestRelationshipHitAvailability() {
+        if (relationshipAvailabilityFrame) return;
+        relationshipAvailabilityFrame = requestAnimationFrame(syncRelationshipHitAvailability);
       }
       function relationshipHitTarget(key) {
         return relationshipHitTargets.find(function (target) {
@@ -13500,6 +13522,8 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         relationshipHitOverlay.addEventListener(&#39;focusin&#39;, function (event) {
           var target = event.target.closest(&#39;[data-relationship-hit-key]&#39;);
           if (!target || directRelationshipBlocked()) return;
+          if (directPreviewTimer) window.clearTimeout(directPreviewTimer);
+          directPreviewTimer = null;
           focusedRelationship = target;
           if (!pinnedRelationshipKey) previewRelationship(target, { direct: true });
         });
@@ -13531,6 +13555,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           if (event.key === &#39;Enter&#39; || event.key === &#39; &#39;) {
             event.preventDefault();
             event.stopPropagation();
+            if (event.repeat) return;
             if (directRelationshipBlocked()) return;
             focusedRelationship = null;
             hoveredRelationship = null;
@@ -13751,7 +13776,10 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var fixedHead = chip.querySelector(&#39;.relationship-lens-head&#39;);
         var minimumUsableBodyHeight = 56;
         if (fixedHead &amp;&amp; availableHeight &lt; fixedHead.scrollHeight + minimumUsableBodyHeight) {
-          if (relationshipBody.contains(document.activeElement)) {
+          if (relationshipBody.contains(document.activeElement) ||
+              document.activeElement === detailsBtn ||
+              document.activeElement === copyBtn ||
+              document.activeElement === relationsBtn) {
             try { clearBtn.focus({ preventScroll: true }); }
             catch (_) { try { clearBtn.focus(); } catch (_) {} }
           }
@@ -13785,10 +13813,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var top = Math.max(minTop, Math.min(maxTop, preferred));
         var chipRect = chip.getBoundingClientRect();
         var safeGap = 10;
-        var protectViewerChrome = true;
-        var protectedRects = (protectViewerChrome
-          ? [svg.querySelector(&#39;[data-legend]&#39;), container.querySelector(&#39;.diagram-nav&#39;)]
-          : [])
+        var protectedRects = [svg.querySelector(&#39;[data-legend]&#39;), container.querySelector(&#39;.diagram-nav&#39;)]
           .filter(function (element) {
             if (!element || element.hidden) return false;
             var style = window.getComputedStyle(element);
@@ -14126,10 +14151,11 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         syncRelationshipPreview();
       });
       relationshipList.addEventListener(&#39;keydown&#39;, function (event) {
-        if ((event.key === &#39;Enter&#39; || event.key === &#39; &#39;) &amp;&amp; !event.repeat) {
+        if (event.key === &#39;Enter&#39; || event.key === &#39; &#39;) {
           var activationControl = event.target.closest(&#39;[data-relationship-group-toggle], [data-relationship-target]&#39;);
           if (!activationControl) return;
           event.preventDefault();
+          if (event.repeat) return;
           activationControl.click();
           return;
         }
@@ -14166,6 +14192,29 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         });
         relationshipResizeObserver.observe(relationshipBody);
       }
+      if (typeof MutationObserver === &#39;function&#39;) {
+        var relationshipAvailabilityObserver = new MutationObserver(requestRelationshipHitAvailability);
+        relationshipAvailabilityObserver.observe(html, {
+          attributes: true,
+          attributeFilter: [&#39;data-embed&#39;, &#39;data-guide-open&#39;]
+        });
+        relationshipAvailabilityObserver.observe(container, {
+          attributes: true,
+          attributeFilter: [&#39;class&#39;]
+        });
+        relationshipAvailabilityObserver.observe(svg, {
+          attributes: true,
+          attributeFilter: [
+            &#39;data-story-active&#39;,
+            &#39;data-route-picking&#39;,
+            &#39;data-route-active&#39;,
+            &#39;data-lens-active&#39;,
+            &#39;data-chapter-preview&#39;,
+            &#39;data-focus-active&#39;,
+            &#39;data-relationship-pin-active&#39;
+          ]
+        });
+      }
       document.addEventListener(&#39;visibilitychange&#39;, function () {
         if (document.hidden) removeRelationshipPulse();
       });
@@ -14181,6 +14230,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       }
 
       installRelationshipHitTargets();
+      syncRelationshipHitAvailability();
 
       function syncFocusFromHash() {
         try {
@@ -16711,8 +16761,17 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       var clipFrame = 0;
       var viewSyncFrame = 0;
       var semanticSyncRequested = false;
+      var deferredRevealFrame = 0;
+      var viewIntentGeneration = 0;
       var autoScrollUntil = 0;
       var semanticViewport = null;
+
+      function beginViewIntent() {
+        viewIntentGeneration += 1;
+        if (deferredRevealFrame) cancelAnimationFrame(deferredRevealFrame);
+        deferredRevealFrame = 0;
+        return viewIntentGeneration;
+      }
 
       var viewBox = svg.viewBox &amp;&amp; svg.viewBox.baseVal;
 
@@ -16773,18 +16832,18 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
             var screenBottom = Math.min(window.innerHeight, svgRect.bottom, containerRect.bottom);
             if (matrix &amp;&amp; screenRight &gt; screenLeft &amp;&amp; screenBottom &gt; screenTop) {
               var inverse = matrix.inverse();
-              var first = svg.createSVGPoint();
-              first.x = screenLeft;
-              first.y = screenTop;
-              first = first.matrixTransform(inverse);
-              var second = svg.createSVGPoint();
-              second.x = screenRight;
-              second.y = screenBottom;
-              second = second.matrixTransform(inverse);
-              x = Math.min(first.x, second.x);
-              y = Math.min(first.y, second.y);
-              width = Math.abs(second.x - first.x);
-              height = Math.abs(second.y - first.y);
+              var visibleTopLeft = svg.createSVGPoint();
+              visibleTopLeft.x = screenLeft;
+              visibleTopLeft.y = screenTop;
+              visibleTopLeft = visibleTopLeft.matrixTransform(inverse);
+              var visibleBottomRight = svg.createSVGPoint();
+              visibleBottomRight.x = screenRight;
+              visibleBottomRight.y = screenBottom;
+              visibleBottomRight = visibleBottomRight.matrixTransform(inverse);
+              x = Math.min(visibleTopLeft.x, visibleBottomRight.x);
+              y = Math.min(visibleTopLeft.y, visibleBottomRight.y);
+              width = Math.abs(visibleBottomRight.x - visibleTopLeft.x);
+              height = Math.abs(visibleBottomRight.y - visibleTopLeft.y);
               measured = true;
             }
           } catch (_) {}
@@ -16906,6 +16965,8 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         if (transaction.timer) clearTimeout(transaction.timer);
         transaction.frame = null;
         transaction.timer = null;
+        if (transaction.cleanup) transaction.cleanup();
+        transaction.cleanup = null;
         if (cameraTransaction === transaction) cameraTransaction = null;
         cameraFrame = null;
         cameraTimer = null;
@@ -16925,6 +16986,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           settled: false,
           frame: null,
           timer: null,
+          cleanup: null,
           finished: new Promise(function (resolve) { resolver = resolve; }),
           resolve: resolver,
           cancel: function (reason, commitTarget) {
@@ -16941,6 +17003,10 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
                 };
                 apply();
               }
+            } else if (transaction.target &amp;&amp; Object.prototype.hasOwnProperty.call(transaction.target, &#39;scrollLeft&#39;)) {
+              autoScrollUntil = Date.now() + 250;
+              try { container.scrollTo({ left: container.scrollLeft, behavior: &#39;auto&#39; }); }
+              catch (_) {}
             }
             return finishCameraTransaction(transaction, reason || &#39;cancelled&#39;);
           }
@@ -16961,6 +17027,10 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         container.removeAttribute(&#39;data-camera-transaction&#39;);
       }
       function interruptCamera(reason) {
+        beginViewIntent();
+        if (viewSyncFrame) cancelAnimationFrame(viewSyncFrame);
+        viewSyncFrame = 0;
+        semanticSyncRequested = false;
         if (Archify.guidedViews &amp;&amp; Archify.guidedViews.cancelHandoff) {
           Archify.guidedViews.cancelHandoff(reason || &#39;manual&#39;);
         }
@@ -16968,6 +17038,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         stopCameraMotion(reason || &#39;manual&#39;, false);
         state = rendered;
         state.mode = &#39;manual&#39;;
+        semanticViewport = null;
         apply();
         renderControls();
         if (Archify.guidedViews &amp;&amp; Archify.guidedViews.isPlaying &amp;&amp; Archify.guidedViews.isPlaying()) {
@@ -16981,7 +17052,8 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         options = options || {};
         if (options.manual !== false) interruptCamera();
         var previous = state.scale;
-        next = Math.max(1, Math.min(3, Math.round(next * 4) / 4));
+        var rounded = Math.min(3, Math.round(next * 4) / 4);
+        next = previous &lt; 1 &amp;&amp; rounded &lt; previous ? previous : Math.max(1, rounded);
         if (next === previous) return;
         var centerX = (svg.clientWidth || 1) / 2;
         var centerY = (svg.clientHeight || 1) / 2;
@@ -16995,7 +17067,10 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       function reset(options) {
         options = options || {};
         if (options.automatic !== true) interruptCamera();
-        else stopCameraMotion(&#39;reset&#39;, false);
+        else {
+          beginViewIntent();
+          stopCameraMotion(&#39;reset&#39;, false);
+        }
         semanticViewport = null;
         state = { scale: 1, x: 0, y: 0, mode: &#39;overview&#39; };
         apply();
@@ -17046,14 +17121,26 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         }
         return wanted;
       }
-      function boxesFor(ids, includeNeighbors) {
+      function boundsFor(ids, includeNeighbors) {
         var wanted = semanticIds(ids, includeNeighbors);
-        return Array.prototype.slice.call(svg.querySelectorAll(&#39;[data-node-id]&#39;))
-          .filter(function (node) { return wanted[node.getAttribute(&#39;data-node-id&#39;)]; })
-          .map(function (node) {
-            try { return node.getBBox(); } catch (_) { return null; }
-          })
-          .filter(Boolean);
+        var bounds = null;
+        Array.prototype.forEach.call(svg.querySelectorAll(&#39;[data-node-id]&#39;), function (node) {
+          if (!wanted[node.getAttribute(&#39;data-node-id&#39;)]) return;
+          var box;
+          try { box = node.getBBox(); } catch (_) { return; }
+          if (!bounds) {
+            bounds = { minX: box.x, minY: box.y, maxX: box.x + box.width, maxY: box.y + box.height };
+            return;
+          }
+          bounds.minX = Math.min(bounds.minX, box.x);
+          bounds.minY = Math.min(bounds.minY, box.y);
+          bounds.maxX = Math.max(bounds.maxX, box.x + box.width);
+          bounds.maxY = Math.max(bounds.maxY, box.y + box.height);
+        });
+        if (!bounds) return null;
+        bounds.width = Math.max(1, bounds.maxX - bounds.minX);
+        bounds.height = Math.max(1, bounds.maxY - bounds.minY);
+        return bounds;
       }
       function ensureFitAllContainerVisibility(options, minimumVisibleHeight) {
         if (!options || options.fitAll !== true) return false;
@@ -17070,22 +17157,18 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       }
       function frameDesktop(ids, options) {
         options = options || {};
-        var boxes = boxesFor(ids, options.includeNeighbors === true);
-        if (!boxes.length || !viewBox || viewBox.width &lt;= 0 || viewBox.height &lt;= 0) return false;
+        var logicalBounds = boundsFor(ids, options.includeNeighbors === true);
+        if (!logicalBounds || !viewBox || viewBox.width &lt;= 0 || viewBox.height &lt;= 0) return false;
         var svgWidth = svg.clientWidth || 1;
         var svgHeight = svg.clientHeight || 1;
         var contentScale = Math.min(svgWidth / viewBox.width, svgHeight / viewBox.height);
         var contentOffsetX = (svgWidth - viewBox.width * contentScale) / 2;
         var contentOffsetY = (svgHeight - viewBox.height * contentScale) / 2;
-        var minX = Math.min.apply(Math, boxes.map(function (box) { return box.x; }));
-        var minY = Math.min.apply(Math, boxes.map(function (box) { return box.y; }));
-        var maxX = Math.max.apply(Math, boxes.map(function (box) { return box.x + box.width; }));
-        var maxY = Math.max.apply(Math, boxes.map(function (box) { return box.y + box.height; }));
         var bounds = {
-          x: contentOffsetX + minX * contentScale,
-          y: contentOffsetY + minY * contentScale,
-          width: Math.max(1, (maxX - minX) * contentScale),
-          height: Math.max(1, (maxY - minY) * contentScale)
+          x: contentOffsetX + logicalBounds.minX * contentScale,
+          y: contentOffsetY + logicalBounds.minY * contentScale,
+          width: logicalBounds.width * contentScale,
+          height: logicalBounds.height * contentScale
         };
         var padding = options.padding || 48;
         var left = padding;
@@ -17219,6 +17302,29 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         cameraFrame = transaction.frame;
         return transaction;
       }
+      function scrollCameraTo(scrollTarget, options) {
+        options = options || {};
+        var transaction = cameraReceipt({ scrollLeft: scrollTarget }, options);
+        cameraTransaction = transaction;
+        var instant = options.instant === true || reducedMotion() || document.hidden;
+        autoScrollUntil = Date.now() + (instant ? 250 : 1100);
+        try { container.scrollTo({ left: scrollTarget, behavior: instant ? &#39;auto&#39; : &#39;smooth&#39; }); }
+        catch (_) { container.scrollLeft = scrollTarget; }
+        if (instant) {
+          finishCameraTransaction(transaction, reducedMotion() ? &#39;reduced-motion&#39; : (document.hidden ? &#39;hidden&#39; : &#39;complete&#39;));
+          return transaction;
+        }
+        var finishScroll = function () { finishCameraTransaction(transaction, &#39;complete&#39;); };
+        if (&#39;onscrollend&#39; in container) {
+          container.addEventListener(&#39;scrollend&#39;, finishScroll, { once: true });
+          transaction.cleanup = function () { container.removeEventListener(&#39;scrollend&#39;, finishScroll); };
+        }
+        transaction.timer = setTimeout(finishScroll, 1000);
+        cameraTimer = transaction.timer;
+        container.classList.add(&#39;is-camera-moving&#39;);
+        container.setAttribute(&#39;data-camera-transaction&#39;, String(transaction.id));
+        return transaction;
+      }
       function frameMobile(ids, options) {
         options = options || {};
         var chip = document.getElementById(&#39;focus-chip&#39;);
@@ -17228,20 +17334,16 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var explorationMode = chip &amp;&amp; chip.getAttribute(&#39;data-exploration-mode&#39;);
         if (options.avoidPassport !== true &amp;&amp; !compactExploration &amp;&amp;
             explorationMode !== &#39;reach&#39; &amp;&amp; explorationMode !== &#39;relationship&#39;) return false;
-        var boxes = boxesFor(ids, options.includeNeighbors === true);
+        var logicalBounds = boundsFor(ids, options.includeNeighbors === true);
         var metrics = contentMetrics();
-        if (!boxes.length || !metrics || !viewBox || viewBox.width &lt;= 0 || viewBox.height &lt;= 0) return false;
+        if (!logicalBounds || !metrics || !viewBox || viewBox.width &lt;= 0 || viewBox.height &lt;= 0) return false;
         var width = svg.clientWidth || 1;
         var height = svg.clientHeight || 1;
-        var minX = Math.min.apply(Math, boxes.map(function (box) { return box.x; }));
-        var minY = Math.min.apply(Math, boxes.map(function (box) { return box.y; }));
-        var maxX = Math.max.apply(Math, boxes.map(function (box) { return box.x + box.width; }));
-        var maxY = Math.max.apply(Math, boxes.map(function (box) { return box.y + box.height; }));
         var bounds = {
-          x: metrics.offsetX + (minX - viewBox.x) * metrics.scale,
-          y: metrics.offsetY + (minY - viewBox.y) * metrics.scale,
-          width: Math.max(1, (maxX - minX) * metrics.scale),
-          height: Math.max(1, (maxY - minY) * metrics.scale)
+          x: metrics.offsetX + (logicalBounds.minX - viewBox.x) * metrics.scale,
+          y: metrics.offsetY + (logicalBounds.minY - viewBox.y) * metrics.scale,
+          width: logicalBounds.width * metrics.scale,
+          height: logicalBounds.height * metrics.scale
         };
         var padding = 12;
         var top = padding;
@@ -17298,29 +17400,21 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var transformedCenter = state.x + horizontalCenter * state.scale;
         var maximumScroll = Math.max(0, width - container.clientWidth);
         var scrollTarget = Math.max(0, Math.min(maximumScroll, transformedCenter - container.clientWidth / 2));
-        var transaction = cameraReceipt({ scrollLeft: scrollTarget }, options);
-        cameraTransaction = transaction;
-        var instant = options.instant === true || reducedMotion() || document.hidden;
-        autoScrollUntil = Date.now() + (instant ? 250 : 900);
-        try { container.scrollTo({ left: scrollTarget, behavior: instant ? &#39;auto&#39; : &#39;smooth&#39; }); }
-        catch (_) { container.scrollLeft = scrollTarget; }
-        if (instant) {
-          finishCameraTransaction(transaction, reducedMotion() ? &#39;reduced-motion&#39; : (document.hidden ? &#39;hidden&#39; : &#39;complete&#39;));
-        } else {
-          transaction.timer = setTimeout(function () { finishCameraTransaction(transaction, &#39;complete&#39;); }, 460);
-          cameraTimer = transaction.timer;
-          container.classList.add(&#39;is-camera-moving&#39;);
-          container.setAttribute(&#39;data-camera-transaction&#39;, String(transaction.id));
-        }
-        return transaction;
+        return scrollCameraTo(scrollTarget, options);
       }
-      function reveal(ids, options) {
+      function revealOwned(ids, options, generation, visibilityAttempts) {
         options = options || {};
+        if (generation !== viewIntentGeneration) return false;
         var minimumVisibleHeight = window.innerWidth &gt; 720 ? 240 : 220;
         if (ensureFitAllContainerVisibility(options, minimumVisibleHeight)) {
           if (Archify.focus &amp;&amp; typeof Archify.focus.reposition === &#39;function&#39;) Archify.focus.reposition();
-          requestAnimationFrame(function () { reveal(ids, options); });
-          return true;
+          if (visibilityAttempts &lt; 2) {
+            deferredRevealFrame = requestAnimationFrame(function () {
+              deferredRevealFrame = 0;
+              revealOwned(ids, options, generation, visibilityAttempts + 1);
+            });
+            return true;
+          }
         }
         if (window.innerWidth &gt; 720) return frameDesktop(ids, options);
         var mobileFrame = frameMobile(ids, options);
@@ -17338,26 +17432,16 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           finishCameraTransaction(contained, &#39;complete&#39;);
           return contained;
         }
-        var boxes = boxesFor(ids, options.includeNeighbors === true);
-        if (!boxes.length || !viewBox || viewBox.width &lt;= 0) return false;
-        var minX = Math.min.apply(Math, boxes.map(function (box) { return box.x; }));
-        var maxX = Math.max.apply(Math, boxes.map(function (box) { return box.x + box.width; }));
-        var center = ((minX + maxX) / 2 / viewBox.width) * (svg.clientWidth || 1);
+        var logicalBounds = boundsFor(ids, options.includeNeighbors === true);
+        if (!logicalBounds || !viewBox || viewBox.width &lt;= 0) return false;
+        var center = ((logicalBounds.minX + logicalBounds.maxX) / 2 / viewBox.width) * (svg.clientWidth || 1);
         var target = Math.max(0, Math.min(svg.clientWidth - container.clientWidth, center - container.clientWidth / 2));
-        var transaction = cameraReceipt({ scrollLeft: target }, options);
-        cameraTransaction = transaction;
-        var instant = options.instant === true || reducedMotion() || document.hidden;
-        autoScrollUntil = Date.now() + (instant ? 250 : 900);
-        try { container.scrollTo({ left: target, behavior: instant ? &#39;auto&#39; : &#39;smooth&#39; }); }
-        catch (_) { container.scrollLeft = target; }
-        if (instant) finishCameraTransaction(transaction, reducedMotion() ? &#39;reduced-motion&#39; : (document.hidden ? &#39;hidden&#39; : &#39;complete&#39;));
-        else {
-          transaction.timer = setTimeout(function () { finishCameraTransaction(transaction, &#39;complete&#39;); }, 460);
-          cameraTimer = transaction.timer;
-          container.classList.add(&#39;is-camera-moving&#39;);
-          container.setAttribute(&#39;data-camera-transaction&#39;, String(transaction.id));
-        }
-        return transaction;
+        return scrollCameraTo(target, options);
+      }
+      function reveal(ids, options) {
+        var generation = beginViewIntent();
+        stopCameraMotion(&#39;replaced&#39;, false);
+        return revealOwned(ids, options || {}, generation, 0);
       }
       function syncSemantic() {
         var explorationChip = document.getElementById(&#39;focus-chip&#39;);
@@ -28362,6 +28446,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       var relationshipHitTargets = [];
       var directPreviewTimer = null;
       var relationshipPreviewTimer = null;
+      var relationshipAvailabilityFrame = 0;
       var reachabilityMode = null;
       var activeReachability = null;
       var svgNamespace = &#39;http://www.w3.org/2000/svg&#39;;
@@ -29165,9 +29250,30 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         if (pinnedRelationshipKey) return;
         directPreviewTimer = window.setTimeout(function () {
           directPreviewTimer = null;
-          if (pinnedRelationshipKey || hoveredRelationship !== target || directRelationshipBlocked()) return;
-          previewRelationship(target, { direct: true });
+          if (pinnedRelationshipKey || focusedRelationship || hoveredRelationship !== target || directRelationshipBlocked()) return;
+          syncRelationshipPreview();
         }, reducedMotionQuery &amp;&amp; reducedMotionQuery.matches ? 0 : 90);
+      }
+      function syncRelationshipHitAvailability() {
+        relationshipAvailabilityFrame = 0;
+        if (!relationshipHitTargets.length) return;
+        var blocked = directRelationshipBlocked();
+        var roving = relationshipHitTargets.find(function (target) {
+          return target.getAttribute(&#39;tabindex&#39;) === &#39;0&#39;;
+        }) || relationshipHitTargets[0];
+        relationshipHitTargets.forEach(function (target) {
+          if (blocked) {
+            target.setAttribute(&#39;aria-disabled&#39;, &#39;true&#39;);
+            target.setAttribute(&#39;tabindex&#39;, &#39;-1&#39;);
+          } else {
+            target.removeAttribute(&#39;aria-disabled&#39;);
+            target.setAttribute(&#39;tabindex&#39;, target === roving ? &#39;0&#39; : &#39;-1&#39;);
+          }
+        });
+      }
+      function requestRelationshipHitAvailability() {
+        if (relationshipAvailabilityFrame) return;
+        relationshipAvailabilityFrame = requestAnimationFrame(syncRelationshipHitAvailability);
       }
       function relationshipHitTarget(key) {
         return relationshipHitTargets.find(function (target) {
@@ -29327,6 +29433,8 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         relationshipHitOverlay.addEventListener(&#39;focusin&#39;, function (event) {
           var target = event.target.closest(&#39;[data-relationship-hit-key]&#39;);
           if (!target || directRelationshipBlocked()) return;
+          if (directPreviewTimer) window.clearTimeout(directPreviewTimer);
+          directPreviewTimer = null;
           focusedRelationship = target;
           if (!pinnedRelationshipKey) previewRelationship(target, { direct: true });
         });
@@ -29358,6 +29466,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           if (event.key === &#39;Enter&#39; || event.key === &#39; &#39;) {
             event.preventDefault();
             event.stopPropagation();
+            if (event.repeat) return;
             if (directRelationshipBlocked()) return;
             focusedRelationship = null;
             hoveredRelationship = null;
@@ -29578,7 +29687,10 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var fixedHead = chip.querySelector(&#39;.relationship-lens-head&#39;);
         var minimumUsableBodyHeight = 56;
         if (fixedHead &amp;&amp; availableHeight &lt; fixedHead.scrollHeight + minimumUsableBodyHeight) {
-          if (relationshipBody.contains(document.activeElement)) {
+          if (relationshipBody.contains(document.activeElement) ||
+              document.activeElement === detailsBtn ||
+              document.activeElement === copyBtn ||
+              document.activeElement === relationsBtn) {
             try { clearBtn.focus({ preventScroll: true }); }
             catch (_) { try { clearBtn.focus(); } catch (_) {} }
           }
@@ -29612,10 +29724,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var top = Math.max(minTop, Math.min(maxTop, preferred));
         var chipRect = chip.getBoundingClientRect();
         var safeGap = 10;
-        var protectViewerChrome = true;
-        var protectedRects = (protectViewerChrome
-          ? [svg.querySelector(&#39;[data-legend]&#39;), container.querySelector(&#39;.diagram-nav&#39;)]
-          : [])
+        var protectedRects = [svg.querySelector(&#39;[data-legend]&#39;), container.querySelector(&#39;.diagram-nav&#39;)]
           .filter(function (element) {
             if (!element || element.hidden) return false;
             var style = window.getComputedStyle(element);
@@ -29953,10 +30062,11 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         syncRelationshipPreview();
       });
       relationshipList.addEventListener(&#39;keydown&#39;, function (event) {
-        if ((event.key === &#39;Enter&#39; || event.key === &#39; &#39;) &amp;&amp; !event.repeat) {
+        if (event.key === &#39;Enter&#39; || event.key === &#39; &#39;) {
           var activationControl = event.target.closest(&#39;[data-relationship-group-toggle], [data-relationship-target]&#39;);
           if (!activationControl) return;
           event.preventDefault();
+          if (event.repeat) return;
           activationControl.click();
           return;
         }
@@ -29993,6 +30103,29 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         });
         relationshipResizeObserver.observe(relationshipBody);
       }
+      if (typeof MutationObserver === &#39;function&#39;) {
+        var relationshipAvailabilityObserver = new MutationObserver(requestRelationshipHitAvailability);
+        relationshipAvailabilityObserver.observe(html, {
+          attributes: true,
+          attributeFilter: [&#39;data-embed&#39;, &#39;data-guide-open&#39;]
+        });
+        relationshipAvailabilityObserver.observe(container, {
+          attributes: true,
+          attributeFilter: [&#39;class&#39;]
+        });
+        relationshipAvailabilityObserver.observe(svg, {
+          attributes: true,
+          attributeFilter: [
+            &#39;data-story-active&#39;,
+            &#39;data-route-picking&#39;,
+            &#39;data-route-active&#39;,
+            &#39;data-lens-active&#39;,
+            &#39;data-chapter-preview&#39;,
+            &#39;data-focus-active&#39;,
+            &#39;data-relationship-pin-active&#39;
+          ]
+        });
+      }
       document.addEventListener(&#39;visibilitychange&#39;, function () {
         if (document.hidden) removeRelationshipPulse();
       });
@@ -30008,6 +30141,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       }
 
       installRelationshipHitTargets();
+      syncRelationshipHitAvailability();
 
       function syncFocusFromHash() {
         try {
@@ -32538,8 +32672,17 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       var clipFrame = 0;
       var viewSyncFrame = 0;
       var semanticSyncRequested = false;
+      var deferredRevealFrame = 0;
+      var viewIntentGeneration = 0;
       var autoScrollUntil = 0;
       var semanticViewport = null;
+
+      function beginViewIntent() {
+        viewIntentGeneration += 1;
+        if (deferredRevealFrame) cancelAnimationFrame(deferredRevealFrame);
+        deferredRevealFrame = 0;
+        return viewIntentGeneration;
+      }
 
       var viewBox = svg.viewBox &amp;&amp; svg.viewBox.baseVal;
 
@@ -32600,18 +32743,18 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
             var screenBottom = Math.min(window.innerHeight, svgRect.bottom, containerRect.bottom);
             if (matrix &amp;&amp; screenRight &gt; screenLeft &amp;&amp; screenBottom &gt; screenTop) {
               var inverse = matrix.inverse();
-              var first = svg.createSVGPoint();
-              first.x = screenLeft;
-              first.y = screenTop;
-              first = first.matrixTransform(inverse);
-              var second = svg.createSVGPoint();
-              second.x = screenRight;
-              second.y = screenBottom;
-              second = second.matrixTransform(inverse);
-              x = Math.min(first.x, second.x);
-              y = Math.min(first.y, second.y);
-              width = Math.abs(second.x - first.x);
-              height = Math.abs(second.y - first.y);
+              var visibleTopLeft = svg.createSVGPoint();
+              visibleTopLeft.x = screenLeft;
+              visibleTopLeft.y = screenTop;
+              visibleTopLeft = visibleTopLeft.matrixTransform(inverse);
+              var visibleBottomRight = svg.createSVGPoint();
+              visibleBottomRight.x = screenRight;
+              visibleBottomRight.y = screenBottom;
+              visibleBottomRight = visibleBottomRight.matrixTransform(inverse);
+              x = Math.min(visibleTopLeft.x, visibleBottomRight.x);
+              y = Math.min(visibleTopLeft.y, visibleBottomRight.y);
+              width = Math.abs(visibleBottomRight.x - visibleTopLeft.x);
+              height = Math.abs(visibleBottomRight.y - visibleTopLeft.y);
               measured = true;
             }
           } catch (_) {}
@@ -32733,6 +32876,8 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         if (transaction.timer) clearTimeout(transaction.timer);
         transaction.frame = null;
         transaction.timer = null;
+        if (transaction.cleanup) transaction.cleanup();
+        transaction.cleanup = null;
         if (cameraTransaction === transaction) cameraTransaction = null;
         cameraFrame = null;
         cameraTimer = null;
@@ -32752,6 +32897,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           settled: false,
           frame: null,
           timer: null,
+          cleanup: null,
           finished: new Promise(function (resolve) { resolver = resolve; }),
           resolve: resolver,
           cancel: function (reason, commitTarget) {
@@ -32768,6 +32914,10 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
                 };
                 apply();
               }
+            } else if (transaction.target &amp;&amp; Object.prototype.hasOwnProperty.call(transaction.target, &#39;scrollLeft&#39;)) {
+              autoScrollUntil = Date.now() + 250;
+              try { container.scrollTo({ left: container.scrollLeft, behavior: &#39;auto&#39; }); }
+              catch (_) {}
             }
             return finishCameraTransaction(transaction, reason || &#39;cancelled&#39;);
           }
@@ -32788,6 +32938,10 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         container.removeAttribute(&#39;data-camera-transaction&#39;);
       }
       function interruptCamera(reason) {
+        beginViewIntent();
+        if (viewSyncFrame) cancelAnimationFrame(viewSyncFrame);
+        viewSyncFrame = 0;
+        semanticSyncRequested = false;
         if (Archify.guidedViews &amp;&amp; Archify.guidedViews.cancelHandoff) {
           Archify.guidedViews.cancelHandoff(reason || &#39;manual&#39;);
         }
@@ -32795,6 +32949,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         stopCameraMotion(reason || &#39;manual&#39;, false);
         state = rendered;
         state.mode = &#39;manual&#39;;
+        semanticViewport = null;
         apply();
         renderControls();
         if (Archify.guidedViews &amp;&amp; Archify.guidedViews.isPlaying &amp;&amp; Archify.guidedViews.isPlaying()) {
@@ -32808,7 +32963,8 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         options = options || {};
         if (options.manual !== false) interruptCamera();
         var previous = state.scale;
-        next = Math.max(1, Math.min(3, Math.round(next * 4) / 4));
+        var rounded = Math.min(3, Math.round(next * 4) / 4);
+        next = previous &lt; 1 &amp;&amp; rounded &lt; previous ? previous : Math.max(1, rounded);
         if (next === previous) return;
         var centerX = (svg.clientWidth || 1) / 2;
         var centerY = (svg.clientHeight || 1) / 2;
@@ -32822,7 +32978,10 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       function reset(options) {
         options = options || {};
         if (options.automatic !== true) interruptCamera();
-        else stopCameraMotion(&#39;reset&#39;, false);
+        else {
+          beginViewIntent();
+          stopCameraMotion(&#39;reset&#39;, false);
+        }
         semanticViewport = null;
         state = { scale: 1, x: 0, y: 0, mode: &#39;overview&#39; };
         apply();
@@ -32873,14 +33032,26 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         }
         return wanted;
       }
-      function boxesFor(ids, includeNeighbors) {
+      function boundsFor(ids, includeNeighbors) {
         var wanted = semanticIds(ids, includeNeighbors);
-        return Array.prototype.slice.call(svg.querySelectorAll(&#39;[data-node-id]&#39;))
-          .filter(function (node) { return wanted[node.getAttribute(&#39;data-node-id&#39;)]; })
-          .map(function (node) {
-            try { return node.getBBox(); } catch (_) { return null; }
-          })
-          .filter(Boolean);
+        var bounds = null;
+        Array.prototype.forEach.call(svg.querySelectorAll(&#39;[data-node-id]&#39;), function (node) {
+          if (!wanted[node.getAttribute(&#39;data-node-id&#39;)]) return;
+          var box;
+          try { box = node.getBBox(); } catch (_) { return; }
+          if (!bounds) {
+            bounds = { minX: box.x, minY: box.y, maxX: box.x + box.width, maxY: box.y + box.height };
+            return;
+          }
+          bounds.minX = Math.min(bounds.minX, box.x);
+          bounds.minY = Math.min(bounds.minY, box.y);
+          bounds.maxX = Math.max(bounds.maxX, box.x + box.width);
+          bounds.maxY = Math.max(bounds.maxY, box.y + box.height);
+        });
+        if (!bounds) return null;
+        bounds.width = Math.max(1, bounds.maxX - bounds.minX);
+        bounds.height = Math.max(1, bounds.maxY - bounds.minY);
+        return bounds;
       }
       function ensureFitAllContainerVisibility(options, minimumVisibleHeight) {
         if (!options || options.fitAll !== true) return false;
@@ -32897,22 +33068,18 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       }
       function frameDesktop(ids, options) {
         options = options || {};
-        var boxes = boxesFor(ids, options.includeNeighbors === true);
-        if (!boxes.length || !viewBox || viewBox.width &lt;= 0 || viewBox.height &lt;= 0) return false;
+        var logicalBounds = boundsFor(ids, options.includeNeighbors === true);
+        if (!logicalBounds || !viewBox || viewBox.width &lt;= 0 || viewBox.height &lt;= 0) return false;
         var svgWidth = svg.clientWidth || 1;
         var svgHeight = svg.clientHeight || 1;
         var contentScale = Math.min(svgWidth / viewBox.width, svgHeight / viewBox.height);
         var contentOffsetX = (svgWidth - viewBox.width * contentScale) / 2;
         var contentOffsetY = (svgHeight - viewBox.height * contentScale) / 2;
-        var minX = Math.min.apply(Math, boxes.map(function (box) { return box.x; }));
-        var minY = Math.min.apply(Math, boxes.map(function (box) { return box.y; }));
-        var maxX = Math.max.apply(Math, boxes.map(function (box) { return box.x + box.width; }));
-        var maxY = Math.max.apply(Math, boxes.map(function (box) { return box.y + box.height; }));
         var bounds = {
-          x: contentOffsetX + minX * contentScale,
-          y: contentOffsetY + minY * contentScale,
-          width: Math.max(1, (maxX - minX) * contentScale),
-          height: Math.max(1, (maxY - minY) * contentScale)
+          x: contentOffsetX + logicalBounds.minX * contentScale,
+          y: contentOffsetY + logicalBounds.minY * contentScale,
+          width: logicalBounds.width * contentScale,
+          height: logicalBounds.height * contentScale
         };
         var padding = options.padding || 48;
         var left = padding;
@@ -33046,6 +33213,29 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         cameraFrame = transaction.frame;
         return transaction;
       }
+      function scrollCameraTo(scrollTarget, options) {
+        options = options || {};
+        var transaction = cameraReceipt({ scrollLeft: scrollTarget }, options);
+        cameraTransaction = transaction;
+        var instant = options.instant === true || reducedMotion() || document.hidden;
+        autoScrollUntil = Date.now() + (instant ? 250 : 1100);
+        try { container.scrollTo({ left: scrollTarget, behavior: instant ? &#39;auto&#39; : &#39;smooth&#39; }); }
+        catch (_) { container.scrollLeft = scrollTarget; }
+        if (instant) {
+          finishCameraTransaction(transaction, reducedMotion() ? &#39;reduced-motion&#39; : (document.hidden ? &#39;hidden&#39; : &#39;complete&#39;));
+          return transaction;
+        }
+        var finishScroll = function () { finishCameraTransaction(transaction, &#39;complete&#39;); };
+        if (&#39;onscrollend&#39; in container) {
+          container.addEventListener(&#39;scrollend&#39;, finishScroll, { once: true });
+          transaction.cleanup = function () { container.removeEventListener(&#39;scrollend&#39;, finishScroll); };
+        }
+        transaction.timer = setTimeout(finishScroll, 1000);
+        cameraTimer = transaction.timer;
+        container.classList.add(&#39;is-camera-moving&#39;);
+        container.setAttribute(&#39;data-camera-transaction&#39;, String(transaction.id));
+        return transaction;
+      }
       function frameMobile(ids, options) {
         options = options || {};
         var chip = document.getElementById(&#39;focus-chip&#39;);
@@ -33055,20 +33245,16 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var explorationMode = chip &amp;&amp; chip.getAttribute(&#39;data-exploration-mode&#39;);
         if (options.avoidPassport !== true &amp;&amp; !compactExploration &amp;&amp;
             explorationMode !== &#39;reach&#39; &amp;&amp; explorationMode !== &#39;relationship&#39;) return false;
-        var boxes = boxesFor(ids, options.includeNeighbors === true);
+        var logicalBounds = boundsFor(ids, options.includeNeighbors === true);
         var metrics = contentMetrics();
-        if (!boxes.length || !metrics || !viewBox || viewBox.width &lt;= 0 || viewBox.height &lt;= 0) return false;
+        if (!logicalBounds || !metrics || !viewBox || viewBox.width &lt;= 0 || viewBox.height &lt;= 0) return false;
         var width = svg.clientWidth || 1;
         var height = svg.clientHeight || 1;
-        var minX = Math.min.apply(Math, boxes.map(function (box) { return box.x; }));
-        var minY = Math.min.apply(Math, boxes.map(function (box) { return box.y; }));
-        var maxX = Math.max.apply(Math, boxes.map(function (box) { return box.x + box.width; }));
-        var maxY = Math.max.apply(Math, boxes.map(function (box) { return box.y + box.height; }));
         var bounds = {
-          x: metrics.offsetX + (minX - viewBox.x) * metrics.scale,
-          y: metrics.offsetY + (minY - viewBox.y) * metrics.scale,
-          width: Math.max(1, (maxX - minX) * metrics.scale),
-          height: Math.max(1, (maxY - minY) * metrics.scale)
+          x: metrics.offsetX + (logicalBounds.minX - viewBox.x) * metrics.scale,
+          y: metrics.offsetY + (logicalBounds.minY - viewBox.y) * metrics.scale,
+          width: logicalBounds.width * metrics.scale,
+          height: logicalBounds.height * metrics.scale
         };
         var padding = 12;
         var top = padding;
@@ -33125,29 +33311,21 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
         var transformedCenter = state.x + horizontalCenter * state.scale;
         var maximumScroll = Math.max(0, width - container.clientWidth);
         var scrollTarget = Math.max(0, Math.min(maximumScroll, transformedCenter - container.clientWidth / 2));
-        var transaction = cameraReceipt({ scrollLeft: scrollTarget }, options);
-        cameraTransaction = transaction;
-        var instant = options.instant === true || reducedMotion() || document.hidden;
-        autoScrollUntil = Date.now() + (instant ? 250 : 900);
-        try { container.scrollTo({ left: scrollTarget, behavior: instant ? &#39;auto&#39; : &#39;smooth&#39; }); }
-        catch (_) { container.scrollLeft = scrollTarget; }
-        if (instant) {
-          finishCameraTransaction(transaction, reducedMotion() ? &#39;reduced-motion&#39; : (document.hidden ? &#39;hidden&#39; : &#39;complete&#39;));
-        } else {
-          transaction.timer = setTimeout(function () { finishCameraTransaction(transaction, &#39;complete&#39;); }, 460);
-          cameraTimer = transaction.timer;
-          container.classList.add(&#39;is-camera-moving&#39;);
-          container.setAttribute(&#39;data-camera-transaction&#39;, String(transaction.id));
-        }
-        return transaction;
+        return scrollCameraTo(scrollTarget, options);
       }
-      function reveal(ids, options) {
+      function revealOwned(ids, options, generation, visibilityAttempts) {
         options = options || {};
+        if (generation !== viewIntentGeneration) return false;
         var minimumVisibleHeight = window.innerWidth &gt; 720 ? 240 : 220;
         if (ensureFitAllContainerVisibility(options, minimumVisibleHeight)) {
           if (Archify.focus &amp;&amp; typeof Archify.focus.reposition === &#39;function&#39;) Archify.focus.reposition();
-          requestAnimationFrame(function () { reveal(ids, options); });
-          return true;
+          if (visibilityAttempts &lt; 2) {
+            deferredRevealFrame = requestAnimationFrame(function () {
+              deferredRevealFrame = 0;
+              revealOwned(ids, options, generation, visibilityAttempts + 1);
+            });
+            return true;
+          }
         }
         if (window.innerWidth &gt; 720) return frameDesktop(ids, options);
         var mobileFrame = frameMobile(ids, options);
@@ -33165,26 +33343,16 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
           finishCameraTransaction(contained, &#39;complete&#39;);
           return contained;
         }
-        var boxes = boxesFor(ids, options.includeNeighbors === true);
-        if (!boxes.length || !viewBox || viewBox.width &lt;= 0) return false;
-        var minX = Math.min.apply(Math, boxes.map(function (box) { return box.x; }));
-        var maxX = Math.max.apply(Math, boxes.map(function (box) { return box.x + box.width; }));
-        var center = ((minX + maxX) / 2 / viewBox.width) * (svg.clientWidth || 1);
+        var logicalBounds = boundsFor(ids, options.includeNeighbors === true);
+        if (!logicalBounds || !viewBox || viewBox.width &lt;= 0) return false;
+        var center = ((logicalBounds.minX + logicalBounds.maxX) / 2 / viewBox.width) * (svg.clientWidth || 1);
         var target = Math.max(0, Math.min(svg.clientWidth - container.clientWidth, center - container.clientWidth / 2));
-        var transaction = cameraReceipt({ scrollLeft: target }, options);
-        cameraTransaction = transaction;
-        var instant = options.instant === true || reducedMotion() || document.hidden;
-        autoScrollUntil = Date.now() + (instant ? 250 : 900);
-        try { container.scrollTo({ left: target, behavior: instant ? &#39;auto&#39; : &#39;smooth&#39; }); }
-        catch (_) { container.scrollLeft = target; }
-        if (instant) finishCameraTransaction(transaction, reducedMotion() ? &#39;reduced-motion&#39; : (document.hidden ? &#39;hidden&#39; : &#39;complete&#39;));
-        else {
-          transaction.timer = setTimeout(function () { finishCameraTransaction(transaction, &#39;complete&#39;); }, 460);
-          cameraTimer = transaction.timer;
-          container.classList.add(&#39;is-camera-moving&#39;);
-          container.setAttribute(&#39;data-camera-transaction&#39;, String(transaction.id));
-        }
-        return transaction;
+        return scrollCameraTo(target, options);
+      }
+      function reveal(ids, options) {
+        var generation = beginViewIntent();
+        stopCameraMotion(&#39;replaced&#39;, false);
+        return revealOwned(ids, options || {}, generation, 0);
       }
       function syncSemantic() {
         var explorationChip = document.getElementById(&#39;focus-chip&#39;);

@@ -37,6 +37,7 @@ test('all typed renderers ship the same geometry-neutral semantic camera', () =>
     const html = render(mode, example);
     assert.match(html, /function frameDesktop\(ids, options\)/, mode);
     assert.match(html, /function semanticIds\(ids, includeNeighbors\)/, mode);
+    assert.match(html, /function boundsFor\(ids, includeNeighbors\)/, mode);
     assert.match(html, /if \(seeds\[from\] \|\| seeds\[to\]\) \{ wanted\[from\] = true; wanted\[to\] = true; \}/, mode);
     assert.match(html, /contentScale = Math\.min\(svgWidth \/ viewBox\.width, svgHeight \/ viewBox\.height\)/, mode);
     assert.match(html, /minimumScale = compactExploration \? 0\.58 : 1/, mode);
@@ -46,6 +47,8 @@ test('all typed renderers ship the same geometry-neutral semantic camera', () =>
     assert.match(html, /function ensureFitAllContainerVisibility\(options, minimumVisibleHeight\)/, mode);
     assert.match(html, /var minimumVisibleHeight = window\.innerWidth > 720 \? 240 : 220/, mode);
     assert.match(html, /if \(ensureFitAllContainerVisibility\(options, minimumVisibleHeight\)\)/, mode);
+    assert.match(html, /generation !== viewIntentGeneration/, mode);
+    assert.match(html, /deferredRevealFrame = requestAnimationFrame/, mode);
     assert.match(html, /visibleTop = Math\.max\(0, -containerRect\.top\)/, mode);
     assert.match(html, /top = Math\.max\(top, visibleTop \+ padding\)/, mode);
     assert.match(html, /var semanticViewport = null/, mode);
@@ -71,6 +74,9 @@ test('semantic camera follows reader intent but yields to manual navigation', ()
   assert.match(html, /reveal\(\[id\], \{[\s\S]*?avoidPassport: true,[\s\S]*?reason: 'relationship'/);
   assert.match(html, /reveal\(\[id\], \{ includeNeighbors: true, reason: 'finder' \}\)/);
   assert.match(html, /function interruptCamera\(reason\)/);
+  assert.match(html, /if \(viewSyncFrame\) cancelAnimationFrame\(viewSyncFrame\)/);
+  assert.match(html, /semanticSyncRequested = false/);
+  assert.match(html, /semanticViewport = null/);
   assert.match(html, /Archify\.guidedViews\.pause\(\)/);
   assert.match(html, /container\.addEventListener\('pointerdown',[\s\S]+interruptCamera\(\)/);
   assert.match(html, /function semanticCanPan\(\)/);
@@ -92,7 +98,8 @@ test('semantic camera keeps mobile on its contained scroll model and respects re
   assert.match(html, /if \(window\.innerWidth > 720\) return frameDesktop\(ids, options\)/);
   assert.match(html, /if \(!container\.hasAttribute\('data-wide-diagram'\)\) \{[\s\S]+cameraReceipt\(\{ scale: 1, x: 0, y: 0, mode: 'semantic' \}/);
   assert.match(html, /state\.scale = 1;[\s\S]+state\.x = 0;[\s\S]+state\.y = 0;[\s\S]+state\.mode = 'semantic';[\s\S]+apply\(\)/);
-  assert.match(html, /autoScrollUntil = Date\.now\(\) \+ \(instant \? 250 : 900\)/);
+  assert.match(html, /autoScrollUntil = Date\.now\(\) \+ \(instant \? 250 : 1100\)/);
+  assert.match(html, /container\.addEventListener\('scrollend', finishScroll/);
   assert.match(html, /behavior: instant \? 'auto' : 'smooth'/);
   assert.match(html, /svg \[data-node-id\], svg \[data-edge-from\], svg \[data-detail\], svg \[data-detail-anchor\], svg \[data-legend-hit\], svg \{ transition: none !important; \}/);
 });
