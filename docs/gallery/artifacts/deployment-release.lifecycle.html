@@ -12416,7 +12416,7 @@
         var transaction = cameraReceipt({ scrollLeft: scrollTarget }, options);
         cameraTransaction = transaction;
         var instant = options.instant === true || reducedMotion() || document.hidden;
-        autoScrollUntil = Date.now() + (instant ? 50 : 470);
+        autoScrollUntil = Date.now() + (instant ? 250 : 900);
         try { container.scrollTo({ left: scrollTarget, behavior: instant ? 'auto' : 'smooth' }); }
         catch (_) { container.scrollLeft = scrollTarget; }
         if (instant) {
@@ -12462,7 +12462,7 @@
         var transaction = cameraReceipt({ scrollLeft: target }, options);
         cameraTransaction = transaction;
         var instant = options.instant === true || reducedMotion() || document.hidden;
-        autoScrollUntil = Date.now() + (instant ? 50 : 470);
+        autoScrollUntil = Date.now() + (instant ? 250 : 900);
         try { container.scrollTo({ left: target, behavior: instant ? 'auto' : 'smooth' }); }
         catch (_) { container.scrollLeft = target; }
         if (instant) finishCameraTransaction(transaction, reducedMotion() ? 'reduced-motion' : (document.hidden ? 'hidden' : 'complete'));

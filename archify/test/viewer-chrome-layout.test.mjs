@@ -496,6 +496,26 @@ async function focusSelector(browser, sessionId, selector) {
   await browser.cdp.send('DOM.focus', { nodeId: match.nodeId }, sessionId);
 }
 
+async function installFinePointerEmulation(browser) {
+  const sessionId = await browser.sessionPromise;
+  await browser.cdp.send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `(function () {
+      var nativeMatchMedia = window.matchMedia.bind(window);
+      window.matchMedia = function (query) {
+        var result = nativeMatchMedia(query);
+        if (query !== '(hover: hover) and (pointer: fine)') return result;
+        return new Proxy(result, {
+          get: function (target, property) {
+            if (property === 'matches') return true;
+            var value = target[property];
+            return typeof value === 'function' ? value.bind(target) : value;
+          }
+        });
+      };
+    })();`,
+  }, sessionId);
+}
+
 async function load(browser, artifactPath, { width = 1440, height = 900, query = '' } = {}) {
   const sessionId = await browser.sessionPromise;
   await browser.cdp.send('Emulation.setDeviceMetricsOverride', {
@@ -1796,6 +1816,7 @@ test('relationship hover only highlights while explicit activation owns camera m
   const browser = new ChromeVisualBrowser(chromePath);
   const artifact = renderRelationshipHoverStabilityStress();
   try {
+    await installFinePointerEmulation(browser);
     for (const scenario of [
       { label: 'fully visible container', width: 1396, height: 894, scrollOffset: 0 },
       { label: 'partially visible container', width: 1396, height: 700, scrollOffset: 80 },
@@ -1809,11 +1830,7 @@ test('relationship hover only highlights while explicit activation owns camera m
         query: `?case=${encodeURIComponent(scenario.label)}`,
       });
       await browser.cdp.send('Emulation.setEmulatedMedia', {
-        features: [
-          { name: 'prefers-reduced-motion', value: 'no-preference' },
-          { name: 'hover', value: 'hover' },
-          { name: 'pointer', value: 'fine' },
-        ],
+        features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
       }, sessionId);
       await browser.cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false }, sessionId);
       await evaluate(browser, sessionId, `(function () {

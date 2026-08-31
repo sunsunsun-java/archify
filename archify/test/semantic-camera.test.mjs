@@ -92,7 +92,7 @@ test('semantic camera keeps mobile on its contained scroll model and respects re
   assert.match(html, /if \(window\.innerWidth > 720\) return frameDesktop\(ids, options\)/);
   assert.match(html, /if \(!container\.hasAttribute\('data-wide-diagram'\)\) \{[\s\S]+cameraReceipt\(\{ scale: 1, x: 0, y: 0, mode: 'semantic' \}/);
   assert.match(html, /state\.scale = 1;[\s\S]+state\.x = 0;[\s\S]+state\.y = 0;[\s\S]+state\.mode = 'semantic';[\s\S]+apply\(\)/);
-  assert.match(html, /autoScrollUntil = Date\.now\(\) \+ \(instant \? 50 : 470\)/);
+  assert.match(html, /autoScrollUntil = Date\.now\(\) \+ \(instant \? 250 : 900\)/);
   assert.match(html, /behavior: instant \? 'auto' : 'smooth'/);
   assert.match(html, /svg \[data-node-id\], svg \[data-edge-from\], svg \[data-detail\], svg \[data-detail-anchor\], svg \[data-legend-hit\], svg \{ transition: none !important; \}/);
 });
