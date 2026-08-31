@@ -7,7 +7,7 @@
     "quality_profile": "showcase",
     "repository": {
       "url": "https://github.com/sunsunsun-java/maka",
-      "revision": "f8be426ba81bc2f62e9cf0e08bac85f576cc9261"
+      "revision": "590d37ceafef1f3cfeaba7ee1c3a906b38b5dc62"
     },
     "output": "generated/maka-regenerated.architecture.html"
   },
@@ -15,11 +15,11 @@
     { "id": "surfaces", "type": "frontend", "label": "Desktop / TUI / CLI / Bot", "sublabel": "产品入口与远程客户端", "pos": [40, 300], "size": [170, 68], "sources": [{ "path": "ARCHITECTURE.md", "line": 5, "label": "execution authority" }] },
     { "id": "host", "type": "backend", "label": "Runtime Host", "sublabel": "唯一托管执行权威", "pos": [260, 300], "size": [160, 68], "tag": "public client / protocol", "sources": [{ "path": "ARCHITECTURE.md", "line": 22, "label": "host authority" }] },
     { "id": "session", "type": "backend", "label": "SessionManager", "sublabel": "Session / Turn 生命周期", "pos": [480, 300], "size": [170, 68], "sources": [{ "path": "ARCHITECTURE.md", "line": 27, "label": "runtime lifecycle" }] },
-    { "id": "run", "type": "backend", "label": "AgentRun + Runtime Runner", "sublabel": "回合编排与续接", "pos": [700, 300], "size": [190, 68], "sources": [{ "path": "ARCHITECTURE.md", "line": 11, "label": "runtime path" }] },
+    { "id": "run", "type": "backend", "label": "AgentRun + RuntimeKernel", "sublabel": "回合编排与续接", "pos": [700, 300], "size": [190, 68], "sources": [{ "path": "ARCHITECTURE.md", "line": 30, "label": "runtime path" }] },
     { "id": "tools", "type": "messagebus", "label": "Tool Runtime", "sublabel": "工具、权限与副作用", "pos": [940, 300], "size": [170, 68], "sources": [{ "path": "ARCHITECTURE.md", "line": 12, "label": "tool runtime" }] },
-    { "id": "events", "type": "database", "label": "Runtime Event Log", "sublabel": "模型 / 工具 / 终止事实", "pos": [700, 470], "size": [190, 68], "sources": [{ "path": "ARCHITECTURE.md", "line": 26, "label": "canonical facts" }] },
+    { "id": "events", "type": "database", "label": "Runtime Event Log", "sublabel": "模型 / 工具 / 终止事实", "pos": [700, 470], "size": [190, 68], "sources": [{ "path": "ARCHITECTURE.md", "line": 45, "label": "canonical facts" }] },
     { "id": "projections", "type": "database", "label": "Runtime Projections", "sublabel": "Context / Session / UI / Recovery", "pos": [940, 470], "size": [200, 68], "sources": [{ "path": "ARCHITECTURE.md", "line": 16, "label": "projections" }] },
-    { "id": "graph", "type": "backend", "label": "Agent Graph Control Plane", "sublabel": "子 Session 依赖调度", "pos": [480, 140], "size": [190, 68], "sources": [{ "path": "ARCHITECTURE.md", "line": 28, "label": "graph scheduling" }] },
+    { "id": "graph", "type": "backend", "label": "Agent Graph Control Plane", "sublabel": "子 Session 依赖调度", "pos": [480, 140], "size": [190, 68], "sources": [{ "path": "ARCHITECTURE.md", "line": 47, "label": "graph scheduling" }] },
     { "id": "providers", "type": "cloud", "label": "Model Providers", "sublabel": "Anthropic / OpenAI / Google 等", "pos": [940, 140], "size": [190, 68], "sources": [{ "path": "packages/runtime/package.json", "line": 1, "label": "runtime providers" }] },
     { "id": "eval", "type": "backend", "label": "@maka/eval", "sublabel": "Experiment · Cell · Attempt · Result", "pos": [260, 520], "size": [190, 68], "sources": [{ "path": "ARCHITECTURE.md", "line": 18, "label": "eval boundary" }] },
     { "id": "external", "type": "external", "label": "External Subjects", "sublabel": "外部被测对象", "pos": [40, 520], "size": [170, 68], "sources": [{ "path": "ARCHITECTURE.md", "line": 19, "label": "external subject" }] },
