@@ -82,7 +82,7 @@ test('relationship lens groups incoming, outgoing, and self-loop paths and follo
   assert.match(html, /function toggleRelationshipGroup\(toggle\)/);
   assert.match(html, /expandRelationshipGroupForRow\(row\)/);
   assert.match(html, /set\(id, \{ toggle: false \}\)/);
-  assert.match(html, /if \(window\.innerWidth <= 720\) setRelationshipListExpanded\(false\)/);
+  assert.match(html, /if \(window\.innerWidth <= 1280\) setRelationshipListExpanded\(false\)/);
   assert.match(html, /Archify\.view\.reveal\(\[id\], \{[\s\S]*?includeNeighbors: true,[\s\S]*?avoidPassport: true,[\s\S]*?reason: 'relationship'/);
   assert.doesNotMatch(svg(html), /relationship-lens|Connected relationships/);
 });
@@ -97,11 +97,11 @@ test('relationship lens bounds one scroll body and exposes a non-blocking overfl
   assert.doesNotMatch(html, /\.relationship-lens-list \{\s*max-height:/);
   assert.match(html, /data-relationship-scroll-more="true"\]::after[\s\S]*pointer-events: none/);
   assert.match(html, /data-viewport-compact="true"\][\s\S]*relationship-lens-body[\s\S]*display: none/);
-  assert.match(html, /availableHeight < fixedHead\.scrollHeight \+ minimumUsableBodyHeight/);
+  assert.match(html, /passportAvailableHeight < fixedHead\.scrollHeight \+ minimumUsableBodyHeight/);
   assert.match(html, /relationshipBody\.contains\(document\.activeElement\)[\s\S]*clearBtn\.focus/);
   assert.match(html, /function syncRelationshipScrollState\(\)/);
   assert.match(html, /relationshipBody\.scrollHeight > relationshipBody\.clientHeight \+ 1/);
-  assert.match(html, /relationshipBody\.addEventListener\('scroll', requestRelationshipScrollState, \{ passive: true \}\)/);
+  assert.match(html, /relationshipBody\.addEventListener\('scroll', syncRelationshipScrollState, \{ passive: true \}\)/);
   assert.match(html, /button\.offsetParent !== null/);
 });
 

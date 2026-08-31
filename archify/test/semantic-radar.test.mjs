@@ -186,7 +186,7 @@ test('Semantic Radar tracks desktop camera and mobile contained scroll', () => {
   assert.match(html, /container\.scrollTo\(\{ left: mobileTarget, behavior: options\.instant \? 'auto' : 'smooth' \}\)/);
   assert.match(html, /data-wide-diagram="true"\] \.overview-map/);
   assert.match(html, /function updateDocking\(\)/);
-  assert.match(html, /chip\.style\.top = Math\.round\(top\) \+ 'px';[\s\S]+Archify\.radar\.sync\(\)/);
+  assert.match(html, /chip\.style\.top = \(responsiveDrawer \? Math\.floor\(top\) : Math\.round\(top\)\) \+ 'px';[\s\S]+Archify\.radar\.sync\(\)/);
   assert.match(html, /var navigation = container\.querySelector\('\.diagram-nav'\)/);
   assert.match(html, /if \(controlRect\) bottom = Math\.min\(bottom, controlRect\.top - placementGap\)/);
   assert.match(html, /hardBlockers: \[lensRect, controlRect, legendRect\]\.filter\(Boolean\)/);

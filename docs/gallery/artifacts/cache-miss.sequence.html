@@ -1712,7 +1712,7 @@
       bottom: 0;
       left: 0;
       z-index: 2;
-      height: 2.4rem;
+      height: var(--archify-relationship-fade-height, 2.4rem);
       border-radius: 0 0 0.82rem 0.82rem;
       background: linear-gradient(to bottom, transparent, var(--toolbar-menu-bg) 84%);
       pointer-events: none;
@@ -3697,6 +3697,59 @@
     .archify-toast.show {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 1280px) {
+      .focus-chip[data-responsive-drawer="true"] {
+        right: 1rem;
+        left: 1rem;
+        width: auto;
+        max-width: none;
+        max-height: min(
+          60dvh,
+          var(--archify-passport-max-height, 60dvh),
+          var(--archify-passport-radar-max-height, 60dvh)
+        );
+      }
+      .focus-chip[data-responsive-drawer="true"] #btn-focus-details,
+      .focus-chip[data-responsive-drawer="true"] #btn-focus-relations {
+        display: block;
+      }
+      .focus-chip[data-responsive-drawer="true"] .relationship-lens-body {
+        padding-bottom: 0.25rem;
+      }
+      .focus-chip[data-responsive-drawer="true"] .relationship-lens-group-title,
+      .focus-chip[data-responsive-drawer="true"] .relationship-lens-row {
+        scroll-margin-bottom: var(--archify-relationship-fade-height, 2.4rem);
+      }
+      .focus-chip[data-responsive-drawer="true"]:not([data-exploration-expanded="true"]) {
+        grid-template-rows: auto auto;
+        max-height: min(
+          20rem,
+          var(--archify-passport-max-height, 20rem),
+          var(--archify-passport-radar-max-height, 20rem)
+        );
+      }
+      .focus-chip[data-responsive-drawer="true"]:not([data-exploration-expanded="true"]) .semantic-passport-meta,
+      .focus-chip[data-responsive-drawer="true"]:not([data-exploration-expanded="true"]) .semantic-passport-evidence,
+      .focus-chip[data-responsive-drawer="true"]:not([data-exploration-expanded="true"]) .semantic-passport-reach-label,
+      .focus-chip[data-responsive-drawer="true"]:not([data-exploration-expanded="true"]) .semantic-passport-reach-status,
+      .focus-chip[data-responsive-drawer="true"]:not([data-exploration-expanded="true"]) .relationship-lens-list,
+      .focus-chip[data-responsive-drawer="true"]:not([data-exploration-expanded="true"]) #btn-focus-copy {
+        display: none;
+      }
+      .focus-chip[data-responsive-drawer="true"]:not([data-exploration-expanded="true"]) .relationship-lens-body {
+        padding-bottom: 0.5rem;
+        scrollbar-gutter: auto;
+      }
+      .focus-chip[data-responsive-drawer="true"]:not([data-exploration-expanded="true"]) .semantic-passport-reach {
+        grid-template-columns: minmax(0, 1fr);
+        margin-top: 0.2rem;
+        padding-top: 0.38rem;
+      }
+      .focus-chip[data-responsive-drawer="true"]:not([data-relations-expanded="true"]) .relationship-lens-list {
+        display: none;
+      }
     }
 
     @media (max-width: 720px) {
@@ -7787,13 +7840,30 @@
       }
       function syncExplorationDetailsButton() {
         var compact = chip.getAttribute('data-exploration-compact') === 'true';
-        var expanded = compact && chip.getAttribute('data-exploration-expanded') === 'true';
-        detailsBtn.hidden = !compact;
+        var responsiveDrawer = chip.getAttribute('data-responsive-drawer') === 'true';
+        var expandable = compact || responsiveDrawer;
+        var expanded = expandable && chip.getAttribute('data-exploration-expanded') === 'true';
+        detailsBtn.hidden = !expandable;
         detailsBtn.textContent = viewerText('viewer.passport.details');
         detailsBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         detailsBtn.setAttribute('aria-label', viewerText(expanded
           ? 'viewer.passport.details.hide'
           : 'viewer.passport.details.show'));
+      }
+      function responsiveDrawerEnabled() {
+        return window.innerWidth <= 1280 && html.getAttribute('data-embed') !== 'true';
+      }
+      function syncResponsiveDrawerState() {
+        var enabled = responsiveDrawerEnabled();
+        if (enabled) chip.setAttribute('data-responsive-drawer', 'true');
+        else {
+          chip.removeAttribute('data-responsive-drawer');
+          if (chip.getAttribute('data-exploration-compact') !== 'true') {
+            chip.removeAttribute('data-exploration-expanded');
+          }
+        }
+        syncExplorationDetailsButton();
+        return enabled;
       }
       function setExplorationMode(mode, compact) {
         if (mode !== 'reach' && mode !== 'relationship') {
@@ -7819,10 +7889,11 @@
       function explorationNodeIds() {
         if (activeReachability && reachabilityMode) return activeReachability.nodeIds.slice();
         var record = pinnedRelationshipRecord();
-        return record ? [record.from, record.to] : [];
+        if (record) return [record.from, record.to];
+        return chip.getAttribute('data-responsive-drawer') === 'true' ? activeIds.slice() : [];
       }
       function explorationMinimumScale() {
-        return window.innerWidth <= 900 && chip.getAttribute('data-exploration-expanded') === 'true'
+        return window.innerWidth <= 1280 && chip.getAttribute('data-exploration-expanded') === 'true'
           ? 0.35
           : 0.58;
       }
@@ -7830,7 +7901,7 @@
         var ids = explorationNodeIds();
         if (!ids.length || !Archify.view || typeof Archify.view.reveal !== 'function') return false;
         Archify.view.reveal(ids, {
-          includeNeighbors: false,
+          includeNeighbors: !reachabilityMode && !pinnedRelationshipKey,
           fitAll: true,
           minimumScale: explorationMinimumScale(),
           reason: reason || 'relationship-exploration'
@@ -8779,6 +8850,11 @@
         });
         requestRelationshipScrollState();
         requestLensPlacement();
+        if (willExpand) requestAnimationFrame(function () {
+          var panel = document.getElementById(toggle.getAttribute('aria-controls') || '');
+          var firstRow = panel && panel.querySelector('.relationship-lens-row');
+          ensureRelationshipControlVisible(firstRow || toggle);
+        });
       }
       function renderRelationshipLens(id, byId) {
         hoveredRelationship = null;
@@ -8887,9 +8963,19 @@
           chip.removeAttribute('data-relationship-scroll-more');
           return;
         }
+        var adaptiveFadeHeight = Math.max(0, Math.min(38.4, relationshipBody.clientHeight - 49));
+        chip.style.setProperty('--archify-relationship-fade-height', adaptiveFadeHeight + 'px');
         var overflows = relationshipBody.scrollHeight > relationshipBody.clientHeight + 1;
         var remaining = relationshipBody.scrollHeight - relationshipBody.clientHeight - relationshipBody.scrollTop;
-        if (overflows && remaining > 2) chip.setAttribute('data-relationship-scroll-more', 'true');
+        var visibleControls = Array.prototype.slice.call(relationshipList.querySelectorAll(
+          '.relationship-lens-group-title, .relationship-lens-row'
+        )).filter(function (control) { return control.offsetParent !== null; });
+        var lastControl = visibleControls[visibleControls.length - 1];
+        var bodyRect = relationshipBody.getBoundingClientRect();
+        var contentEndVisible = lastControl && lastControl.getBoundingClientRect().bottom <= bodyRect.bottom + 1;
+        if (overflows && remaining > 2 && !contentEndVisible) {
+          chip.setAttribute('data-relationship-scroll-more', 'true');
+        }
         else chip.removeAttribute('data-relationship-scroll-more');
       }
       function requestRelationshipScrollState() {
@@ -8900,7 +8986,9 @@
         if (!control || !relationshipBody || control.offsetParent === null) return;
         var bodyRect = relationshipBody.getBoundingClientRect();
         var controlRect = control.getBoundingClientRect();
-        var fadeHeight = chip.getAttribute('data-relationship-scroll-more') === 'true'
+        var relationshipRemaining = relationshipBody.scrollHeight - relationshipBody.clientHeight - relationshipBody.scrollTop;
+        var fadeVisible = relationshipBody.scrollHeight > relationshipBody.clientHeight + 1 && relationshipRemaining > 2;
+        var fadeHeight = fadeVisible
           ? parseFloat(getComputedStyle(chip, '::after').height) || 0
           : 0;
         var safeTop = bodyRect.top + 4;
@@ -8910,10 +8998,16 @@
         } else if (controlRect.bottom > safeBottom) {
           relationshipBody.scrollTop += controlRect.bottom - safeBottom;
         }
-        requestRelationshipScrollState();
+        syncRelationshipScrollState();
+      }
+      function revealRelationshipListStart() {
+        if (!relationshipList || relationshipList.offsetParent === null) return;
+        var firstControl = relationshipList.querySelector('.relationship-lens-row, .relationship-lens-group-title');
+        if (firstControl) ensureRelationshipControlVisible(firstControl);
       }
       function placeRelationshipLens() {
         lensFrame = 0;
+        var responsiveDrawer = syncResponsiveDrawerState();
         if (chip.hidden || activeIds.length !== 1) return;
         var node = svg.querySelector('[data-node-id="' + activeIds[0] + '"]');
         if (!node) return;
@@ -8925,7 +9019,7 @@
         var visibleTop = Math.max(padding, -containerRect.top + padding);
         var visibleBottom = Math.min(containerRect.height - padding, window.innerHeight - containerRect.top - padding);
         var viewerNav = container.querySelector('.diagram-nav');
-        if (mobile && viewerNav && !viewerNav.hidden) {
+        if (responsiveDrawer && viewerNav && !viewerNav.hidden) {
           var viewerNavStyle = window.getComputedStyle(viewerNav);
           var viewerNavRect = viewerNav.getBoundingClientRect();
           if (viewerNavStyle.display !== 'none' && viewerNavStyle.visibility !== 'hidden' &&
@@ -8934,11 +9028,16 @@
           }
         }
         var availableHeight = Math.max(0, visibleBottom - visibleTop);
+        var passportAvailableHeight = availableHeight;
+        if (responsiveDrawer && availableHeight >= 360) {
+          var canvasReserve = Math.min(220, Math.max(120, availableHeight * 0.42));
+          passportAvailableHeight = Math.max(0, availableHeight - canvasReserve);
+        }
         chip.removeAttribute('data-viewport-compact');
-        chip.style.setProperty('--archify-passport-max-height', availableHeight + 'px');
+        chip.style.setProperty('--archify-passport-max-height', passportAvailableHeight + 'px');
         var fixedHead = chip.querySelector('.relationship-lens-head');
         var minimumUsableBodyHeight = 56;
-        if (fixedHead && availableHeight < fixedHead.scrollHeight + minimumUsableBodyHeight) {
+        if (fixedHead && passportAvailableHeight < fixedHead.scrollHeight + minimumUsableBodyHeight) {
           if (relationshipBody.contains(document.activeElement) ||
               document.activeElement === detailsBtn ||
               document.activeElement === copyBtn ||
@@ -8957,7 +9056,9 @@
           chip.getAttribute('data-exploration-compact') === 'true';
         var compactOnMobile = mobile && chip.getAttribute('data-relations-expanded') !== 'true';
         var preferred;
-        if (compactExploration || stackedExploration) {
+        if (responsiveDrawer) {
+          preferred = Math.max(minTop, visibleBottom - chip.offsetHeight);
+        } else if (compactExploration || stackedExploration) {
           preferred = visibleTop;
         } else if (compactOnMobile) {
           var nodeTop = nodeRect.top - containerRect.top;
@@ -8976,7 +9077,13 @@
         var top = Math.max(minTop, Math.min(maxTop, preferred));
         var chipRect = chip.getBoundingClientRect();
         var safeGap = 10;
-        var protectedRects = [svg.querySelector('[data-legend]'), container.querySelector('.diagram-nav')]
+        /* A responsive drawer is already bounded above the fixed navigation.
+           Do not make its vertical anchor depend on the transformed SVG
+           legend: camera movement would move the legend, reposition the
+           drawer, and invalidate the camera's safe region in a feedback loop. */
+        var protectedRects = (responsiveDrawer
+          ? []
+          : [svg.querySelector('[data-legend]'), container.querySelector('.diagram-nav')])
           .filter(function (element) {
             if (!element || element.hidden) return false;
             var style = window.getComputedStyle(element);
@@ -9010,7 +9117,7 @@
           });
           if (valid.length) top = valid[0];
         }
-        chip.style.top = Math.round(top) + 'px';
+        chip.style.top = (responsiveDrawer ? Math.floor(top) : Math.round(top)) + 'px';
         requestRelationshipScrollState();
         if (Archify.radar && typeof Archify.radar.sync === 'function') Archify.radar.sync();
       }
@@ -9068,10 +9175,12 @@
         relationsBtn.setAttribute('aria-expanded', 'false');
         chip.removeAttribute('data-relations-expanded');
         chip.removeAttribute('data-relationship-scroll-more');
+        chip.style.removeProperty('--archify-relationship-fade-height');
         chip.removeAttribute('data-viewport-compact');
         chip.removeAttribute('data-exploration-mode');
         chip.removeAttribute('data-exploration-compact');
         chip.removeAttribute('data-exploration-expanded');
+        chip.removeAttribute('data-responsive-drawer');
         syncExplorationDetailsButton();
         relationshipBody.scrollTop = 0;
         chip.style.removeProperty('top');
@@ -9145,7 +9254,8 @@
         chip.hidden = options.hideChip === true || normalized.length !== 1 || selectionMode;
         if (!chip.hidden) {
           renderRelationshipLens(normalized[0], byId);
-          requestLensPlacement();
+          if (responsiveDrawerEnabled()) placeRelationshipLens();
+          else requestLensPlacement();
         }
         if (options.updateUrl !== false) {
           var key = options.urlKey || 'focus';
@@ -9221,9 +9331,13 @@
       });
       clearBtn.addEventListener('click', function () { clear({ restoreFocus: true }); });
       detailsBtn.addEventListener('click', function () {
-        if (chip.getAttribute('data-exploration-compact') !== 'true') return;
+        if (chip.getAttribute('data-exploration-compact') !== 'true' &&
+            chip.getAttribute('data-responsive-drawer') !== 'true') return;
         var expanded = chip.getAttribute('data-exploration-expanded') === 'true';
-        if (expanded) chip.removeAttribute('data-exploration-expanded');
+        if (expanded) {
+          chip.removeAttribute('data-exploration-expanded');
+          setRelationshipListExpanded(false);
+        }
         else chip.setAttribute('data-exploration-expanded', 'true');
         syncExplorationDetailsButton();
         requestRelationshipScrollState();
@@ -9243,9 +9357,18 @@
       }
       relationsBtn.addEventListener('click', function () {
         var expanded = chip.getAttribute('data-relations-expanded') !== 'true';
+        if (expanded && chip.getAttribute('data-responsive-drawer') === 'true') {
+          chip.setAttribute('data-exploration-expanded', 'true');
+          syncExplorationDetailsButton();
+        }
         setRelationshipListExpanded(expanded);
         requestRelationshipScrollState();
         requestLensPlacement();
+        requestAnimationFrame(function () {
+          if (expanded) revealRelationshipListStart();
+          else relationshipBody.scrollTop = 0;
+          reframeExploration('relationship-list-toggle');
+        });
       });
       relationshipList.addEventListener('click', function (event) {
         var groupToggle = event.target.closest('[data-relationship-group-toggle]');
@@ -9260,7 +9383,7 @@
         if (Archify.guidedViews && typeof Archify.guidedViews.showAll === 'function') {
           Archify.guidedViews.showAll({ clearFocus: false, updateUrl: false, resetView: false });
         }
-        if (window.innerWidth <= 720) setRelationshipListExpanded(false);
+        if (window.innerWidth <= 1280) setRelationshipListExpanded(false);
         set(id, { toggle: false });
         if (Archify.view && typeof Archify.view.reveal === 'function') {
           Archify.view.reveal([id], {
@@ -9300,7 +9423,10 @@
       });
       relationshipList.addEventListener('focusin', function (event) {
         var control = event.target.closest('.relationship-lens-row, .relationship-lens-group-title');
-        if (control) requestAnimationFrame(function () { ensureRelationshipControlVisible(control); });
+        if (control) {
+          ensureRelationshipControlVisible(control);
+          requestAnimationFrame(function () { ensureRelationshipControlVisible(control); });
+        }
         var button = event.target.closest('[data-relationship-key]');
         if (!button) return;
         cancelRelationshipPreviewSchedule();
@@ -9337,7 +9463,7 @@
         event.preventDefault();
         buttons[index].focus();
       });
-      relationshipBody.addEventListener('scroll', requestRelationshipScrollState, { passive: true });
+      relationshipBody.addEventListener('scroll', syncRelationshipScrollState, { passive: true });
       document.addEventListener('click', function (event) {
         var target = event.target;
         if (chip.hidden || !target || typeof target.closest !== 'function' || chip.contains(target)) return;
@@ -12345,9 +12471,13 @@
         bottom = Math.min(bottom, visibleBottom - Math.max(padding, 72));
         var chip = document.getElementById('focus-chip');
         if (chip && !chip.hidden) {
+          var responsiveDrawer = chip.getAttribute('data-responsive-drawer') === 'true';
           var compactExploration = chip.getAttribute('data-exploration-compact') === 'true' &&
             chip.getAttribute('data-exploration-expanded') !== 'true';
-          if (compactExploration) {
+          if (responsiveDrawer) {
+            var lensStart = chip.offsetTop - 40 - (svg.offsetTop || 0);
+            bottom = Math.min(bottom, lensStart);
+          } else if (compactExploration) {
             var lensBottom = chip.offsetTop + chip.offsetHeight + 24 - (svg.offsetTop || 0);
             top = Math.max(top, lensBottom);
           } else {
@@ -12494,8 +12624,10 @@
         var compactExploration = chip && !chip.hidden &&
           chip.getAttribute('data-exploration-compact') === 'true' &&
           chip.getAttribute('data-exploration-expanded') !== 'true';
+        var responsiveDrawer = chip && !chip.hidden &&
+          chip.getAttribute('data-responsive-drawer') === 'true';
         var explorationMode = chip && chip.getAttribute('data-exploration-mode');
-        if (options.avoidPassport !== true && !compactExploration &&
+        if (options.avoidPassport !== true && !compactExploration && !responsiveDrawer &&
             explorationMode !== 'reach' && explorationMode !== 'relationship') return false;
         var logicalBounds = boundsFor(ids, options.includeNeighbors === true);
         var metrics = contentMetrics();
@@ -12608,7 +12740,7 @@
       }
       function syncSemantic() {
         var explorationChip = document.getElementById('focus-chip');
-        var explorationMinimumScale = window.innerWidth <= 900 && explorationChip &&
+        var explorationMinimumScale = window.innerWidth <= 1280 && explorationChip &&
           explorationChip.getAttribute('data-exploration-expanded') === 'true' ? 0.35 : 0.58;
         var guided = Archify.guidedViews && typeof Archify.guidedViews.focus === 'function'
           ? Archify.guidedViews.focus() : [];

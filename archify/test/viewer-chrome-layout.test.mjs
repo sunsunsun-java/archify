@@ -331,7 +331,21 @@ async function waitForRelationshipReveal(browser, sessionId, targetId) {
           targetRect.left >= visible.left - 0.5 && targetRect.top >= visible.top - 0.5 &&
           targetRect.right <= visible.right + 0.5 && targetRect.bottom <= visible.bottom + 0.5;
         var moving = container.hasAttribute('data-camera-transaction');
-        lastReceipt = { overlap: overlap, fullyVisible: fullyVisible, moving: moving };
+        lastReceipt = {
+          overlap: overlap,
+          fullyVisible: fullyVisible,
+          moving: moving,
+          target: { left: targetRect.left, top: targetRect.top, right: targetRect.right, bottom: targetRect.bottom },
+          passport: { left: passportRect.left, top: passportRect.top, right: passportRect.right, bottom: passportRect.bottom },
+          container: { left: containerRect.left, top: containerRect.top, right: containerRect.right, bottom: containerRect.bottom },
+          svg: (function () {
+            var rect = container.querySelector(':scope > svg').getBoundingClientRect();
+            return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+          })(),
+          camera: Archify.view.state(),
+          scrollLeft: container.scrollLeft,
+          focused: container.querySelector(':scope > svg').getAttribute('data-focus-active')
+        };
         safeFrames = overlap === 0 && fullyVisible && !moving ? safeFrames + 1 : 0;
         if (safeFrames >= 8) {
           resolve(lastReceipt);
@@ -685,6 +699,7 @@ test('high-degree relationship list stays inside the visible Passport', {
       var container = document.querySelector('.diagram-container');
       window.scrollTo(0, Math.max(0, container.offsetTop));
       Archify.focus.set('hub', { toggle: false, updateUrl: false });
+      document.getElementById('btn-focus-relations').click();
     })()`);
     await waitForLayout(browser, sessionId);
 
@@ -696,6 +711,7 @@ test('high-degree relationship list stays inside the visible Passport', {
       var containerRect = container.getBoundingClientRect();
       var chipRect = chip.getBoundingClientRect();
       return {
+        drawer: chip.getAttribute('data-responsive-drawer'),
         visibleTop: Math.max(0, containerRect.top),
         visibleBottom: Math.min(window.innerHeight, containerRect.bottom),
         chip: { top: chipRect.top, bottom: chipRect.bottom },
@@ -756,6 +772,8 @@ test('high-degree relationship list stays inside the visible Passport', {
               scrollMore: chip.getAttribute('data-relationship-scroll-more'),
               rowBottom: rowRect.bottom,
               safeBottom: bodyRect.bottom - fadeHeight,
+              scrollTop: body.scrollTop,
+              maximumScroll: body.scrollHeight - body.clientHeight,
               focused: document.activeElement === rows[5]
             });
           });
@@ -808,25 +826,32 @@ test('high-degree relationship list stays inside the visible Passport', {
             var lastRow = visibleRows[visibleRows.length - 1];
             lastRow.focus();
             lastRow.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
-            var lastRect = lastRow.getBoundingClientRect();
-            resolve({
-              headerTop: header.getBoundingClientRect().top,
-              bodyTop: bodyRect.top,
-              bodyBottom: bodyRect.bottom,
-              lastTop: lastRect.top,
-              lastBottom: lastRect.bottom,
-              lastHeight: lastRect.height,
-              lastFocused: document.activeElement === lastRow,
-              previewKey: document.querySelector('svg').getAttribute('data-relationship-preview-active'),
-              rowKey: lastRow.getAttribute('data-relationship-key'),
-              scrollMore: chip.getAttribute('data-relationship-scroll-more')
+            requestAnimationFrame(function () {
+              var lastRect = lastRow.getBoundingClientRect();
+              resolve({
+                headerTop: header.getBoundingClientRect().top,
+                chipBottom: chip.getBoundingClientRect().bottom,
+                bodyTop: bodyRect.top,
+                bodyBottom: bodyRect.bottom,
+                lastTop: lastRect.top,
+                lastBottom: lastRect.bottom,
+                lastHeight: lastRect.height,
+                lastFocused: document.activeElement === lastRow,
+                previewKey: document.querySelector('svg').getAttribute('data-relationship-preview-active'),
+                rowKey: lastRow.getAttribute('data-relationship-key'),
+                scrollMore: chip.getAttribute('data-relationship-scroll-more')
+              });
             });
           });
         });
       });
     })()`, true);
     const scrolledMessage = JSON.stringify({ initial, scrolled });
-    assert.ok(Math.abs(scrolled.headerTop - initial.headerTop) <= 0.5, scrolledMessage);
+    if (initial.drawer === 'true') {
+      assert.ok(Math.abs(scrolled.chipBottom - initial.chip.bottom) <= 0.5, scrolledMessage);
+    } else {
+      assert.ok(Math.abs(scrolled.headerTop - initial.headerTop) <= 0.5, scrolledMessage);
+    }
     assert.ok(scrolled.lastTop >= scrolled.bodyTop - 0.5, scrolledMessage);
     assert.ok(scrolled.lastBottom <= scrolled.bodyBottom + 0.5, scrolledMessage);
     assert.ok(scrolled.lastHeight > 0, scrolledMessage);
@@ -928,23 +953,29 @@ test('high-degree relationship list stays inside the visible Passport', {
             });
             var lastRow = rows[rows.length - 1];
             lastRow.focus();
-            var lastRect = lastRow.getBoundingClientRect();
-            resolve({
-              headerTop: header.getBoundingClientRect().top,
-              bodyTop: bodyRect.top,
-              bodyBottom: bodyRect.bottom,
-              lastTop: lastRect.top,
-              lastBottom: lastRect.bottom,
-              lastHeight: lastRect.height,
-              lastFocused: document.activeElement === lastRow,
-              scrollMore: chip.getAttribute('data-relationship-scroll-more'),
-              groups: Array.from(chip.querySelectorAll('[data-relationship-group-toggle]')).slice(0, 2).map(function (toggle) {
-                return {
-                  direction: toggle.getAttribute('data-relationship-group-toggle'),
-                  expanded: toggle.getAttribute('aria-expanded'),
-                  hidden: document.getElementById(toggle.getAttribute('aria-controls')).hidden
-                };
-              })
+            requestAnimationFrame(function () {
+              var lastRect = lastRow.getBoundingClientRect();
+              resolve({
+                headerTop: header.getBoundingClientRect().top,
+                bodyTop: bodyRect.top,
+                bodyBottom: bodyRect.bottom,
+                lastTop: lastRect.top,
+                lastBottom: lastRect.bottom,
+                lastHeight: lastRect.height,
+                lastFocused: document.activeElement === lastRow,
+                scrollTop: body.scrollTop,
+                maximumScroll: body.scrollHeight - body.clientHeight,
+                remainingScroll: body.scrollHeight - body.clientHeight - body.scrollTop,
+                fadeHeight: parseFloat(getComputedStyle(chip, '::after').height) || 0,
+                scrollMore: chip.getAttribute('data-relationship-scroll-more'),
+                groups: Array.from(chip.querySelectorAll('[data-relationship-group-toggle]')).slice(0, 2).map(function (toggle) {
+                  return {
+                    direction: toggle.getAttribute('data-relationship-group-toggle'),
+                    expanded: toggle.getAttribute('aria-expanded'),
+                    hidden: document.getElementById(toggle.getAttribute('aria-controls')).hidden
+                  };
+                })
+              });
             });
           });
         });
@@ -1693,7 +1724,11 @@ test('Radar, Passport, Legend, and Dock remain mutually clear on desktop and nar
       assert.equal(receipt.hasLegend, true, message);
       assert.ok(receipt.navRect, message);
       assert.equal(receipt.legendDockIntersectionArea, 0, message);
-      assert.equal(receipt.legendPassportIntersectionArea, 0, message);
+      /* On constrained responsive layouts the Passport is a stable bottom
+         sheet. The focused node and fixed controls own the safe area; the
+         camera-transformed SVG Legend may pass behind the sheet instead of
+         feeding its position back into camera framing. */
+      if (viewport.width > 1280) assert.equal(receipt.legendPassportIntersectionArea, 0, message);
       assert.equal(receipt.navPassportIntersectionArea, 0, message);
       assert.equal(receipt.legendRadarIntersectionArea, 0, message);
       assert.equal(receipt.navRadarIntersectionArea, 0, message);
@@ -2407,7 +2442,14 @@ test('relationship hover only highlights while explicit activation owns camera m
           return {
             x: rect.left + rect.width / 2,
             y: rect.top + rect.height / 2,
-            targetId: row.getAttribute('data-relationship-target')
+            targetId: row.getAttribute('data-relationship-target'),
+            ownsCenter: !!(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) || {}).closest &&
+              document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2).closest('[data-relationship-target]') === row,
+            row: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+            body: (function () {
+              var bodyRect = document.getElementById('relationship-lens-body').getBoundingClientRect();
+              return { left: bodyRect.left, top: bodyRect.top, right: bodyRect.right, bottom: bodyRect.bottom };
+            })()
           };
         })()`);
         await browser.cdp.send('Input.dispatchMouseEvent', {
@@ -2421,7 +2463,12 @@ test('relationship hover only highlights while explicit activation owns camera m
           type: 'mouseReleased', x: activationPoint.x, y: activationPoint.y,
           button: 'left', buttons: 0, clickCount: 1,
         }, sessionId);
-        await waitForRelationshipReveal(browser, sessionId, activationPoint.targetId);
+        try {
+          await waitForRelationshipReveal(browser, sessionId, activationPoint.targetId);
+        } catch (error) {
+          error.message = `${scenario.label}: ${JSON.stringify(activationPoint)}: ${error.message}`;
+          throw error;
+        }
         await waitForLayout(browser, sessionId);
         const activation = await evaluate(browser, sessionId, `(function () {
           var probe = window.__archifyRelationshipActivationProbe;
@@ -2947,6 +2994,7 @@ test('narrow desktop relationship hover stays camera-neutral while reach Details
         var container = document.querySelector('.diagram-container');
         window.scrollTo(0, Math.max(0, container.offsetTop));
         Archify.focus.set('hub', { toggle: false, updateUrl: false });
+        document.getElementById('btn-focus-relations').click();
       })()`);
       await waitForLayout(browser, sessionId);
       await evaluate(browser, sessionId, `(function () {
@@ -3105,7 +3153,9 @@ test('mobile relationship exploration keeps every result outside compact and exp
               '#relationship-lens-list [data-relationship-group-toggle], #relationship-lens-list [data-relationship-target]'
             )).filter(function (control) {
               var rect = control.getBoundingClientRect();
-              return control.offsetParent !== null && rect.bottom > 0 && rect.top < window.innerHeight;
+              var bodyRect = document.getElementById('relationship-lens-body').getBoundingClientRect();
+              var center = rect.top + rect.height / 2;
+              return control.offsetParent !== null && center >= bodyRect.top && center <= bodyRect.bottom;
             }).map(function (control) {
               var rect = control.getBoundingClientRect();
               var x = rect.left + rect.width / 2;
@@ -3185,7 +3235,7 @@ test('mobile relationship exploration keeps every result outside compact and exp
     assert.deepEqual(preview.ids, ['hub', 'in-left']);
     assert.deepEqual(preview.camera, previewCameraBaseline, JSON.stringify(preview));
     assert.equal(previewControls.reachVisible, true, JSON.stringify(previewControls));
-    assert.equal(previewControls.detailsHidden, true, JSON.stringify(previewControls));
+    assert.equal(previewControls.detailsHidden, false, JSON.stringify(previewControls));
     const listActivation = await activateRelationshipRow(browser, sessionId);
     assert.equal(listActivation.focused, listActivation.targetId, JSON.stringify(listActivation));
     assert.equal(listActivation.resetCalls, 0, JSON.stringify(listActivation));
@@ -3274,6 +3324,121 @@ test('mobile relationship exploration keeps every result outside compact and exp
     assert.ok(relation.overlaps.every((area) => area === 0), JSON.stringify(relation));
     assert.deepEqual(relation.visibleMatches, relation.ids, JSON.stringify(relation));
     assert.deepEqual(relation.fullyVisibleMatches, relation.ids, JSON.stringify(relation));
+  } finally {
+    await browser.close();
+  }
+});
+
+test('narrow viewports dock the Passport as a compact bottom sheet without hiding its focus', {
+  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
+}, async () => {
+  const browser = new ChromeVisualBrowser(chromePath);
+  const artifact = renderRelationshipExplorationStress();
+  function passportReceiptExpression() {
+    return `(function () {
+      var passport = document.getElementById('focus-chip');
+      var container = document.querySelector('.diagram-container');
+      var nav = container.querySelector('.diagram-nav');
+      var node = document.querySelector('[data-node-id="hub"]');
+      var body = document.getElementById('relationship-lens-body');
+      var passportRect = passport.getBoundingClientRect();
+      var containerRect = container.getBoundingClientRect();
+      var navRect = nav.getBoundingClientRect();
+      var nodeRect = node.getBoundingClientRect();
+      var overlap = Math.max(0, Math.min(passportRect.right, nodeRect.right) - Math.max(passportRect.left, nodeRect.left)) *
+        Math.max(0, Math.min(passportRect.bottom, nodeRect.bottom) - Math.max(passportRect.top, nodeRect.top));
+      function visible(selector) {
+        var element = document.querySelector(selector);
+        return !!(element && element.offsetParent !== null);
+      }
+      return {
+        drawer: passport.getAttribute('data-responsive-drawer'),
+        expanded: passport.getAttribute('data-exploration-expanded'),
+        passport: {
+          left: passportRect.left,
+          right: passportRect.right,
+          top: passportRect.top,
+          bottom: passportRect.bottom,
+          width: passportRect.width,
+          height: passportRect.height
+        },
+        container: {
+          left: containerRect.left,
+          right: containerRect.right,
+          width: containerRect.width
+        },
+        navTop: navRect.top,
+        camera: Archify.view.state(),
+        scrollLeft: container.scrollLeft,
+        node: {
+          left: nodeRect.left,
+          right: nodeRect.right,
+          top: nodeRect.top,
+          bottom: nodeRect.bottom
+        },
+        overlap: overlap,
+        focusFullyVisible: nodeRect.left >= Math.max(0, containerRect.left) - 0.5 &&
+          nodeRect.right <= Math.min(window.innerWidth, containerRect.right) + 0.5 &&
+          nodeRect.top >= Math.max(0, containerRect.top) - 0.5 &&
+          nodeRect.bottom <= Math.min(window.innerHeight, containerRect.bottom) + 0.5,
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        detailsVisible: visible('#btn-focus-details'),
+        reachVisible: visible('.semantic-passport-reach-actions'),
+        metaVisible: visible('.semantic-passport-meta'),
+        evidenceVisible: visible('.semantic-passport-evidence'),
+        listVisible: visible('#relationship-lens-list'),
+        bodyOverflow: body.scrollHeight > body.clientHeight + 1
+      };
+    })()`;
+  }
+  try {
+    for (const width of [591, 834, 1182]) {
+      const sessionId = await load(browser, artifact, { width, height: 900 });
+      await evaluate(browser, sessionId, `(function () {
+        document.querySelector('[data-node-id="hub"]').dispatchEvent(new MouseEvent('click', {
+          bubbles: true,
+          button: 0
+        }));
+      })()`);
+      await waitForLayout(browser, sessionId);
+      const compact = await evaluate(browser, sessionId, passportReceiptExpression());
+      assert.equal(compact.drawer, 'true', JSON.stringify({ width, compact }));
+      assert.equal(compact.expanded, null, JSON.stringify({ width, compact }));
+      assert.ok(compact.passport.left <= compact.container.left + 17, JSON.stringify({ width, compact }));
+      assert.ok(compact.passport.right >= compact.container.right - 17, JSON.stringify({ width, compact }));
+      assert.ok(compact.passport.height <= 320, JSON.stringify({ width, compact }));
+      assert.ok(compact.passport.bottom <= compact.navTop - 9, JSON.stringify({ width, compact }));
+      assert.equal(compact.overlap, 0, JSON.stringify({ width, compact }));
+      assert.equal(compact.focusFullyVisible, true, JSON.stringify({ width, compact }));
+      assert.equal(compact.pageOverflow, false, JSON.stringify({ width, compact }));
+      assert.equal(compact.detailsVisible, true, JSON.stringify({ width, compact }));
+      assert.equal(compact.reachVisible, true, JSON.stringify({ width, compact }));
+      assert.equal(compact.metaVisible, false, JSON.stringify({ width, compact }));
+      assert.equal(compact.evidenceVisible, false, JSON.stringify({ width, compact }));
+      assert.equal(compact.listVisible, false, JSON.stringify({ width, compact }));
+
+      await evaluate(browser, sessionId, `document.getElementById('btn-focus-details').click()`);
+      await waitForLayout(browser, sessionId);
+      const expanded = await evaluate(browser, sessionId, passportReceiptExpression());
+      assert.equal(expanded.expanded, 'true', JSON.stringify({ width, expanded }));
+      assert.ok(expanded.passport.height <= 540, JSON.stringify({ width, expanded }));
+      assert.ok(expanded.passport.bottom <= expanded.navTop - 9, JSON.stringify({ width, expanded }));
+      assert.equal(expanded.overlap, 0, JSON.stringify({ width, expanded }));
+      assert.equal(expanded.focusFullyVisible, true, JSON.stringify({ width, expanded }));
+      assert.equal(expanded.pageOverflow, false, JSON.stringify({ width, expanded }));
+      assert.equal(expanded.metaVisible, true, JSON.stringify({ width, expanded }));
+      assert.equal(expanded.listVisible, false, JSON.stringify({ width, expanded }));
+
+      await evaluate(browser, sessionId, `document.getElementById('btn-focus-relations').click()`);
+      await waitForLayout(browser, sessionId);
+      const relations = await evaluate(browser, sessionId, passportReceiptExpression());
+      assert.equal(relations.expanded, 'true', JSON.stringify({ width, relations }));
+      assert.equal(relations.listVisible, true, JSON.stringify({ width, relations }));
+      assert.ok(relations.passport.height <= 540, JSON.stringify({ width, relations }));
+      assert.ok(relations.passport.bottom <= relations.navTop - 9, JSON.stringify({ width, relations }));
+      assert.equal(relations.overlap, 0, JSON.stringify({ width, relations }));
+      assert.equal(relations.focusFullyVisible, true, JSON.stringify({ width, relations }));
+    }
   } finally {
     await browser.close();
   }

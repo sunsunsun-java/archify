@@ -90,6 +90,18 @@ test('Relationship Lens renders one Semantic Passport and copyable stable focus 
   assert.match(html, /relationshipBody\.contains\(document\.activeElement\)[\s\S]*document\.activeElement === detailsBtn[\s\S]*document\.activeElement === copyBtn[\s\S]*document\.activeElement === relationsBtn[\s\S]*clearBtn\.focus/);
 });
 
+test('narrow viewers use a bounded bottom drawer and reserve canvas space', () => {
+  const html = render('architecture', CASES.architecture);
+  assert.match(html, /@media \(max-width: 1280px\) \{[\s\S]*\.focus-chip\[data-responsive-drawer="true"\]/);
+  assert.match(html, /max-height: min\([\s\S]*60dvh/);
+  assert.match(html, /function responsiveDrawerEnabled\(\) \{[\s\S]*window\.innerWidth <= 1280/);
+  assert.match(html, /chip\.setAttribute\('data-responsive-drawer', 'true'\)/);
+  assert.match(html, /var canvasReserve = Math\.min\(220, Math\.max\(120, availableHeight \* 0\.42\)\)/);
+  assert.match(html, /passportAvailableHeight = Math\.max\(0, availableHeight - canvasReserve\)/);
+  assert.match(html, /if \(responsiveDrawer\) \{[\s\S]*bottom = Math\.min\(bottom, lensStart\)/);
+  assert.match(html, /reframeExploration\('relationship-list-toggle'\)/);
+});
+
 test('Node Finder searches and presents the same passport facts', () => {
   const html = render('dataflow', CASES.dataflow);
   assert.match(html, /var authored = node\.getAttribute\('data-node-kind'\)/);
