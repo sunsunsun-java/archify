@@ -980,7 +980,12 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
     });
   }
 
+  function clearExportReceipt() {
+    delete document.documentElement.dataset.archifyDeltaExport;
+  }
+
   function exportCanonicalSvg() {
+    clearExportReceipt();
     const blob = new Blob([canonicalDeltaSvg()], { type: 'image/svg+xml;charset=utf-8' });
     downloadBlob(blob, artifactName('-architecture-delta.svg'));
     recordExport('svg', blob);
@@ -991,6 +996,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
   window.Archify.deltaExport = { canonicalSvg: canonicalDeltaSvg, exportSvg: exportCanonicalSvg };
   window.Archify.exportMenu = {
     run(format) {
+      clearExportReceipt();
       if (format === 'svg') return exportCanonicalSvg();
       throw new Error('Unknown Architecture Delta export format: ' + format);
     },

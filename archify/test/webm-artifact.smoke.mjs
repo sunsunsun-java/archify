@@ -778,6 +778,36 @@ try {
       var svgB = Archify.deltaExport.canonicalSvg();
       var parsed = new DOMParser().parseFromString(svgB, 'image/svg+xml');
       var exportStyle = parsed.querySelector('style')?.textContent || '';
+      var originalAnchorClick = HTMLAnchorElement.prototype.click;
+      var downloadClicks = 0;
+      var rejectedFormats;
+      try {
+        HTMLAnchorElement.prototype.click = function () { downloadClicks += 1; };
+        Archify.exportMenu.run('svg');
+        var successfulReceipt = document.documentElement.getAttribute('data-archify-delta-export');
+        var beforeRetired = downloadClicks;
+        var retiredError = null;
+        try { Archify.exportMenu.run('share-card'); }
+        catch (error) { retiredError = String(error && error.message || error); }
+        var retiredReceipt = document.documentElement.getAttribute('data-archify-delta-export');
+        var retiredDownloads = downloadClicks - beforeRetired;
+        Archify.exportMenu.run('svg');
+        var beforeUnknown = downloadClicks;
+        var unknownError = null;
+        try { Archify.exportMenu.run('not-a-format'); }
+        catch (error) { unknownError = String(error && error.message || error); }
+        rejectedFormats = {
+          successfulReceipt: Boolean(successfulReceipt),
+          retired: { rejected: Boolean(retiredError), downloads: retiredDownloads, receipt: retiredReceipt },
+          unknown: {
+            rejected: Boolean(unknownError),
+            downloads: downloadClicks - beforeUnknown,
+            receipt: document.documentElement.getAttribute('data-archify-delta-export')
+          }
+        };
+      } finally {
+        HTMLAnchorElement.prototype.click = originalAnchorClick;
+      }
       return {
         explorers: explorers,
         stable: svgA === svgB,
@@ -786,6 +816,7 @@ try {
         markerStyle: exportStyle.includes('.delta-edge-marker[data-delta-state],.delta-boundary-marker[data-delta-state]{color:var(--delta)}'),
         frameStyle: exportStyle.includes('rect[data-graph-role="structural-frame"]'),
         boundaryMarkers: Array.from(parsed.querySelectorAll('.delta-boundary-marker')).map(function (marker) { return marker.textContent; }),
+        rejectedFormats: rejectedFormats,
         retiredShareCard: !document.querySelector('#share-card') &&
           !('shareCard' in Archify.deltaExport) &&
           !('downloadShareCard' in Archify.deltaExport)
@@ -798,23 +829,63 @@ try {
     assert.equal(exportProof.markerStyle, true);
     assert.equal(exportProof.frameStyle, true);
     assert.deepEqual(exportProof.boundaryMarkers, ['~', '~']);
+    assert.deepEqual(exportProof.rejectedFormats, {
+      successfulReceipt: true,
+      retired: { rejected: true, downloads: 0, receipt: null },
+      unknown: { rejected: true, downloads: 0, receipt: null },
+    });
     assert.equal(exportProof.retiredShareCard, true);
     console.log('ok Architecture Delta navigator + export: exact identity, complete explorers, static SVG, and no Share Card API');
   }
 
-  async function captureCopiedDiagram(file, label) {
+  async function captureCopiedDiagram(file, label, temporaryState) {
     await navigateReady(file, '!!(window.Archify && Archify.exportMenu && Archify.exportMenu.copyDiagram)', label);
-    const copiedPayload = await withTimeout(evaluate(cdp, sessionId, String.raw`(async function () {
+    const copiedPayload = await withTimeout(evaluate(cdp, sessionId, String.raw`(async function (temporaryState) {
       var originalCreateObjectURL = URL.createObjectURL;
       var originalAnchorClick = HTMLAnchorElement.prototype.click;
       try {
-        var retiredDownloads = 0;
-        HTMLAnchorElement.prototype.click = function () { retiredDownloads += 1; };
+        var downloadClicks = 0;
+        HTMLAnchorElement.prototype.click = function () { downloadClicks += 1; };
+        await Archify.exportMenu.run('svg');
+        var successfulReceipt = document.documentElement.getAttribute('data-last-export-format');
+        var beforeRetired = downloadClicks;
         var retiredError = null;
         try { await Archify.exportMenu.run('share-card'); }
         catch (error) { retiredError = String(error && error.message || error); }
         var retiredReceipt = document.documentElement.getAttribute('data-last-export-format');
+        var retiredDownloads = downloadClicks - beforeRetired;
+        await Archify.exportMenu.run('svg');
+        var beforeUnknown = downloadClicks;
+        var unknownError = null;
+        try { await Archify.exportMenu.run('not-a-format'); }
+        catch (error) { unknownError = String(error && error.message || error); }
+        var unknownReceipt = document.documentElement.getAttribute('data-last-export-format');
+        var unknownDownloads = downloadClicks - beforeUnknown;
         HTMLAnchorElement.prototype.click = originalAnchorClick;
+
+        var liveSvg = document.querySelector('.diagram-container svg');
+        var firstNode = liveSvg.querySelector('[data-node-id]');
+        var firstEdge = liveSvg.querySelector('[data-edge-from][data-edge-to]');
+        var firstView = document.querySelector('[data-guided-view-id]');
+        var temporaryStateActive = false;
+        if (temporaryState === 'focus' && firstNode) {
+          temporaryStateActive = Archify.focus.set(firstNode.getAttribute('data-node-id'), { toggle: false, updateUrl: false }) === true &&
+            liveSvg.hasAttribute('data-focus-active');
+        } else if (temporaryState === 'reach' && firstEdge) {
+          Archify.focus.set(firstEdge.getAttribute('data-edge-from'), { toggle: false, updateUrl: false });
+          Archify.focus.reach('downstream', { toggle: false, updateUrl: false, reveal: false });
+          temporaryStateActive = liveSvg.hasAttribute('data-reach-active');
+        } else if (temporaryState === 'route' && firstEdge) {
+          Archify.routeProbe.begin({ source: firstEdge.getAttribute('data-edge-from'), focusNode: false });
+          Archify.routeProbe.choose(firstEdge.getAttribute('data-edge-to'), { updateUrl: false });
+          temporaryStateActive = liveSvg.hasAttribute('data-route-active');
+        } else if (temporaryState === 'story' && firstView) {
+          Archify.guidedViews.activate(firstView.getAttribute('data-guided-view-id'), { updateUrl: false });
+          temporaryStateActive = Archify.guidedViews.active() !== null;
+        } else if (temporaryState === 'camera') {
+          Archify.view.zoomIn();
+          temporaryStateActive = Archify.view.state().scale > 1;
+        }
 
         var capturedSvg = null;
         URL.createObjectURL = function (blob) {
@@ -843,7 +914,6 @@ try {
         var svgText = capturedSvg ? await capturedSvg : '';
         var parser = new DOMParser();
         var exportedSvg = parser.parseFromString(svgText, 'image/svg+xml').documentElement;
-        var liveSvg = document.querySelector('.diagram-container svg');
         function identities(root, selector, attribute) {
           return Array.from(new Set(Array.from(root.querySelectorAll(selector))
             .map(function (element) { return element.getAttribute(attribute); })
@@ -856,6 +926,27 @@ try {
           exportedEdges: identities(exportedSvg, '[data-edge-key]', 'data-edge-key'),
           liveBoundaries: identities(liveSvg, '[data-boundary-id]', 'data-boundary-id'),
           exportedBoundaries: identities(exportedSvg, '[data-boundary-id]', 'data-boundary-id')
+        };
+        var temporaryRootAttributes = [
+          'data-focus-active', 'data-reach-active', 'data-lens-active', 'data-route-picking',
+          'data-route-active', 'data-route-journey', 'data-story-active', 'data-story-playing',
+          'data-story-beat', 'data-story-next', 'data-story-follow', 'data-chapter-handoff',
+          'data-chapter-anchor', 'data-chapter-preview'
+        ];
+        var temporaryResidueSelector = [
+          '[data-focus-match]', '[data-focus-selected]', '[data-reach-match]', '[data-reach-origin]',
+          '[data-reach-depth]', '[data-semantic-lens-overlay]', '[data-lens-match]', '[data-lens-selected]',
+          '[data-lens-peer]', '[data-route-probe-overlay]', '[data-route-journey-overlay]', '[data-route-match]',
+          '[data-route-start]', '[data-route-end]', '[data-route-step]', '[data-route-candidate]',
+          '[data-route-journey-state]', '[data-route-journey-current]', '[data-story-overlay]',
+          '[data-story-carrier-overlay]', '[data-story-carrier-token]', '[data-story-step]',
+          '[data-story-beat-state]', '[data-story-beat-step]', '[data-chapter-handoff-overlay]',
+          '[data-chapter-role]', '[data-chapter-preview-role]'
+        ].join(',');
+        var temporaryResidue = {
+          rootAttributes: temporaryRootAttributes.filter(function (attribute) { return exportedSvg.hasAttribute(attribute); }),
+          descendants: exportedSvg.querySelectorAll(temporaryResidueSelector).length,
+          transformed: Boolean(exportedSvg.style.getPropertyValue('transform') || exportedSvg.style.getPropertyValue('clip-path'))
         };
         var bytes = new Uint8Array(await blob.arrayBuffer());
         var binary = '';
@@ -871,6 +962,7 @@ try {
           base64: btoa(binary),
           viewBox: { width: vb.width, height: vb.height },
           topology: topology,
+          temporaryState: { kind: temporaryState, active: temporaryStateActive, residue: temporaryResidue },
           copyDisabled: copyDisabled,
           soleShareAction: shareItems.length === 1 && shareItems[0].dataset.action === 'copy',
           retiredApi: !('shareCard' in Archify.exportMenu) &&
@@ -880,9 +972,15 @@ try {
             !('reachabilitySnapshot' in Archify.focus) &&
             !('exportSnapshot' in Archify.routeProbe),
           retiredFormat: {
+            successfulReceipt: successfulReceipt,
             rejected: Boolean(retiredError),
             downloads: retiredDownloads,
             receipt: retiredReceipt
+          },
+          unknownFormat: {
+            rejected: Boolean(unknownError),
+            downloads: unknownDownloads,
+            receipt: unknownReceipt
           }
         };
       } catch (error) {
@@ -891,7 +989,7 @@ try {
         URL.createObjectURL = originalCreateObjectURL;
         HTMLAnchorElement.prototype.click = originalAnchorClick;
       }
-    })()`, true), 10_000, `${label} Copy diagram`);
+    })(${JSON.stringify(temporaryState)})`, true), 10_000, `${label} Copy diagram`);
 
     assert.equal(copiedPayload?.ok, true, copiedPayload?.error || `${label} Copy diagram failed`);
     assert.equal(copiedPayload.type, 'image/png');
@@ -899,7 +997,13 @@ try {
     assert.equal(copiedPayload.copyDisabled, false, `${label} Copy diagram menu item is disabled`);
     assert.equal(copiedPayload.soleShareAction, true);
     assert.equal(copiedPayload.retiredApi, true);
-    assert.deepEqual(copiedPayload.retiredFormat, { rejected: true, downloads: 0, receipt: null });
+    assert.deepEqual(copiedPayload.retiredFormat, { successfulReceipt: 'svg', rejected: true, downloads: 0, receipt: null });
+    assert.deepEqual(copiedPayload.unknownFormat, { rejected: true, downloads: 0, receipt: null });
+    assert.deepEqual(copiedPayload.temporaryState, {
+      kind: temporaryState,
+      active: true,
+      residue: { rootAttributes: [], descendants: 0, transformed: false },
+    });
     assert.deepEqual(copiedPayload.topology.exportedNodes, copiedPayload.topology.liveNodes, `${label} copied diagram changed nodes`);
     assert.deepEqual(copiedPayload.topology.exportedEdges, copiedPayload.topology.liveEdges, `${label} copied diagram changed edges`);
     assert.deepEqual(copiedPayload.topology.exportedBoundaries, copiedPayload.topology.liveBoundaries, `${label} copied diagram changed boundaries`);
@@ -966,8 +1070,15 @@ try {
   await verifyResolvedLegendContract(legendOutputs);
   await verifySemanticPassportDismissal(path.resolve(skillRoot, '../docs/gallery/artifacts/production-deployment.architecture.html'));
   await verifyArchitectureDeltaNavigator(path.resolve(skillRoot, '../examples/checkout-platform-delta.html'));
+  const temporaryStates = {
+    architecture: 'focus',
+    workflow: 'reach',
+    sequence: 'route',
+    dataflow: 'story',
+    lifecycle: 'camera',
+  };
   for (const [mode, file] of Object.entries(routeOutputs)) {
-    await captureCopiedDiagram(file, `${mode}-complete`);
+    await captureCopiedDiagram(file, `${mode}-complete`, temporaryStates[mode]);
   }
   await verifyDynamicReducedMotionRoute(routeOutputs.architecture, 'architecture-route reduced motion', 'users', 'api');
   await navigateReady(output, '!!(window.Archify && Archify.motion && Archify.motion.canRecord())', 'motion artifact');

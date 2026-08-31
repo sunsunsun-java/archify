@@ -54,7 +54,7 @@ test('Copy diagram uses the complete high-resolution PNG raster path', () => {
   assert.match(html, /var data = serializeSvg\(scale\);/);
   assert.match(html, /ctx\.drawImage\(img, 0, 0\);/);
   assert.match(html, /var SUPPORTED_EXPORT_FORMATS = \{ svg: true, png: true, jpeg: true, webp: true, webm: true \};/);
-  assert.match(html, /if \(!Object\.prototype\.hasOwnProperty\.call\(SUPPORTED_EXPORT_FORMATS, format\)\)[\s\S]*?Promise\.reject/);
+  assert.match(html, /function runExport\(format\) \{\s*clearExportReceipt\(\);\s*if \(!Object\.prototype\.hasOwnProperty\.call\(SUPPORTED_EXPORT_FORMATS, format\)\)[\s\S]*?Promise\.reject/);
 });
 
 test('retired Share Card UI, implementation, API, and receipt state are absent', () => {

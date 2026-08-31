@@ -6552,12 +6552,12 @@
       });
 
       function runExport(format) {
+        clearExportReceipt();
         if (!Object.prototype.hasOwnProperty.call(SUPPORTED_EXPORT_FORMATS, format)) {
           return Promise.reject(new Error('Unsupported export format: ' + String(format)));
         }
         var base = diagramFilename();
         close(true);
-        clearExportReceipt();
         if (format === 'webm') toast(viewerText('viewer.export.recording'));
         return (format === 'svg'
           ? Promise.resolve(serializeSvg(1, { autoTheme: true })).then(function (d) {

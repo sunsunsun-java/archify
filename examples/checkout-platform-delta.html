@@ -11243,12 +11243,12 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       });
 
       function runExport(format) {
+        clearExportReceipt();
         if (!Object.prototype.hasOwnProperty.call(SUPPORTED_EXPORT_FORMATS, format)) {
           return Promise.reject(new Error(&#39;Unsupported export format: &#39; + String(format)));
         }
         var base = diagramFilename();
         close(true);
-        clearExportReceipt();
         if (format === &#39;webm&#39;) toast(viewerText(&#39;viewer.export.recording&#39;));
         return (format === &#39;svg&#39;
           ? Promise.resolve(serializeSvg(1, { autoTheme: true })).then(function (d) {
@@ -25654,12 +25654,12 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
       });
 
       function runExport(format) {
+        clearExportReceipt();
         if (!Object.prototype.hasOwnProperty.call(SUPPORTED_EXPORT_FORMATS, format)) {
           return Promise.reject(new Error(&#39;Unsupported export format: &#39; + String(format)));
         }
         var base = diagramFilename();
         close(true);
-        clearExportReceipt();
         if (format === &#39;webm&#39;) toast(viewerText(&#39;viewer.export.recording&#39;));
         return (format === &#39;svg&#39;
           ? Promise.resolve(serializeSvg(1, { autoTheme: true })).then(function (d) {
@@ -33829,7 +33829,12 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
     });
   }
 
+  function clearExportReceipt() {
+    delete document.documentElement.dataset.archifyDeltaExport;
+  }
+
   function exportCanonicalSvg() {
+    clearExportReceipt();
     const blob = new Blob([canonicalDeltaSvg()], { type: 'image/svg+xml;charset=utf-8' });
     downloadBlob(blob, artifactName('-architecture-delta.svg'));
     recordExport('svg', blob);
@@ -33840,6 +33845,7 @@ html[data-theme="dark"] body{background:#071019!important;background-image:none!
   window.Archify.deltaExport = { canonicalSvg: canonicalDeltaSvg, exportSvg: exportCanonicalSvg };
   window.Archify.exportMenu = {
     run(format) {
+      clearExportReceipt();
       if (format === 'svg') return exportCanonicalSvg();
       throw new Error('Unknown Architecture Delta export format: ' + format);
     },

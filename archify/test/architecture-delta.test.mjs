@@ -295,6 +295,7 @@ test('compare CLI writes a deterministic three-state artifact and complete sidec
   assert.match(firstHtml, /title="After architecture explorer"/);
   assert.match(firstHtml, /id="export-svg"[^>]*>Export SVG</);
   assert.match(firstHtml, /window\.Archify\.deltaExport = \{ canonicalSvg: canonicalDeltaSvg, exportSvg: exportCanonicalSvg \}/);
+  assert.match(firstHtml, /window\.Archify\.exportMenu = \{\s*run\(format\) \{\s*clearExportReceipt\(\);/);
   assert.doesNotMatch(firstHtml, /share-card|Share Card|shareCard|downloadShareCard/);
   assert.match(firstHtml, /structural-frame.*stroke:var\(--delta\)!important/);
   assert.match(firstHtml, /structural-frame.*data-delta-state="changed".*stroke-dasharray:2 3!important/);
