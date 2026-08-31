@@ -1809,7 +1809,11 @@ test('relationship hover only highlights while explicit activation owns camera m
         query: `?case=${encodeURIComponent(scenario.label)}`,
       });
       await browser.cdp.send('Emulation.setEmulatedMedia', {
-        features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
+        features: [
+          { name: 'prefers-reduced-motion', value: 'no-preference' },
+          { name: 'hover', value: 'hover' },
+          { name: 'pointer', value: 'fine' },
+        ],
       }, sessionId);
       await browser.cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false }, sessionId);
       await evaluate(browser, sessionId, `(function () {
@@ -1838,7 +1842,7 @@ test('relationship hover only highlights while explicit activation owns camera m
         };
       })()`);
       if (scenario.scrollOffset) assert.ok(point.containerTop < 0, JSON.stringify({ scenario, point }));
-      if (scenario.expandRelationships) assert.equal(point.finePointer, true, JSON.stringify({ scenario, point }));
+      assert.equal(point.finePointer, true, JSON.stringify({ scenario, point }));
       // CDP keeps the last mouse position across page loads. Move outside the
       // Passport first so the target movement always creates a real ingress and
       // dispatches pointerover, even when two scenarios reuse the same row center.
