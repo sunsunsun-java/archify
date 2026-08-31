@@ -95,6 +95,7 @@ test('relationship lens bounds one scroll body and exposes a non-blocking overfl
   assert.match(html, /\.relationship-lens-body \{[\s\S]*min-height: 0;[\s\S]*overflow-y: auto;[\s\S]*overscroll-behavior: contain;/);
   assert.match(html, /\.relationship-lens-body \{[\s\S]*scroll-padding-bottom: 2\.4rem;/);
   assert.match(html, /\.focus-chip\[data-responsive-drawer="true"\] \.relationship-lens-row \{[\s\S]*scroll-margin-bottom: 0\.25rem;/);
+  assert.match(html, /@media \(max-width: 1280px\) \{[\s\S]*\.focus-chip\[data-responsive-drawer="true"\] \.relationship-lens-actions \{[\s\S]*display: grid;[\s\S]*grid-template-columns: auto auto;/);
   assert.match(html, /\.relationship-lens-list \{[\s\S]*overflow: visible;/);
   assert.doesNotMatch(html, /\.relationship-lens-list \{\s*max-height:/);
   assert.match(html, /data-relationship-scroll-more="true"\]::after[\s\S]*pointer-events: none/);
