@@ -19,27 +19,37 @@ function densityRuntime() {
     output,
   ]);
   const html = fs.readFileSync(output, 'utf8');
-  const constant = html.match(/var SHARE_CARD_MIN_PRIMARY_TEXT_PX = [^;]+;\s*var SHARE_CARD_MIN_CONTEXT_TEXT_PX = [^;]+;/)?.[0];
-  const fn = html.match(/function planShareCardSimplification\(metrics\) \{[\s\S]*?\n      \}/)?.[0];
-  assert.ok(constant && fn, 'rendered viewer must contain the share-card density planner');
-  return vm.runInNewContext(`(() => { ${constant} ${fn}; return {
+  const runtime = html.match(/var SHARE_CARD_MIN_PRIMARY_TEXT_PX = [\s\S]*?(?=\n\n      function shareCardBounds)/)?.[0];
+  assert.ok(runtime, 'rendered viewer must contain the share-card density planner');
+  return vm.runInNewContext(`(() => { ${runtime}; return {
     SHARE_CARD_MIN_PRIMARY_TEXT_PX,
+    SHARE_CARD_MIN_CONTEXT_TEXT_PX,
     planShareCardSimplification
   }; })()`);
 }
 
 test('dense share cards focus a guided subset and remove secondary text', () => {
-  const { SHARE_CARD_MIN_PRIMARY_TEXT_PX, planShareCardSimplification } = densityRuntime();
+  const {
+    SHARE_CARD_MIN_PRIMARY_TEXT_PX,
+    SHARE_CARD_MIN_CONTEXT_TEXT_PX,
+    planShareCardSimplification,
+  } = densityRuntime();
   const plan = planShareCardSimplification({
     sourceBounds: { x: 0, y: 0, width: 1720, height: 900 },
     contentBounds: { x: 20, y: 45, width: 1340, height: 478 },
-    focusBounds: { x: 20, y: 250, width: 1340, height: 74 },
+    focusCandidates: [{
+      source: 'authored',
+      order: 0,
+      nodeCount: 7,
+      focusIds: ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+      focusEdgeKeys: ['a->b'],
+      bounds: { x: 120, y: 250, width: 820, height: 180 },
+    }],
     availableWidth: 1128,
     availableHeight: 482,
     primaryFontPx: 11,
-    contextFontPx: 9,
-    nodeCount: 10,
-    focusNodeCount: 7,
+    sourceContextFontPx: 9,
+    focusContextFontPx: 9,
   });
 
   assert.equal(plan.mode, 'focus');
@@ -48,6 +58,9 @@ test('dense share cards focus a guided subset and remove secondary text', () => 
   assert.equal(plan.hideLegend, true);
   assert.equal(plan.cropTo, 'focus');
   assert.ok(plan.projectedPrimaryFontPx >= SHARE_CARD_MIN_PRIMARY_TEXT_PX);
+  assert.ok(plan.projectedContextFontPx >= SHARE_CARD_MIN_CONTEXT_TEXT_PX);
+  assert.deepEqual(Array.from(plan.focusIds), ['a', 'b', 'c', 'd', 'e', 'f', 'g']);
+  assert.deepEqual(Array.from(plan.focusEdgeKeys), ['a->b']);
 });
 
 test('dense share cards without a guided subset compact the full diagram', () => {
@@ -58,8 +71,9 @@ test('dense share cards without a guided subset compact the full diagram', () =>
     availableWidth: 1128,
     availableHeight: 482,
     primaryFontPx: 11,
-    contextFontPx: 9,
-    nodeCount: 12,
+    sourceContextFontPx: 9,
+    focusContextFontPx: 9,
+    focusCandidates: [],
   });
 
   assert.equal(plan.mode, 'compact');
@@ -74,13 +88,12 @@ test('readable share cards preserve the complete authored diagram', () => {
   const plan = planShareCardSimplification({
     sourceBounds: { x: 0, y: 0, width: 1000, height: 500 },
     contentBounds: { x: 20, y: 20, width: 960, height: 460 },
-    focusBounds: { x: 100, y: 150, width: 700, height: 100 },
     availableWidth: 1128,
     availableHeight: 482,
     primaryFontPx: 11,
-    contextFontPx: 9,
-    nodeCount: 7,
-    focusNodeCount: 5,
+    sourceContextFontPx: 9,
+    focusContextFontPx: 9,
+    focusCandidates: [],
   });
 
   assert.equal(plan.mode, 'full');
@@ -88,6 +101,28 @@ test('readable share cards preserve the complete authored diagram', () => {
   assert.equal(plan.hideContext, false);
   assert.equal(plan.hideFine, false);
   assert.equal(plan.hideLegend, false);
+});
+
+test('the planner evaluates every authored view before falling back to automatic focus', () => {
+  const { planShareCardSimplification } = densityRuntime();
+  const plan = planShareCardSimplification({
+    sourceBounds: { x: 0, y: 0, width: 3000, height: 1400 },
+    contentBounds: { x: 40, y: 40, width: 2800, height: 1200 },
+    availableWidth: 1128,
+    availableHeight: 482,
+    primaryFontPx: 11,
+    sourceContextFontPx: 9,
+    focusContextFontPx: 9,
+    focusCandidates: [
+      { source: 'authored', order: 0, nodeCount: 8, focusIds: ['wide'], focusEdgeKeys: [], bounds: { x: 0, y: 0, width: 1800, height: 800 } },
+      { source: 'authored', order: 1, nodeCount: 5, focusIds: ['readable'], focusEdgeKeys: ['edge'], bounds: { x: 200, y: 200, width: 650, height: 220 } },
+      { source: 'auto', order: 0, nodeCount: 6, focusIds: ['auto'], focusEdgeKeys: [], bounds: { x: 100, y: 100, width: 600, height: 200 } },
+    ],
+  });
+
+  assert.equal(plan.mode, 'focus');
+  assert.equal(plan.focusSource, 'authored');
+  assert.deepEqual(Array.from(plan.focusIds), ['readable']);
 });
 
 test('the share-card export applies the density plan to the serialized SVG', () => {
@@ -99,7 +134,9 @@ test('the share-card export applies the density plan to the serialized SVG', () 
   ]);
   const html = fs.readFileSync(output, 'utf8');
 
-  assert.match(html, /function planShareCardForSvg\(svg, availableWidth, availableHeight, focusIds\)/);
+  assert.match(html, /function planShareCardForSvg\(svg, availableWidth, availableHeight, authoredCandidates\)/);
+  assert.match(html, /function automaticShareCardFocusSets\(nodes, edges\)/);
+  assert.match(html, /function planFullShareCardForSvg\(svg, availableWidth, availableHeight\)/);
   assert.match(html, /function applyShareCardSimplification\(clone, plan\)/);
   assert.match(html, /serializeSvg\(sourceScale, \{[\s\S]*?shareCardPlan: densityPlan/);
   assert.match(html, /clone\.setAttribute\('data-share-card-density', plan\.mode\)/);

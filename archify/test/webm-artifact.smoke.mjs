@@ -16,6 +16,7 @@ const externalReachSource = process.env.ARCHIFY_REACH_CARD_SOURCE
 const externalReachOutput = process.env.ARCHIFY_REACH_CARD_OUTPUT
   ? path.resolve(process.env.ARCHIFY_REACH_CARD_OUTPUT)
   : '';
+const shareCardDensityOnly = process.env.ARCHIFY_SHARE_CARD_DENSITY_ONLY === '1';
 assert.equal(Boolean(externalReachSource), Boolean(externalReachOutput), 'ARCHIFY_REACH_CARD_SOURCE and ARCHIFY_REACH_CARD_OUTPUT must be set together');
 
 function executable(candidates) {
@@ -76,6 +77,37 @@ execFileSync(process.execPath, [
   path.join(skillRoot, 'renderers/architecture/render-architecture.mjs'),
   denseInput,
   denseOutput,
+], { stdio: ['ignore', 'ignore', 'pipe'] });
+
+const denseNoViewsComponents = Array.from({ length: 12 }, (_, index) => ({
+  id: `dense-${index}`,
+  type: index === 0 ? 'external' : index === 11 ? 'database' : 'backend',
+  label: `Dense ${index}`,
+  sublabel: `service ${index}`,
+  pos: [60 + index * 240, 230],
+  size: [170, 64],
+}));
+const denseNoViewsSource = {
+  schema_version: 1,
+  diagram_type: 'architecture',
+  meta: { title: 'Dense Architecture Without Guided Views', viewBox: [3000, 600] },
+  components: denseNoViewsComponents,
+  boundaries: [],
+  connections: denseNoViewsComponents.slice(0, -1).map((component, index) => ({
+    id: `dense-edge-${index}`,
+    from: component.id,
+    to: denseNoViewsComponents[index + 1].id,
+    label: `call ${index}`,
+  })),
+  cards: [],
+};
+const denseNoViewsInput = path.join(tmp, 'dense-no-views.architecture.json');
+const denseNoViewsOutput = path.join(tmp, 'dense-no-views.html');
+fs.writeFileSync(denseNoViewsInput, JSON.stringify(denseNoViewsSource));
+execFileSync(process.execPath, [
+  path.join(skillRoot, 'renderers/architecture/render-architecture.mjs'),
+  denseNoViewsInput,
+  denseNoViewsOutput,
 ], { stdio: ['ignore', 'ignore', 'pipe'] });
 
 const routeOutputs = {
@@ -883,8 +915,34 @@ try {
   async function captureShareCard(file, label, expectedDensity) {
     await navigateReady(file, '!!(window.Archify && Archify.exportMenu && Archify.exportMenu.shareCard)', label);
     const sharePayload = await withTimeout(evaluate(cdp, sessionId, String.raw`(async function () {
+      var originalCreateObjectURL = URL.createObjectURL;
+      var capturedSvg = null;
       try {
+        URL.createObjectURL = function (blob) {
+          if (!capturedSvg && blob && /^image\/svg\+xml/.test(blob.type || '')) capturedSvg = blob.text();
+          return originalCreateObjectURL.call(URL, blob);
+        };
         var blob = await Archify.exportMenu.shareCard();
+        var svgText = capturedSvg ? await capturedSvg : '';
+        var parser = new DOMParser();
+        var cardSvg = parser.parseFromString(svgText, 'image/svg+xml').documentElement;
+        var viewBox = (cardSvg.getAttribute('viewBox') || '').trim().split(/\s+/).map(Number);
+        var fit = viewBox.length === 4 && viewBox.every(Number.isFinite)
+          ? Math.min(1128 / viewBox[2], 482 / viewBox[3])
+          : 0;
+        var nodeFonts = Array.from(cardSvg.querySelectorAll('text[data-node-label]'))
+          .map(function (text) { return Number.parseFloat(text.getAttribute('font-size') || ''); })
+          .filter(function (size) { return Number.isFinite(size) && size > 0; });
+        var semanticFonts = Array.from(cardSvg.querySelectorAll('[data-edge-from][data-edge-to] text, [data-boundary-label]'))
+          .map(function (text) { return Number.parseFloat(text.getAttribute('font-size') || ''); })
+          .filter(function (size) { return Number.isFinite(size) && size > 0; });
+        var retainedEdgeLabels = Array.from(new Set(Array.from(cardSvg.querySelectorAll('[data-edge-from][data-edge-to][data-edge-label]'))
+          .map(function (edge) { return edge.getAttribute('data-edge-label'); })
+          .filter(Boolean))).sort();
+        var visibleEdgeLabels = Array.from(new Set(Array.from(cardSvg.querySelectorAll('[data-edge-from][data-edge-to] text'))
+          .map(function (text) { return (text.textContent || '').trim(); })
+          .filter(Boolean))).sort();
+        var backdrop = cardSvg.querySelector('[data-share-card-backdrop]');
         var bytes = new Uint8Array(await blob.arrayBuffer());
         var binary = '';
         for (var offset = 0; offset < bytes.length; offset += 32768) {
@@ -895,13 +953,27 @@ try {
           type: blob.type,
           size: blob.size,
           base64: btoa(binary),
-          density: document.documentElement.getAttribute('data-last-share-card-density'),
+          density: cardSvg.getAttribute('data-share-card-density'),
           projectedPrimary: Number(document.documentElement.getAttribute('data-last-share-card-projected-primary')),
-          visibleNodes: Number(document.documentElement.getAttribute('data-last-share-card-visible-nodes')),
-          totalNodes: document.querySelectorAll('.diagram-container svg [data-node-id]').length
+          actualProjectedPrimary: nodeFonts.length ? Math.min.apply(Math, nodeFonts) * fit : 0,
+          actualProjectedContext: semanticFonts.length ? Math.min.apply(Math, semanticFonts) * fit : null,
+          visibleNodes: cardSvg.querySelectorAll('[data-node-id]').length,
+          totalNodes: document.querySelectorAll('.diagram-container svg [data-node-id]').length,
+          retainedEdgeLabels: retainedEdgeLabels,
+          visibleEdgeLabels: visibleEdgeLabels,
+          structuralResidue: cardSvg.querySelectorAll('[data-graph-role^="structural-"]').length,
+          backdrop: backdrop ? {
+            x: Number(backdrop.getAttribute('x')),
+            y: Number(backdrop.getAttribute('y')),
+            width: Number(backdrop.getAttribute('width')),
+            height: Number(backdrop.getAttribute('height'))
+          } : null,
+          viewBox: viewBox
         };
       } catch (error) {
         return { ok: false, error: String(error && error.message || error) };
+      } finally {
+        URL.createObjectURL = originalCreateObjectURL;
       }
     })()`, true), 10_000, `${label} Share Card export`);
 
@@ -915,10 +987,23 @@ try {
     assert.equal(png.readUInt32BE(20), 1260, `${label} Share Card height`);
     assert.ok(['full', 'focus', 'compact'].includes(sharePayload.density), `${label} exposed no density mode`);
     if (expectedDensity) assert.equal(sharePayload.density, expectedDensity, `${label} density mode`);
+    if (sharePayload.density !== 'full') {
+      assert.ok(sharePayload.actualProjectedPrimary >= 10, `${label} actual projected primary text stayed too small (${sharePayload.actualProjectedPrimary}px)`);
+      if (sharePayload.actualProjectedContext !== null) {
+        assert.ok(sharePayload.actualProjectedContext >= 8, `${label} actual projected semantic text stayed too small (${sharePayload.actualProjectedContext}px)`);
+      }
+      assert.deepEqual(sharePayload.visibleEdgeLabels, sharePayload.retainedEdgeLabels, `${label} dropped semantic relationship labels`);
+      assert.equal(sharePayload.structuralResidue, 0, `${label} retained orphan structural scaffolding`);
+    }
     if (sharePayload.density === 'focus') {
-      assert.ok(sharePayload.projectedPrimary >= 8, `${label} projected primary text stayed too small`);
       assert.ok(sharePayload.visibleNodes < sharePayload.totalNodes, `${label} focus mode did not simplify nodes`);
     }
+    assert.deepEqual(sharePayload.backdrop, {
+      x: sharePayload.viewBox[0],
+      y: sharePayload.viewBox[1],
+      width: sharePayload.viewBox[2],
+      height: sharePayload.viewBox[3],
+    }, `${label} backdrop does not cover the cropped viewBox`);
 
     const pngPath = path.join(tmp, `${label}.share-card.png`);
     fs.writeFileSync(pngPath, png);
@@ -1342,17 +1427,18 @@ try {
     }
     assert.ok(sampledColors.size >= 20, `${label} Route Card has only ${sampledColors.size} sampled colors`);
     assert.equal(routePayload.routeShare, true);
+    assert.equal(routePayload.density, 'full', `${label} Route Card must preserve the full authored topology`);
     assert.deepEqual(routePayload.matchedNodeIds, routePayload.snapshot.nodeIds);
     assert.deepEqual(routePayload.matchedEdgeKeys, routePayload.expectedEdgeKeys);
     assert.equal(routePayload.routeLiveResidue, 0);
     assert.equal(routePayload.routeMotionResidue, 0);
     assert.deepEqual(
       routePayload.routeNodeIds,
-      routePayload.density === 'focus' ? routePayload.snapshot.nodeIds.slice().sort() : routePayload.liveNodeIds,
+      routePayload.liveNodeIds,
     );
     assert.deepEqual(
       routePayload.routeEdgeKeys,
-      routePayload.density === 'focus' ? routePayload.expectedEdgeKeys.slice().sort() : routePayload.liveEdgeKeys,
+      routePayload.liveEdgeKeys,
     );
     assert.equal(routePayload.canonicalRouteResidue, 0);
     assert.equal(routePayload.canonicalRouteActive, false);
@@ -1742,6 +1828,7 @@ try {
       fs.writeFileSync(options.outputPath, png);
     }
     assert.equal(reachPayload.reachDirection, direction);
+    assert.equal(reachPayload.density, 'full', `${label} Reach Card must preserve the full authored topology`);
     assert.deepEqual(reachPayload.matchedNodeIds.slice().sort(), reachPayload.snapshot.nodeIds.slice().sort());
     assert.deepEqual(reachPayload.matchedEdgeKeys.slice().sort(), reachPayload.expectedEdgeKeys.slice().sort());
     assert.equal(reachPayload.originCount, 1);
@@ -1751,11 +1838,11 @@ try {
     assert.equal(reachPayload.blueprintStaticRule, true);
     assert.deepEqual(
       reachPayload.reachNodeIds,
-      reachPayload.density === 'focus' ? reachPayload.snapshot.nodeIds.slice().sort() : reachPayload.liveNodeIds,
+      reachPayload.liveNodeIds,
     );
     assert.deepEqual(
       reachPayload.reachEdgeKeys,
-      reachPayload.density === 'focus' ? reachPayload.expectedEdgeKeys.slice().sort() : reachPayload.liveEdgeKeys,
+      reachPayload.liveEdgeKeys,
     );
     assert.equal(reachPayload.liveUnchanged, true);
     assert.equal(reachPayload.menuResolved, true);
@@ -1795,11 +1882,17 @@ try {
     console.log(`ok ${label} Reach Card: ${reachPayload.size} bytes, ${reachPayload.snapshot.nodeIds.length} nodes, ${reachPayload.snapshot.edges.length} authored links`);
   }
 
+  if (shareCardDensityOnly) {
+    await captureShareCard(output, 'architecture-wide');
+    await captureShareCard(denseOutput, 'architecture-dense', 'compact');
+    await captureShareCard(denseNoViewsOutput, 'architecture-dense-no-views', 'focus');
+    await captureShareCard(sequenceOutput, 'sequence-tall', 'focus');
+  } else {
   await verifyResolvedLegendContract(legendOutputs);
   await verifySemanticPassportDismissal(path.resolve(skillRoot, '../docs/gallery/artifacts/production-deployment.architecture.html'));
   await verifyArchitectureDeltaNavigator(path.resolve(skillRoot, '../examples/checkout-platform-delta.html'));
   await captureShareCard(output, 'architecture-wide');
-  await captureShareCard(denseOutput, 'architecture-dense', 'focus');
+  await captureShareCard(denseOutput, 'architecture-dense', 'compact');
   await captureShareCard(sequenceOutput, 'sequence-tall');
   await captureCopiedShareCard(output, 'architecture-wide');
   await captureRouteShareCard(routeOutputs.architecture, 'architecture-route', 'users', 'api', { journeyInvariance: true });
@@ -1869,6 +1962,7 @@ try {
   assert.ok(hashes.length >= 4, `decoded only ${hashes.length} WebM frames`);
   assert.ok(uniqueFrames.size >= 2, 'decoded WebM frames are static');
   console.log(`ok WebM artifact: ${payload.size} bytes, ${hashes.length} sampled frames, ${uniqueFrames.size} unique`);
+  }
 } finally {
   if (cdp && targetId) await withTimeout(cdp.send('Target.closeTarget', { targetId }), 500, 'target close').catch(() => {});
   if (cdp) cdp.socket.close();

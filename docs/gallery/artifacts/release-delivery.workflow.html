@@ -5741,65 +5741,105 @@
       var SHARE_CARD_PIXEL_RATIO = 2;
       var SHARE_CARD_PADDING = 36;
       var SHARE_CARD_HEADER = 112;
-      var SHARE_CARD_MIN_PRIMARY_TEXT_PX = 8;
-      var SHARE_CARD_MIN_CONTEXT_TEXT_PX = 7;
+      var SHARE_CARD_MIN_PRIMARY_TEXT_PX = 10;
+      var SHARE_CARD_MIN_CONTEXT_TEXT_PX = 8;
+      var SHARE_CARD_AUTO_MAX_NODES = 10;
+
+      function shareCardProjection(fontPx, bounds, metrics) {
+        return fontPx * Math.min(
+          metrics.availableWidth / bounds.width,
+          metrics.availableHeight / bounds.height
+        );
+      }
+
+      function readableShareCardProjection(primary, context) {
+        return primary >= SHARE_CARD_MIN_PRIMARY_TEXT_PX &&
+          context >= SHARE_CARD_MIN_CONTEXT_TEXT_PX;
+      }
 
       function planShareCardSimplification(metrics) {
-        var sourceFit = Math.min(
-          metrics.availableWidth / metrics.sourceBounds.width,
-          metrics.availableHeight / metrics.sourceBounds.height
-        );
-        var projectedPrimary = metrics.primaryFontPx * sourceFit;
-        var projectedContext = metrics.contextFontPx > 0
-          ? metrics.contextFontPx * sourceFit
-          : projectedPrimary;
-        if (projectedPrimary >= SHARE_CARD_MIN_PRIMARY_TEXT_PX &&
-            projectedContext >= SHARE_CARD_MIN_CONTEXT_TEXT_PX) {
+        var sourcePrimary = shareCardProjection(metrics.primaryFontPx, metrics.sourceBounds, metrics);
+        var sourceContext = shareCardProjection(metrics.sourceContextFontPx, metrics.sourceBounds, metrics);
+        if (readableShareCardProjection(sourcePrimary, sourceContext)) {
           return {
             mode: 'full',
             cropTo: 'source',
             hideContext: false,
             hideFine: false,
             hideLegend: false,
-            projectedPrimaryFontPx: projectedPrimary,
+            projectedPrimaryFontPx: sourcePrimary,
+            projectedContextFontPx: sourceContext,
             bounds: metrics.sourceBounds
           };
         }
 
-        var contentFit = Math.min(
-          metrics.availableWidth / metrics.contentBounds.width,
-          metrics.availableHeight / metrics.contentBounds.height
-        );
-        var contentPrimary = metrics.primaryFontPx * contentFit;
-        var hasFocus = metrics.focusBounds && metrics.focusNodeCount >= 2 &&
-          metrics.focusNodeCount < metrics.nodeCount;
-        if (hasFocus) {
-          var focusFit = Math.min(
-            metrics.availableWidth / metrics.focusBounds.width,
-            metrics.availableHeight / metrics.focusBounds.height
-          );
-          var focusPrimary = metrics.primaryFontPx * focusFit;
-          if (focusPrimary >= SHARE_CARD_MIN_PRIMARY_TEXT_PX) {
-            return {
-              mode: 'focus',
-              cropTo: 'focus',
-              hideContext: true,
-              hideFine: true,
-              hideLegend: true,
-              projectedPrimaryFontPx: focusPrimary,
-              bounds: metrics.focusBounds
-            };
-          }
+        var contentPrimary = shareCardProjection(metrics.primaryFontPx, metrics.contentBounds, metrics);
+        var contentContext = shareCardProjection(metrics.focusContextFontPx, metrics.contentBounds, metrics);
+        if (readableShareCardProjection(contentPrimary, contentContext)) {
+          return {
+            mode: 'compact',
+            cropTo: 'content',
+            hideContext: true,
+            hideFine: true,
+            hideLegend: true,
+            projectedPrimaryFontPx: contentPrimary,
+            projectedContextFontPx: contentContext,
+            bounds: metrics.contentBounds
+          };
         }
 
+        var candidates = (metrics.focusCandidates || []).map(function (candidate) {
+          return Object.assign({}, candidate, {
+            projectedPrimaryFontPx: shareCardProjection(metrics.primaryFontPx, candidate.bounds, metrics),
+            projectedContextFontPx: shareCardProjection(
+              candidate.contextFontPx || metrics.focusContextFontPx,
+              candidate.bounds,
+              metrics
+            )
+          });
+        });
+        var readable = candidates.filter(function (candidate) {
+          return readableShareCardProjection(candidate.projectedPrimaryFontPx, candidate.projectedContextFontPx);
+        }).sort(function (left, right) {
+          if (left.source !== right.source) return left.source === 'authored' ? -1 : 1;
+          if (left.nodeCount !== right.nodeCount) return right.nodeCount - left.nodeCount;
+          return left.order - right.order;
+        });
+        var selected = readable[0] || candidates.sort(function (left, right) {
+          var leftScore = Math.min(
+            left.projectedPrimaryFontPx / SHARE_CARD_MIN_PRIMARY_TEXT_PX,
+            left.projectedContextFontPx / SHARE_CARD_MIN_CONTEXT_TEXT_PX
+          );
+          var rightScore = Math.min(
+            right.projectedPrimaryFontPx / SHARE_CARD_MIN_PRIMARY_TEXT_PX,
+            right.projectedContextFontPx / SHARE_CARD_MIN_CONTEXT_TEXT_PX
+          );
+          return rightScore - leftScore || right.nodeCount - left.nodeCount || left.order - right.order;
+        })[0];
+        if (!selected) {
+          return {
+            mode: 'compact',
+            cropTo: 'content',
+            hideContext: true,
+            hideFine: true,
+            hideLegend: true,
+            projectedPrimaryFontPx: contentPrimary,
+            projectedContextFontPx: contentContext,
+            bounds: metrics.contentBounds
+          };
+        }
         return {
-          mode: 'compact',
-          cropTo: 'content',
+          mode: 'focus',
+          cropTo: 'focus',
           hideContext: true,
           hideFine: true,
           hideLegend: true,
-          projectedPrimaryFontPx: contentPrimary,
-          bounds: metrics.contentBounds
+          projectedPrimaryFontPx: selected.projectedPrimaryFontPx,
+          projectedContextFontPx: selected.projectedContextFontPx,
+          bounds: selected.bounds,
+          focusIds: selected.focusIds,
+          focusEdgeKeys: selected.focusEdgeKeys,
+          focusSource: selected.source
         };
       }
 
@@ -5843,47 +5883,147 @@
         return minimum === null ? fallback : minimum;
       }
 
-      function authoredShareCardFocusIds() {
+      function authoredShareCardFocusSets() {
         var data = document.getElementById('archify-guided-views-data');
         if (!data) return [];
         var views;
         try { views = JSON.parse(data.textContent || '[]'); } catch (_) { views = []; }
-        var first = Array.isArray(views) ? views.find(function (view) {
-          return view && Array.isArray(view.focus) && view.focus.length >= 2;
-        }) : null;
-        return first ? first.focus.filter(function (id) { return typeof id === 'string' && id; }) : [];
+        return Array.isArray(views) ? views.map(function (view, index) {
+          return {
+            focusIds: view && Array.isArray(view.focus)
+              ? view.focus.filter(function (id) { return typeof id === 'string' && id; })
+              : [],
+            source: 'authored',
+            order: index
+          };
+        }).filter(function (candidate) { return candidate.focusIds.length >= 2; }) : [];
       }
 
-      function planShareCardForSvg(svg, availableWidth, availableHeight, focusIds) {
+      function automaticShareCardFocusSets(nodes, edges) {
+        var nodeIds = nodes.map(function (node) { return node.getAttribute('data-node-id'); });
+        var outgoing = Object.create(null);
+        var incoming = Object.create(null);
+        var indegree = Object.create(null);
+        nodeIds.forEach(function (id) {
+          outgoing[id] = [];
+          incoming[id] = [];
+          indegree[id] = 0;
+        });
+        edges.forEach(function (edge) {
+          var from = edge.getAttribute('data-edge-from');
+          var to = edge.getAttribute('data-edge-to');
+          if (!outgoing[from] || !incoming[to] || outgoing[from].indexOf(to) >= 0) return;
+          outgoing[from].push(to);
+          incoming[to].push(from);
+          indegree[to] += 1;
+        });
+        var roots = nodeIds.filter(function (id) { return indegree[id] === 0; })
+          .concat(nodeIds.filter(function (id) { return indegree[id] !== 0; }));
+        var candidates = [];
+        var seenCandidates = Object.create(null);
+        roots.slice(0, Math.min(12, roots.length)).forEach(function (root, rootIndex) {
+          var queue = [root];
+          var seen = Object.create(null);
+          var focusIds = [];
+          while (queue.length && focusIds.length < SHARE_CARD_AUTO_MAX_NODES) {
+            var id = queue.shift();
+            if (seen[id]) continue;
+            seen[id] = true;
+            focusIds.push(id);
+            var key = focusIds.slice().sort().join('|');
+            if (focusIds.length >= 2 && !seenCandidates[key]) {
+              seenCandidates[key] = true;
+              candidates.push({ focusIds: focusIds.slice(), source: 'auto', order: rootIndex * 100 + focusIds.length });
+            }
+            (outgoing[id] || []).concat(incoming[id] || []).forEach(function (neighbor) {
+              if (!seen[neighbor] && queue.indexOf(neighbor) < 0) queue.push(neighbor);
+            });
+          }
+        });
+        return candidates;
+      }
+
+      function shareCardFocusCandidate(nodes, edges, candidate, sourceBounds, fallbackBounds) {
+        var focusSet = Object.create(null);
+        candidate.focusIds.forEach(function (id) { focusSet[id] = true; });
+        var focusNodes = nodes.filter(function (node) {
+          return !!focusSet[node.getAttribute('data-node-id')];
+        });
+        if (!focusNodes.length || focusNodes.length >= nodes.length) return null;
+        var focusEdges = edges.filter(function (edge) {
+          return !!focusSet[edge.getAttribute('data-edge-from')] && !!focusSet[edge.getAttribute('data-edge-to')];
+        });
+        if (candidate.source === 'auto' && !focusEdges.length) return null;
+        var focusSemanticFontPx = null;
+        focusEdges.forEach(function (edge) {
+          Array.prototype.forEach.call(edge.querySelectorAll('text'), function (text) {
+            var size = Number.parseFloat(text.getAttribute('font-size') || '');
+            if (Number.isFinite(size) && size > 0) {
+              focusSemanticFontPx = focusSemanticFontPx === null ? size : Math.min(focusSemanticFontPx, size);
+            }
+          });
+        });
+        return {
+          source: candidate.source,
+          order: candidate.order,
+          nodeCount: focusNodes.length,
+          focusIds: focusNodes.map(function (node) { return node.getAttribute('data-node-id'); }),
+          focusEdgeKeys: Array.from(new Set(focusEdges.map(function (edge) { return edge.getAttribute('data-edge-key'); }).filter(Boolean))),
+          contextFontPx: focusSemanticFontPx,
+          bounds: paddedShareCardBounds(shareCardBounds(focusNodes.concat(focusEdges), fallbackBounds), sourceBounds)
+        };
+      }
+
+      function planShareCardForSvg(svg, availableWidth, availableHeight, authoredCandidates) {
         var vb = svg.viewBox.baseVal;
         var sourceBounds = { x: vb.x, y: vb.y, width: vb.width, height: vb.height };
         var nodes = Array.prototype.slice.call(svg.querySelectorAll('[data-node-id]'));
         var edges = Array.prototype.slice.call(svg.querySelectorAll('[data-edge-from][data-edge-to]'));
         var contentBounds = paddedShareCardBounds(shareCardBounds(nodes.concat(edges), sourceBounds), sourceBounds);
-        var focusSet = Object.create(null);
-        (focusIds || []).forEach(function (id) { focusSet[id] = true; });
-        var focusNodes = nodes.filter(function (node) {
-          return !!focusSet[node.getAttribute('data-node-id')];
-        });
-        var focusEdges = edges.filter(function (edge) {
-          return !!focusSet[edge.getAttribute('data-edge-from')] && !!focusSet[edge.getAttribute('data-edge-to')];
-        });
-        var focusBounds = focusNodes.length >= 2
-          ? paddedShareCardBounds(shareCardBounds(focusNodes.concat(focusEdges), contentBounds), sourceBounds)
-          : null;
-        var plan = planShareCardSimplification({
+        var automaticCandidates = automaticShareCardFocusSets(nodes, edges);
+        var focusCandidates = (authoredCandidates || []).concat(automaticCandidates).map(function (candidate) {
+          return shareCardFocusCandidate(nodes, edges, candidate, sourceBounds, contentBounds);
+        }).filter(Boolean);
+        var primaryFontPx = minimumShareCardFont(svg, 'text[data-node-label]', 11);
+        var nodeContextFontPx = minimumShareCardFont(svg, '[data-node-id] text[data-detail="context"]', primaryFontPx);
+        var edgeSemanticFontPx = minimumShareCardFont(
+          svg,
+          '[data-edge-from][data-edge-to] text',
+          primaryFontPx
+        );
+        var boundaryFontPx = minimumShareCardFont(svg, '[data-boundary-label]', primaryFontPx);
+        return planShareCardSimplification({
           sourceBounds: sourceBounds,
           contentBounds: contentBounds,
-          focusBounds: focusBounds,
+          focusCandidates: focusCandidates,
           availableWidth: availableWidth,
           availableHeight: availableHeight,
-          primaryFontPx: minimumShareCardFont(svg, 'text[data-node-label]', 11),
-          contextFontPx: minimumShareCardFont(svg, '[data-node-id] text[data-detail="context"]', 0),
-          nodeCount: nodes.length,
-          focusNodeCount: focusNodes.length
+          primaryFontPx: primaryFontPx,
+          sourceContextFontPx: Math.min(nodeContextFontPx, edgeSemanticFontPx, boundaryFontPx),
+          focusContextFontPx: edgeSemanticFontPx
         });
-        plan.focusIds = plan.mode === 'focus' ? Object.keys(focusSet) : [];
-        return plan;
+      }
+
+      function planFullShareCardForSvg(svg, availableWidth, availableHeight) {
+        var vb = svg.viewBox.baseVal;
+        var sourceBounds = { x: vb.x, y: vb.y, width: vb.width, height: vb.height };
+        var primaryFontPx = minimumShareCardFont(svg, 'text[data-node-label]', 11);
+        var contextFontPx = minimumShareCardFont(
+          svg,
+          '[data-node-id] text[data-detail="context"], [data-edge-from][data-edge-to] text, [data-boundary-label]',
+          primaryFontPx
+        );
+        var metrics = { availableWidth: availableWidth, availableHeight: availableHeight };
+        return {
+          mode: 'full',
+          cropTo: 'source',
+          hideContext: false,
+          hideFine: false,
+          hideLegend: false,
+          projectedPrimaryFontPx: shareCardProjection(primaryFontPx, sourceBounds, metrics),
+          projectedContextFontPx: shareCardProjection(contextFontPx, sourceBounds, metrics),
+          bounds: sourceBounds
+        };
       }
 
       function applyShareCardSimplification(clone, plan) {
@@ -5909,7 +6049,7 @@
           });
         }
         if (plan.hideContext) {
-          Array.prototype.forEach.call(clone.querySelectorAll('[data-detail="context"]'), function (element) {
+          Array.prototype.forEach.call(clone.querySelectorAll('[data-node-id] [data-detail="context"]'), function (element) {
             element.remove();
           });
         }
@@ -5923,7 +6063,7 @@
             element.remove();
           });
         }
-        Array.prototype.forEach.call(clone.querySelectorAll('[data-graph-role^="structural-frame"]'), function (element) {
+        Array.prototype.forEach.call(clone.querySelectorAll('[data-graph-role^="structural-"]'), function (element) {
           element.remove();
         });
         clone.setAttribute('viewBox', [plan.bounds.x, plan.bounds.y, plan.bounds.width, plan.bounds.height].join(' '));
@@ -6411,8 +6551,19 @@
 
         var style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
         var bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        bgRect.setAttribute('width', '100%');
-        bgRect.setAttribute('height', '100%');
+        bgRect.setAttribute('x', exportBounds.x);
+        bgRect.setAttribute('y', exportBounds.y);
+        bgRect.setAttribute('width', exportBounds.width);
+        bgRect.setAttribute('height', exportBounds.height);
+        if (opts.shareCardPlan) {
+          bgRect.setAttribute('data-share-card-backdrop', '');
+          Array.prototype.forEach.call(clone.querySelectorAll('rect[width="100%"][height="100%"]'), function (element) {
+            element.setAttribute('x', exportBounds.x);
+            element.setAttribute('y', exportBounds.y);
+            element.setAttribute('width', exportBounds.width);
+            element.setAttribute('height', exportBounds.height);
+          });
+        }
 
         if (autoTheme) {
           // Dual-theme SVG. Dark is the default (so hosts without
@@ -6597,17 +6748,9 @@
         var svg = document.querySelector('.diagram-container svg');
         var availableWidth = SHARE_CARD_WIDTH - SHARE_CARD_PADDING * 2;
         var availableHeight = SHARE_CARD_HEIGHT - SHARE_CARD_HEADER - SHARE_CARD_PADDING;
-        var focusIds = routeSnapshot
-          ? routeSnapshot.nodeIds
-          : reachSnapshot
-            ? reachSnapshot.nodeIds
-            : authoredShareCardFocusIds();
-        var densityPlan = planShareCardForSvg(svg, availableWidth, availableHeight, focusIds);
-        densityPlan.focusEdgeKeys = routeSnapshot
-          ? routeSnapshot.edges.map(function (edge) { return edge.key; })
-          : reachSnapshot
-            ? reachSnapshot.edges.map(function (edge) { return edge.key; })
-            : [];
+        var densityPlan = routeSnapshot || reachSnapshot
+          ? planFullShareCardForSvg(svg, availableWidth, availableHeight)
+          : planShareCardForSvg(svg, availableWidth, availableHeight, authoredShareCardFocusSets());
         var logicalFit = Math.min(
           availableWidth / densityPlan.bounds.width,
           availableHeight / densityPlan.bounds.height

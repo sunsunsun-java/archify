@@ -314,7 +314,7 @@ function renderParticipant(participant) {
 }
 
 function renderLifeline(participant) {
-  return `        <path d="M ${participant.cx} ${layout.lifelineTop} L ${participant.cx} ${layout.lifelineBottom}" class="a-default" stroke-width="0.8" stroke-dasharray="3,7"/>`;
+  return `        <path data-graph-role="structural-context" d="M ${participant.cx} ${layout.lifelineTop} L ${participant.cx} ${layout.lifelineBottom}" class="a-default" stroke-width="0.8" stroke-dasharray="3,7"/>`;
 }
 
 function renderSegment(segment, index) {
@@ -331,7 +331,7 @@ function renderSegmentLabel(segment, index) {
     if (!occupied.some((rect) => rectsOverlap(label, rect, 2))) break;
     label.y -= 22;
   }
-  return `        <g data-graph-role="segment-label" data-segment-id="${index}">
+  return `        <g data-graph-role="structural-frame-label" data-segment-id="${index}">
           <rect x="${label.x}" y="${label.y}" width="${label.width}" height="${label.height}" rx="3" class="c-mask"/>
           <text x="${label.x + 6}" y="${label.y + 13}" class="t-dim" font-size="9" font-weight="600">${esc(segment.label)}</text>
         </g>`;
@@ -342,8 +342,8 @@ function renderActivation(activation) {
   const fill = componentFill[activation.type] || componentFill[participant.type] || 'c-external';
   const x = participant.cx - 5;
   const height = activation.to - activation.from;
-  return `        <rect x="${x}" y="${activation.from}" width="10" height="${height}" rx="3" class="c-mask"/>
-        <rect x="${x}" y="${activation.from}" width="10" height="${height}" rx="3" class="${fill}" stroke-width="1"/>`;
+  return `        <rect data-graph-role="structural-context" x="${x}" y="${activation.from}" width="10" height="${height}" rx="3" class="c-mask"/>
+        <rect data-graph-role="structural-context" x="${x}" y="${activation.from}" width="10" height="${height}" rx="3" class="${fill}" stroke-width="1"/>`;
 }
 
 function messageLabel(message, x1, x2) {

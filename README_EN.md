@@ -79,9 +79,9 @@ The Export menu copies PNG to the clipboard and downloads static or motion forma
 
 ![Export menu](docs/assets/archify-menu.png)
 
-Use **Copy Share Card** for a 1200×630 @2x image (2400×1260 physical pixels). Dense diagrams focus automatically; readable diagrams remain complete.
+Use **Copy Share Card** for a 1200×630 @2x image (2400×1260 pixels). Dense cards crop blank/detail and choose a readable authored or connected view; readable diagrams stay complete.
 
-After tracing a route, **Export → Route Share Card** downloads that exact path as a high-DPI 1200×630 @2x PNG, focusing when the full diagram is too dense.
+After tracing, **Export → Route Share Card** downloads the exact path at @2x while retaining the full authored topology.
 
 ![Route Share Card showing the exact Users to API Server path with the full architecture retained as context](docs/assets/archify-route-share-card.png)
 
