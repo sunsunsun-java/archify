@@ -1414,7 +1414,7 @@ test('sequence: segment titles render as foreground badges above their borders',
 
   assert.ok(segmentLabelsAt > activationsAt, 'segment labels should stay above lifelines, messages, and activations');
   assert.ok(messagesAt > activationsAt, 'message arrows and labels should stay above activation bars');
-  assert.match(html, new RegExp(`data-graph-role="structural-frame-label"[^>]*data-segment-id="0"`));
+  assert.match(html, new RegExp(`data-graph-role="segment-label"[^>]*data-segment-id="0"`));
   assert.match(html, new RegExp(`<text x="62" y="${firstSegment.from - 9}"[^>]*>${firstSegment.label}</text>`));
 });
 
@@ -1429,7 +1429,7 @@ test('sequence: segment title badge clears a nearby first message label', () => 
   assert.equal(code, 0, stderr);
   const html = fs.readFileSync(outPath, 'utf8');
   const segment = html.match(
-    /<g data-graph-role="structural-frame-label" data-segment-id="0">\s*<rect x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)"/,
+    /<g data-graph-role="segment-label" data-segment-id="0">\s*<rect x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)"/,
   );
   const message = html.match(new RegExp(
     `<g [^>]*data-edge-id="${firstMessage.id}"[\\s\\S]*?<rect x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)"`,

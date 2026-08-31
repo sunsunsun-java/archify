@@ -117,7 +117,7 @@ Never start preview by default. Read `references/delivery-contract.md` when usin
 
 Generated HTML already contains theme switching, pan/zoom, search, focus, relationship tracing, semantic views, presentation, and truthful exports. These are reader capabilities, not extra authoring work. `meta.animation: "trace"` is opt-in; `meta.views` is optional and should contain at most five curated chapters.
 
-Read `references/viewer-runtime.md` only when the user explicitly asks for Share Cards, Route/Reach cards, motion, guided stories, deep links, presentation, search/focus, or another Viewer Runtime feature.
+Read `references/viewer-runtime.md` only when the user explicitly asks for exports, motion, guided stories, deep links, presentation, search/focus, or another Viewer Runtime feature.
 
 ## Setup and fallback
 

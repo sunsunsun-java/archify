@@ -17,7 +17,7 @@ Archify is a Node.js rendering and validation system for Cursor, Claude Code, Co
 - **Open it and present** — five diagram types, four presets, dark/light themes, built-in brand marks, and finite motion
 - **Review architecture changes before merge** — compare two validated snapshots as Before / Delta / After, with exact added, removed, changed, moved, and rerouted facts
 - **Every interaction stays grounded** — search nodes, optionally open revision-verified source, trace upstream/downstream authored reach and exact routes, compare roles, and play guided stories without inventing topology
-- **One file, ready to trust and share** — typed JSON IR and deterministic checks produce self-contained HTML plus PNG, SVG, WebM, and high-DPI 1200×630 @2x share cards
+- **One file, ready to trust and share** — typed JSON IR and deterministic checks produce self-contained HTML plus PNG, SVG, and WebM outputs
 
 ![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)
 ![Agent Skill](https://img.shields.io/badge/Agent-Skill-7C3AED?style=flat-square)
@@ -63,7 +63,7 @@ The [Proof Lab](https://tt-a1i.github.io/archify/gallery.html) contains all 11 c
 
 ### A real repository, mapped from source
 
-[![MCO runtime architecture generated from the public mco-org/mco repository](docs/assets/mco-runtime-share-card.png)](https://tt-a1i.github.io/archify/cases/mco-runtime.architecture.html?theme=dark&present=1#view=dispatch-path)
+[![MCO runtime architecture generated from the public mco-org/mco repository](docs/assets/mco-runtime-architecture.png)](https://tt-a1i.github.io/archify/cases/mco-runtime.architecture.html?theme=dark&present=1#view=dispatch-path)
 
 Archify traced [`mco-org/mco`](https://github.com/mco-org/mco) at `9f1a1cf` and produced this checked map. **[Open it ↗](https://tt-a1i.github.io/archify/cases/mco-runtime.architecture.html?theme=dark&present=1#view=dispatch-path)** · [trace reach ↗](https://tt-a1i.github.io/archify/cases/mco-runtime.architecture.html?theme=dark#focus=router&reach=downstream) · [typed source](docs/cases/mco-runtime.architecture.json)
 
@@ -75,19 +75,7 @@ Same diagram, two themes, one click to switch:
 |---|---|
 | ![Dark theme](docs/assets/archify-dark.png) | ![Light theme](docs/assets/archify-light.png) |
 
-The Export menu copies PNG to the clipboard and downloads static or motion formats:
-
-![Export menu](docs/assets/archify-menu.png)
-
-Use **Copy Share Card** for a 1200×630 @2x image (2400×1260 pixels). Dense cards crop blank/detail and choose a readable authored or connected view; readable diagrams stay complete.
-
-After tracing, **Export → Route Share Card** downloads the exact path at @2x while retaining the full authored topology.
-
-![Route Share Card showing the exact Users to API Server path with the full architecture retained as context](docs/assets/archify-route-share-card.png)
-
-After tracing authored `Upstream` or `Downstream` reach, **Export → Reach Share Card** captures that exact reading without claiming runtime impact.
-
-![MCO downstream Reach Share Card showing authored relationships from Command Router](docs/assets/mco-runtime-reach-share-card.png)
+The Export menu downloads static or motion formats. Use **Copy diagram** to place a complete, high-resolution PNG of the current diagram on the clipboard. Temporary viewer state is excluded; the full authored topology is retained.
 
 Open [`examples/web-app.html`](examples/web-app.html) locally to try the complete viewer.
 
