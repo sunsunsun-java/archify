@@ -3775,6 +3775,15 @@
       transform: translateX(-50%) translateY(0);
     }
 
+    @media (min-width: 721px) and (max-width: 1280px) {
+      .focus-chip[data-responsive-drawer="true"]:not([data-exploration-compact="true"]) .relationship-lens-actions {
+        display: grid;
+        grid-template-columns: auto auto;
+        align-items: center;
+        justify-items: end;
+      }
+    }
+
     @media (max-width: 1280px) {
       .focus-chip[data-responsive-drawer="true"] {
         right: 1rem;
@@ -3796,7 +3805,7 @@
       }
       .focus-chip[data-responsive-drawer="true"] .relationship-lens-group-title,
       .focus-chip[data-responsive-drawer="true"] .relationship-lens-row {
-        scroll-margin-bottom: var(--archify-relationship-fade-height, 2.4rem);
+        scroll-margin-bottom: 0.25rem;
       }
       .focus-chip[data-responsive-drawer="true"]:not([data-exploration-expanded="true"]) {
         grid-template-rows: auto auto;
@@ -5652,8 +5661,8 @@
             <span class="relationship-lens-summary" id="focus-summary" aria-live="polite"></span>
           </div>
           <div class="relationship-lens-actions">
-            <button id="btn-focus-clear" type="button" aria-label="关闭语义护照" title="关闭">&#215;</button>
             <button id="btn-focus-details" type="button" aria-label="展开完整语义护照" aria-expanded="false" aria-controls="relationship-lens-details-panel" hidden>详情</button>
+            <button id="btn-focus-clear" type="button" aria-label="关闭语义护照" title="关闭">&#215;</button>
             <button id="btn-focus-copy" type="button" aria-label="复制聚焦节点的链接">复制链接</button>
             <button id="btn-focus-relations" type="button" aria-label="显示关联关系" aria-expanded="false" aria-controls="relationship-lens-list">关系</button>
           </div>

@@ -725,6 +725,7 @@ test('high-degree relationship list stays inside the visible Passport', {
         bodyOverflowY: body ? getComputedStyle(body).overflowY : '',
         bodyScrollHeight: body ? body.scrollHeight : 0,
         bodyClientHeight: body ? body.clientHeight : 0,
+        windowScrollY: window.scrollY,
         scrollingDescendants: Array.from(chip.querySelectorAll('*')).filter(function (element) {
           var style = getComputedStyle(element);
           return (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
@@ -835,6 +836,7 @@ test('high-degree relationship list stays inside the visible Passport', {
               resolve({
                 headerTop: header.getBoundingClientRect().top,
                 chipBottom: chip.getBoundingClientRect().bottom,
+                windowScrollY: window.scrollY,
                 bodyTop: bodyRect.top,
                 bodyBottom: bodyRect.bottom,
                 lastTop: lastRect.top,
