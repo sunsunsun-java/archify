@@ -1726,13 +1726,21 @@
       padding: 0.38rem 0.5rem;
       border-bottom-color: transparent;
     }
-    .focus-chip[data-viewport-compact="true"] .relationship-lens-body,
+    .focus-chip[data-viewport-compact="true"]:not([data-exploration-expanded="true"]) .relationship-lens-body,
     .focus-chip[data-viewport-compact="true"] .relationship-lens-eyebrow,
     .focus-chip[data-viewport-compact="true"] .semantic-passport-detail,
-    .focus-chip[data-viewport-compact="true"] #btn-focus-details,
     .focus-chip[data-viewport-compact="true"] #btn-focus-copy,
     .focus-chip[data-viewport-compact="true"] #btn-focus-relations {
       display: none !important;
+    }
+    .focus-chip[data-viewport-compact="true"] #btn-focus-details {
+      display: block;
+      min-height: 2.5rem;
+    }
+    .focus-chip[data-viewport-compact="true"][data-exploration-expanded="true"] {
+      grid-template-rows: auto minmax(0, 1fr);
+      height: calc(100dvh - 1rem);
+      max-height: calc(100dvh - 1rem) !important;
     }
     .focus-chip[data-viewport-compact="true"] .relationship-lens-summary {
       overflow: hidden;
@@ -1835,7 +1843,7 @@
         gap: 0.42rem;
       }
       .focus-chip[data-exploration-compact="true"]:not([data-exploration-expanded="true"]) .relationship-lens-actions {
-        flex-direction: row-reverse;
+        flex-direction: row;
         align-items: center;
         gap: 0.12rem;
       }
@@ -1893,6 +1901,12 @@
       line-height: 1.35;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    .focus-chip[data-exploration-expanded="true"] .relationship-lens-title {
+      overflow: visible;
+      overflow-wrap: anywhere;
+      text-overflow: clip;
+      white-space: normal;
     }
     .semantic-passport-detail {
       display: block;
@@ -4552,6 +4566,16 @@
     html[data-embed="true"] .relationship-hit-overlay { display: none; }
     @media (hover: none), (pointer: coarse) {
       .relationship-hit-rail { stroke-width: 24; }
+      .relationship-lens-actions button,
+      .semantic-passport-reach-actions button,
+      .relationship-lens-group-title,
+      .relationship-lens-row {
+        min-height: 2.5rem;
+      }
+      .relationship-lens-actions #btn-focus-clear {
+        width: 2.5rem;
+        height: 2.5rem;
+      }
     }
 
     /* Relationship Preview is temporary exploration state layered on top of
@@ -5619,8 +5643,8 @@
             <span class="relationship-lens-summary" id="focus-summary" aria-live="polite"></span>
           </div>
           <div class="relationship-lens-actions">
-            <button id="btn-focus-clear" type="button" aria-label="Close semantic passport" title="Close">&#215;</button>
             <button id="btn-focus-details" type="button" aria-label="Show full semantic passport" aria-expanded="false" aria-controls="relationship-lens-details-panel" hidden>Details</button>
+            <button id="btn-focus-clear" type="button" aria-label="Close semantic passport" title="Close">&#215;</button>
             <button id="btn-focus-copy" type="button" aria-label="Copy link to focused node">Copy link</button>
             <button id="btn-focus-relations" type="button" aria-label="Show connected relationships" aria-expanded="false" aria-controls="relationship-lens-list">Relations</button>
           </div>
@@ -5776,6 +5800,21 @@
       catch (_) { return { locale: 'en', messages: {} }; }
     })();
     Archify.locale = archifyI18nData.locale || 'en';
+    Archify.relationshipExplorationLayout = Object.freeze({
+      drawerMaxWidth: 1280,
+      compactMinimumScale: 0.58,
+      expandedMinimumScale: 0.35,
+      isDrawerViewport: function () {
+        return window.innerWidth <= this.drawerMaxWidth &&
+          document.documentElement.getAttribute('data-embed') !== 'true';
+      },
+      minimumScale: function (passport) {
+        return this.isDrawerViewport() && passport &&
+          passport.getAttribute('data-exploration-expanded') === 'true'
+          ? this.expandedMinimumScale
+          : this.compactMinimumScale;
+      }
+    });
 
     function viewerText(key, values) {
       var messages = archifyI18nData.messages || {};
@@ -7923,7 +7962,8 @@
       function syncExplorationDetailsButton() {
         var compact = chip.getAttribute('data-exploration-compact') === 'true';
         var responsiveDrawer = chip.getAttribute('data-responsive-drawer') === 'true';
-        var expandable = compact || responsiveDrawer;
+        var viewportCompact = chip.getAttribute('data-viewport-compact') === 'true';
+        var expandable = compact || responsiveDrawer || viewportCompact;
         var expanded = expandable && chip.getAttribute('data-exploration-expanded') === 'true';
         detailsBtn.hidden = !expandable;
         detailsBtn.textContent = viewerText('viewer.passport.details');
@@ -7934,7 +7974,7 @@
         detailsPanel.hidden = expandable && !expanded;
       }
       function responsiveDrawerEnabled() {
-        return window.innerWidth <= 1280 && html.getAttribute('data-embed') !== 'true';
+        return Archify.relationshipExplorationLayout.isDrawerViewport();
       }
       function recoverHiddenExplorationFocus(focused) {
         if (!focused || !chip.contains(focused) ||
@@ -7962,7 +8002,8 @@
         if (enabled) chip.setAttribute('data-responsive-drawer', 'true');
         else {
           chip.removeAttribute('data-responsive-drawer');
-          if (chip.getAttribute('data-exploration-compact') !== 'true') {
+          if (chip.getAttribute('data-exploration-compact') !== 'true' &&
+              chip.getAttribute('data-viewport-compact') !== 'true') {
             chip.removeAttribute('data-exploration-expanded');
           }
         }
@@ -7998,9 +8039,7 @@
         return chip.getAttribute('data-responsive-drawer') === 'true' ? activeIds.slice() : [];
       }
       function explorationMinimumScale() {
-        return window.innerWidth <= 1280 && chip.getAttribute('data-exploration-expanded') === 'true'
-          ? 0.35
-          : 0.58;
+        return Archify.relationshipExplorationLayout.minimumScale(chip);
       }
       function reframeExploration(reason) {
         var ids = explorationNodeIds();
@@ -9138,19 +9177,31 @@
           var canvasReserve = Math.min(220, Math.max(120, availableHeight * 0.42));
           passportAvailableHeight = Math.max(0, availableHeight - canvasReserve);
         }
+        var wasViewportCompact = chip.getAttribute('data-viewport-compact') === 'true';
         chip.removeAttribute('data-viewport-compact');
         chip.style.setProperty('--archify-passport-max-height', passportAvailableHeight + 'px');
         var fixedHead = chip.querySelector('.relationship-lens-head');
         var minimumUsableBodyHeight = 56;
         if (fixedHead && passportAvailableHeight < fixedHead.scrollHeight + minimumUsableBodyHeight) {
+          var enteringViewportCompact = !wasViewportCompact;
+          chip.setAttribute('data-viewport-compact', 'true');
+          if (enteringViewportCompact) {
+            chip.removeAttribute('data-exploration-expanded');
+            syncExplorationDetailsButton();
+          }
           if (relationshipBody.contains(document.activeElement) ||
               document.activeElement === detailsBtn ||
               document.activeElement === copyBtn ||
               document.activeElement === relationsBtn) {
-            try { clearBtn.focus({ preventScroll: true }); }
-            catch (_) { try { clearBtn.focus(); } catch (_) {} }
+            try { detailsBtn.focus({ preventScroll: true }); }
+            catch (_) { try { detailsBtn.focus(); } catch (_) {} }
           }
-          chip.setAttribute('data-viewport-compact', 'true');
+        }
+        else if (wasViewportCompact) {
+          if (!responsiveDrawer && chip.getAttribute('data-exploration-compact') !== 'true') {
+            chip.removeAttribute('data-exploration-expanded');
+          }
+          syncExplorationDetailsButton();
         }
         var maxTop = Math.max(padding, visibleBottom - chip.offsetHeight);
         var minTop = Math.min(visibleTop, maxTop);
@@ -9440,7 +9491,8 @@
       clearBtn.addEventListener('click', function () { clear({ restoreFocus: true }); });
       detailsBtn.addEventListener('click', function () {
         if (chip.getAttribute('data-exploration-compact') !== 'true' &&
-            chip.getAttribute('data-responsive-drawer') !== 'true') return;
+            chip.getAttribute('data-responsive-drawer') !== 'true' &&
+            chip.getAttribute('data-viewport-compact') !== 'true') return;
         var expanded = chip.getAttribute('data-exploration-expanded') === 'true';
         if (expanded) {
           chip.removeAttribute('data-exploration-expanded');
@@ -9491,7 +9543,7 @@
         if (Archify.guidedViews && typeof Archify.guidedViews.showAll === 'function') {
           Archify.guidedViews.showAll({ clearFocus: false, updateUrl: false, resetView: false });
         }
-        if (window.innerWidth <= 1280) setRelationshipListExpanded(false);
+        if (Archify.relationshipExplorationLayout.isDrawerViewport()) setRelationshipListExpanded(false);
         set(id, { toggle: false });
         if (Archify.view && typeof Archify.view.reveal === 'function') {
           Archify.view.reveal([id], {
@@ -12861,15 +12913,17 @@
       }
       function syncSemantic() {
         var explorationChip = document.getElementById('focus-chip');
-        var explorationMinimumScale = window.innerWidth <= 1280 && explorationChip &&
-          explorationChip.getAttribute('data-exploration-expanded') === 'true' ? 0.35 : 0.58;
+        var explorationMinimumScale = Archify.relationshipExplorationLayout.minimumScale(explorationChip);
+        var semanticReveal = Archify.view && typeof Archify.view.reveal === 'function'
+          ? Archify.view.reveal
+          : reveal;
         var guided = Archify.guidedViews && typeof Archify.guidedViews.focus === 'function'
           ? Archify.guidedViews.focus() : [];
-        if (guided && guided.length) return reveal(guided, { reason: 'guided-sync' });
+        if (guided && guided.length) return semanticReveal(guided, { reason: 'guided-sync' });
         var relationship = Archify.focus && typeof Archify.focus.relationship === 'function'
           ? Archify.focus.relationship() : null;
         if (relationship && relationship.from && relationship.to) {
-          return reveal([relationship.from, relationship.to], {
+          return semanticReveal([relationship.from, relationship.to], {
             includeNeighbors: false,
             fitAll: true,
             minimumScale: explorationMinimumScale,
@@ -12879,7 +12933,7 @@
         var reachability = Archify.focus && typeof Archify.focus.reachability === 'function'
           ? Archify.focus.reachability() : null;
         if (reachability && Array.isArray(reachability.nodeIds) && reachability.nodeIds.length) {
-          return reveal(reachability.nodeIds, {
+          return semanticReveal(reachability.nodeIds, {
             includeNeighbors: false,
             fitAll: true,
             minimumScale: explorationMinimumScale,
@@ -12887,8 +12941,8 @@
           });
         }
         var active = Archify.focus && typeof Archify.focus.active === 'function' ? Archify.focus.active() : null;
-        if (typeof active === 'string') return reveal([active], { includeNeighbors: true, reason: 'focus-sync' });
-        if (Array.isArray(active) && active.length) return reveal(active, { reason: 'selection-sync' });
+        if (typeof active === 'string') return semanticReveal([active], { includeNeighbors: true, reason: 'focus-sync' });
+        if (Array.isArray(active) && active.length) return semanticReveal(active, { reason: 'selection-sync' });
         return false;
       }
       function requestViewSync(forceSemantic) {
@@ -13242,7 +13296,7 @@
         return true;
       }
       function reservePassportForCompactRadar(context) {
-        if (window.innerWidth > 1280 || !context || !context.passportRect || passportYielded ||
+        if (!Archify.relationshipExplorationLayout.isDrawerViewport() || !context || !context.passportRect || passportYielded ||
             passport.hasAttribute('data-viewport-compact')) return false;
         var fixedBlockers = context.fixedBlockers || [];
         var segments = [{ top: context.bounds.top, bottom: context.bounds.bottom }];

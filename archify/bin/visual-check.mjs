@@ -700,6 +700,7 @@ export async function runVisualCheck({
 } = {}) {
   if (!artifactPath) throw new Error('visual-check requires one delivered HTML artifact.');
   const artifact = path.resolve(artifactPath);
+  const receiptArtifact = path.basename(artifact);
   if (!/\.html?$/i.test(artifact)) throw new Error('visual-check requires an .html artifact.');
   const artifactBytes = fs.readFileSync(artifact);
   const outputs = sidecarPaths(artifact);
@@ -708,11 +709,11 @@ export async function runVisualCheck({
 
   const resolvedChrome = chromePath || resolveChrome();
   const receipt = baseReceipt({
-    artifactPath: artifact,
+    artifactPath: receiptArtifact,
     artifact: artifactBytes,
     outputs,
     chrome: resolvedChrome
-      ? { status: 'available', executable: resolvedChrome }
+      ? { status: 'available', executable: path.basename(resolvedChrome) }
       : { status: 'unavailable', executable: null },
   });
 
@@ -727,7 +728,7 @@ export async function runVisualCheck({
       code: 'viewer/chrome-unavailable',
       severity: 'warning',
       message: receipt.error,
-      subject: { artifact },
+      subject: { artifact: receiptArtifact },
       evidence: { executable: null },
       supportedFixes: ['set ARCHIFY_CHROME to a Chrome or Chromium executable and rerun visual-check'],
     })];
@@ -786,7 +787,7 @@ export async function runVisualCheck({
     const readabilityPass = receipt.readability.viewports.every((entry) => entry.readabilityOk);
     const viewerChromePass = allObservations.every((entry) => entry.viewerChromeOk);
     receipt.diagnostics = observationDiagnostics({
-      artifact,
+      artifact: receiptArtifact,
       allObservations,
       readabilityObservations: receipt.readability.viewports,
     });
@@ -818,7 +819,7 @@ export async function runVisualCheck({
     receipt.diagnostics = [failureDiagnostic({
       code: 'viewer/visual-check-runtime',
       message: 'visual-check could not complete its Chrome inspection.',
-      subject: { artifact },
+      subject: { artifact: receiptArtifact },
       evidence: { reason: error.message },
       supportedFixes: ['resolve the reported Chrome inspection error, then rerun visual-check'],
     })];

@@ -5,9 +5,9 @@
   "status": "pass",
   "visualReview": "pending",
   "artifact": {
-    "path": "/Users/sunhonghao/.codex/worktrees/7f74/archify/generated/maka-regenerated.workflow.html",
-    "sha256": "c77f790383f198fec8b55d6e648323339a8c4aea083f7fda299ac75f41a8bdc2",
-    "bytes": 780504
+    "path": "maka-regenerated.workflow.html",
+    "sha256": "b4630a0005f029060e9df09fd4c39bd82f7c5378195dc8353f34744d18808576",
+    "bytes": 782808
   },
   "state": {
     "detail": "read",
@@ -15,7 +15,7 @@
   },
   "chrome": {
     "status": "available",
-    "executable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    "executable": "Google Chrome"
   },
   "diagnostics": [],
   "containment": {

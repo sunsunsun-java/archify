@@ -206,7 +206,7 @@ test('Semantic Radar tracks desktop camera and mobile contained scroll', () => {
   assert.match(html, /nearbyCandidates\(context, reference\)\.concat\(cornerCandidates\(context\)\)/);
   assert.match(html, /var placementOptions = \{ softWeight: manualPosition \? 0 : 100 \}/);
   assert.match(html, /manualPosition && positionIsValid\(manualPosition, context\)/);
-  assert.match(html, /window\.innerWidth > 1280 \|\| !context \|\| !context\.passportRect/);
+  assert.match(html, /!Archify\.relationshipExplorationLayout\.isDrawerViewport\(\) \|\| !context \|\| !context\.passportRect/);
   assert.match(html, /manualPosition = \{ left: requested\.left, top: requested\.top \};[\s\S]*if \(!updateDocking\(\)\) \{[\s\S]*reflectUnavailable/);
   assert.match(html, /else \{\s*requestAnimationFrame\(sync\);\s*\}/);
   assert.match(html, /panelHead\.addEventListener\('pointerdown', beginPanelDrag\)/);

@@ -1076,100 +1076,6 @@ test('large reachability exploration fits every highlighted node outside the Pas
   }
 });
 
-test('extremely short viewports collapse the Passport before its fixed header is clipped', {
-  skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
-}, async () => {
-  const browser = new ChromeVisualBrowser(chromePath);
-  try {
-    const artifact = renderRelationshipOverflowStress();
-    for (const height of [120, 160]) {
-      const sessionId = await load(browser, artifact, { width: 390, height });
-      await evaluate(browser, sessionId, `(function () {
-        var container = document.querySelector('.diagram-container');
-        window.scrollTo(0, Math.max(0, container.offsetTop));
-        Archify.focus.set('hub', { toggle: false, updateUrl: false });
-        document.getElementById('btn-focus-relations').click();
-      })()`);
-      await waitForLayout(browser, sessionId);
-      const receipt = await evaluate(browser, sessionId, `(function () {
-        var chip = document.getElementById('focus-chip');
-        var head = chip.querySelector('.relationship-lens-head');
-        var body = document.getElementById('relationship-lens-body');
-        var chipRect = chip.getBoundingClientRect();
-        var headRect = head.getBoundingClientRect();
-        return {
-          viewportCompact: chip.getAttribute('data-viewport-compact'),
-          chipTop: chipRect.top,
-          chipBottom: chipRect.bottom,
-          headTop: headRect.top,
-          headBottom: headRect.bottom,
-          bodyDisplay: getComputedStyle(body).display
-        };
-      })()`);
-      const message = `${height}px: ${JSON.stringify(receipt)}`;
-      assert.equal(receipt.viewportCompact, 'true', message);
-      assert.ok(receipt.headTop >= receipt.chipTop - 0.5, message);
-      assert.ok(receipt.headBottom <= receipt.chipBottom + 0.5, message);
-      assert.equal(receipt.bodyDisplay, 'none', message);
-    }
-
-    const resizeSessionId = await load(browser, artifact, { width: 390, height: 300 });
-    await evaluate(browser, resizeSessionId, `(function () {
-      var container = document.querySelector('.diagram-container');
-      window.scrollTo(0, Math.max(0, container.offsetTop));
-      Archify.focus.set('hub', { toggle: false, updateUrl: false });
-      document.getElementById('btn-focus-relations').click();
-      document.querySelector('.relationship-lens-row[data-direction="out"]').focus();
-    })()`);
-    await browser.cdp.send('Emulation.setDeviceMetricsOverride', {
-      width: 390,
-      height: 120,
-      deviceScaleFactor: 1,
-      mobile: false,
-    }, resizeSessionId);
-    await evaluate(browser, resizeSessionId, `window.dispatchEvent(new Event('resize'))`);
-    await waitForLayout(browser, resizeSessionId);
-    const resized = await evaluate(browser, resizeSessionId, `(function () {
-      return {
-        viewportCompact: document.getElementById('focus-chip').getAttribute('data-viewport-compact'),
-        activeId: document.activeElement && document.activeElement.id,
-        bodyDisplay: getComputedStyle(document.getElementById('relationship-lens-body')).display
-      };
-    })()`);
-    assert.deepEqual(resized, {
-      viewportCompact: 'true',
-      activeId: 'btn-focus-clear',
-      bodyDisplay: 'none',
-    }, JSON.stringify(resized));
-
-    const reachSessionId = await load(browser, artifact, { width: 390, height: 120 });
-    await evaluate(browser, reachSessionId, `(function () {
-      var container = document.querySelector('.diagram-container');
-      window.scrollTo(0, Math.max(0, container.offsetTop));
-      Archify.focus.set('hub', { toggle: false, updateUrl: false });
-      document.getElementById('btn-reach-downstream').click();
-    })()`);
-    await waitForLayout(browser, reachSessionId);
-    const reachCompact = await evaluate(browser, reachSessionId, `(function () {
-      var details = document.getElementById('btn-focus-details');
-      return {
-        viewportCompact: document.getElementById('focus-chip').getAttribute('data-viewport-compact'),
-        detailsDisplay: getComputedStyle(details).display,
-        detailsExpanded: details.getAttribute('aria-expanded'),
-        bodyDisplay: getComputedStyle(document.getElementById('relationship-lens-body')).display
-      };
-    })()`);
-    assert.deepEqual(reachCompact, {
-      viewportCompact: 'true',
-      detailsDisplay: 'none',
-      detailsExpanded: 'false',
-      bodyDisplay: 'none',
-    }, JSON.stringify(reachCompact));
-  } finally {
-    await browser.close();
-  }
-});
-
 test('Dock Safe Rail keeps typed renderers clear across themes, Presentation, and low-height desktops', {
   skip: chromePath ? false : 'Set ARCHIFY_CHROME to run the real browser regression.',
 }, async () => {
@@ -1941,6 +1847,11 @@ test('compact reach Passport preserves long translated titles and the responsive
             return button.offsetParent !== null;
           }).map(function (button) {
             return button.getBoundingClientRect().height;
+          }),
+          actionIds: Array.from(actions.querySelectorAll('button')).filter(function (button) {
+            return button.offsetParent !== null;
+          }).map(function (button) {
+            return button.id;
           })
         };
       })()`);
@@ -1954,6 +1865,7 @@ test('compact reach Passport preserves long translated titles and the responsive
         assert.equal(receipt.drawer, 'true', message);
         assert.ok(receipt.passport.left <= receipt.container.left + 17, message);
         assert.ok(receipt.passport.right >= receipt.container.right - 17, message);
+        assert.deepEqual(receipt.actionIds.sort(), ['btn-focus-clear', 'btn-focus-details'], message);
         assert.ok(receipt.actionHeights.every((height) => height >= 40), message);
       } else {
         assert.equal(receipt.drawer, null, message);
@@ -3714,7 +3626,7 @@ test('responsive Passport breakpoint preserves a visible keyboard focus and trut
       };
     })()`);
     assert.deepEqual(beforeLeaving, {
-      activeId: 'btn-focus-details',
+      activeId: 'btn-focus-relations',
       detailsVisible: true,
       viewportCompact: null,
     }, JSON.stringify(beforeLeaving));

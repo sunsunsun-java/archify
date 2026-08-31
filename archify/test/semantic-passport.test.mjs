@@ -90,14 +90,15 @@ test('Relationship Lens renders one Semantic Passport and copyable stable focus 
   assert.match(html, /target\.closest\('\[data-node-id\], \[data-relationship-hit-key\], \.overview-map'\)/);
   assert.match(html, /document\.addEventListener\('click',[\s\S]+?clear\(\);\s+\}, true\);/);
   assert.match(html, /Archify\.focus\.clear\(\{ restoreFocus: true \}\)/);
-  assert.match(html, /relationshipBody\.contains\(document\.activeElement\)[\s\S]*document\.activeElement === detailsBtn[\s\S]*document\.activeElement === copyBtn[\s\S]*document\.activeElement === relationsBtn[\s\S]*clearBtn\.focus/);
+  assert.match(html, /relationshipBody\.contains\(document\.activeElement\)[\s\S]*document\.activeElement === detailsBtn[\s\S]*document\.activeElement === copyBtn[\s\S]*document\.activeElement === relationsBtn[\s\S]*detailsBtn\.focus/);
 });
 
 test('narrow viewers use a bounded bottom drawer and reserve canvas space', () => {
   const html = render('architecture', CASES.architecture);
   assert.match(html, /@media \(max-width: 1280px\) \{[\s\S]*\.focus-chip\[data-responsive-drawer="true"\]/);
   assert.match(html, /max-height: min\([\s\S]*60dvh/);
-  assert.match(html, /function responsiveDrawerEnabled\(\) \{[\s\S]*window\.innerWidth <= 1280/);
+  assert.match(html, /Archify\.relationshipExplorationLayout = Object\.freeze\(\{[\s\S]*drawerMaxWidth: 1280/);
+  assert.match(html, /function responsiveDrawerEnabled\(\) \{[\s\S]*Archify\.relationshipExplorationLayout\.isDrawerViewport\(\)/);
   assert.match(html, /chip\.setAttribute\('data-responsive-drawer', 'true'\)/);
   assert.match(html, /function recoverHiddenExplorationFocus\(focused\)[\s\S]*focused\.offsetParent !== null[\s\S]*clearBtn\.focus\(\{ preventScroll: true \}\)/);
   assert.match(html, /var focused = chip\.contains\(activeElement\)[\s\S]*lastExplorationFocus : null/);
