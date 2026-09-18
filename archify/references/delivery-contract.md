@@ -284,19 +284,24 @@ node bin/archify.mjs visual-check <output.html> --json --require-provenance
 ```
 
 The zero-dependency command uses Chrome/Chromium through the DevTools pipe. It
-measures light-theme containment at 1440×900, 1600×1000, 1920×1080, and
-2048×1320, then captures light/dark screenshots at 1440×900 and 2048×1320. It
-writes four PNG sidecars, one relative-path HTML contact sheet, and one JSON
-receipt beside the artifact by default — pass `--out-dir <dir>` to write all of
-them into a separate directory instead (created if missing) when a project
-keeps its testing/evidence artifacts apart from the delivered `.json`/`.html`
-result pair. When that directory differs from the artifact directory, the
-receipt records its absolute path as `sidecars.directory`; sidecar filenames
-resolve there, otherwise beside `artifact.path`. The contact sheet keeps its
-image links relative for portability. The receipt binds the source artifact SHA-256 and
-byte count, identifies `evidenceKind: "automated-browser"`, records READ plus
-Still runtime state, and always reports `visualReview: "pending"`; automated
-browser evidence cannot claim perceptual review.
+measures light and dark containment, projected text readability, and viewer
+chrome clearance at 1440×900, 1600×1000, 1920×1080, and 2048×1320. It also
+checks every semantic node and authored relationship through the shared camera,
+then verifies that a full canonical SVG export retains its viewBox and semantic
+entities and stays byte-stable after camera navigation. Light/dark screenshots
+are captured at 1440×900 and 2048×1320. The command writes four PNG sidecars,
+one relative-path HTML contact sheet, and one JSON receipt beside the artifact
+by default — pass `--out-dir <dir>` to write all of them into a separate
+directory instead (created if missing) when a project keeps testing/evidence
+artifacts apart from the delivered `.json`/`.html` result pair. When that
+directory differs from the artifact directory, the receipt records its absolute
+path as `sidecars.directory`; sidecar filenames resolve there, otherwise beside
+`artifact.path`. The contact sheet keeps its image links relative for
+portability. The receipt binds the source artifact SHA-256 and byte count, identifies
+`evidenceKind: "automated-browser"`, records READ plus Still runtime state, and
+reports containment, readability, viewer chrome, world reachability, and export
+completeness independently. It always reports `visualReview: "pending"`;
+automated browser evidence cannot claim perceptual review.
 
 `browser_evidence` in the handoff records only the outcome of this automated command:
 
@@ -379,7 +384,14 @@ Automated validation and browser evidence cannot prove visual polish. After dete
 
 For the default standalone desktop viewer, measure 1440×900, 1600×1000, and 1920×1080. When the artifact is intended for a large desktop display, also measure 2048×1320. A first-screen pass requires `document.documentElement.scrollWidth <= window.innerWidth` and `scrollHeight <= window.innerHeight` at every checked size. At the largest checked viewport, inspect the rendered composition for a conspicuous empty lower band: the main panel and necessary conclusion cards should use the available height as a balanced whole, not collapse into a shallow strip. If a desktop viewport overflows, repair the authored composition by removing only genuinely redundant content or compacting spacing before shrinking nodes, labels, or the main panel. Do not hide overflow, clip content, introduce an internal diagram scroller, or reduce node/label typography to make the measurement pass. Narrow/mobile containment may retain vertical page scrolling.
 
-A manual browser record is supplementary to the automated status. Reproducing the same coverage requires all four exact viewport measurements, both endpoint themes, and an artifact-bound record of the inspected SHA-256 and byte count. It never changes `browser_evidence`: when Chrome/Chromium is unavailable, that status remains `skipped` even when the manual browser record is complete and `visual_review: passed`; an automated `failed` result likewise remains `failed`. An unconstrained browser glance can support perceptual review only.
+A manual browser record is supplementary to the automated status. Reproducing
+the same coverage requires all four exact viewport measurements in both themes,
+camera reachability and canonical export checks, and an artifact-bound record
+of the inspected SHA-256 and byte count. It never changes `browser_evidence`:
+when Chrome/Chromium is unavailable, that status remains `skipped` even when
+the manual browser record is complete and `visual_review: passed`; an automated
+`failed` result likewise remains `failed`. An unconstrained browser glance can
+support perceptual review only.
 
 Report exactly one truthful status:
 

@@ -1719,6 +1719,148 @@ export class ChromeVisualBrowser {
     return metrics;
   }
 
+  async auditCanonicalWorld() {
+    const sessionId = await this.sessionPromise;
+    return evaluate(this.cdp, sessionId, `(async function () {
+      var container = document.querySelector('.diagram-container');
+      var svg = container && container.querySelector(':scope > svg');
+      if (!container || !svg || !window.Archify || !Archify.view) {
+        throw new Error('Canonical world audit requires the shared Archify viewer camera.');
+      }
+      function unique(values) {
+        return Array.from(new Set(values)).sort();
+      }
+      function nodeIds(root) {
+        return unique(Array.from(root.querySelectorAll('[data-node-id]')).map(function (element) {
+          return element.getAttribute('data-node-id');
+        }).filter(Boolean));
+      }
+      function edgeRecords(root) {
+        var records = new Map();
+        Array.from(root.querySelectorAll('[data-edge-from][data-edge-to]')).forEach(function (element) {
+          var from = element.getAttribute('data-edge-from') || '';
+          var to = element.getAttribute('data-edge-to') || '';
+          var id = element.getAttribute('data-edge-id') || '';
+          var key = id || from + '->' + to;
+          if (!records.has(key)) records.set(key, { id: id, key: key, from: from, to: to });
+        });
+        return Array.from(records.values()).sort(function (left, right) {
+          return left.key < right.key ? -1 : left.key > right.key ? 1 : 0;
+        });
+      }
+      function geometrySignature(root) {
+        return JSON.stringify(Array.from(root.querySelectorAll('[data-node-id], [data-edge-from][data-edge-to]')).map(function (element) {
+          return ['data-node-id', 'data-edge-id', 'data-edge-from', 'data-edge-to', 'd', 'points', 'x', 'y', 'width', 'height', 'transform']
+            .map(function (name) { return element.getAttribute(name); });
+        }));
+      }
+      function boxCenterVisible(element) {
+        var box;
+        try { box = element.getBBox(); } catch (_) { return false; }
+        var viewport = Archify.view.logicalViewport();
+        if (!viewport || !box) return false;
+        var x = box.x + box.width / 2;
+        var y = box.y + box.height / 2;
+        return x >= viewport.x - 0.5 && x <= viewport.x + viewport.width + 0.5 &&
+          y >= viewport.y - 0.5 && y <= viewport.y + viewport.height + 0.5;
+      }
+      async function reveal(ids) {
+        var receipt = Archify.view.reveal(ids, { instant: true, reason: 'visual-check' });
+        if (!receipt || !receipt.finished) return false;
+        var outcome = await receipt.finished;
+        return outcome && ['complete', 'hidden', 'reduced-motion'].indexOf(outcome.state) !== -1;
+      }
+      async function exportedSvg() {
+        if (!Archify.exportMenu || typeof Archify.exportMenu.run !== 'function') return null;
+        var blob = null;
+        var createObjectURL = URL.createObjectURL;
+        var revokeObjectURL = URL.revokeObjectURL;
+        var click = HTMLAnchorElement.prototype.click;
+        URL.createObjectURL = function (value) {
+          if (value && value.type && value.type.indexOf('image/svg+xml') === 0) blob = value;
+          return 'blob:null/archify-visual-check';
+        };
+        URL.revokeObjectURL = function () {};
+        HTMLAnchorElement.prototype.click = function () {};
+        try {
+          await Archify.exportMenu.run('svg');
+          return blob ? await blob.text() : null;
+        } finally {
+          URL.createObjectURL = createObjectURL;
+          URL.revokeObjectURL = revokeObjectURL;
+          HTMLAnchorElement.prototype.click = click;
+        }
+      }
+
+      Archify.view.reset({ automatic: true });
+      var initialState = JSON.stringify(Archify.view.state());
+      var initialViewBox = svg.getAttribute('viewBox');
+      var initialGeometry = geometrySignature(svg);
+      var sourceNodeIds = nodeIds(svg);
+      var sourceEdges = edgeRecords(svg);
+      var beforeExport = await exportedSvg();
+      var missingNodeIds = [];
+      for (var nodeIndex = 0; nodeIndex < sourceNodeIds.length; nodeIndex += 1) {
+        var nodeId = sourceNodeIds[nodeIndex];
+        var node = Array.from(svg.querySelectorAll('[data-node-id]')).find(function (element) {
+          return element.getAttribute('data-node-id') === nodeId;
+        });
+        if (!await reveal([nodeId]) || !node || !boxCenterVisible(node)) missingNodeIds.push(nodeId);
+      }
+      var missingEdgeIds = [];
+      for (var edgeIndex = 0; edgeIndex < sourceEdges.length; edgeIndex += 1) {
+        var edge = sourceEdges[edgeIndex];
+        if (!await reveal([edge.from, edge.to])) missingEdgeIds.push(edge.key);
+      }
+      Archify.view.reset({ automatic: true });
+      var afterExport = await exportedSvg();
+      var exportedRoot = afterExport
+        ? new DOMParser().parseFromString(afterExport, 'image/svg+xml').documentElement
+        : null;
+      var exportedNodeIds = exportedRoot ? nodeIds(exportedRoot) : [];
+      var exportedEdges = exportedRoot ? edgeRecords(exportedRoot) : [];
+      var stateRestored = JSON.stringify(Archify.view.state()) === initialState;
+      var viewBoxUnchanged = svg.getAttribute('viewBox') === initialViewBox;
+      var geometryUnchanged = geometrySignature(svg) === initialGeometry;
+      var worldOk = missingNodeIds.length === 0 && missingEdgeIds.length === 0 &&
+        stateRestored && viewBoxUnchanged && geometryUnchanged;
+      var exportOk = Boolean(exportedRoot) && beforeExport === afterExport &&
+        JSON.stringify(exportedNodeIds) === JSON.stringify(sourceNodeIds) &&
+        JSON.stringify(exportedEdges.map(function (edge) { return edge.key; })) ===
+          JSON.stringify(sourceEdges.map(function (edge) { return edge.key; })) &&
+        exportedRoot.getAttribute('viewBox') === initialViewBox &&
+        !exportedRoot.hasAttribute('data-view-scale') &&
+        !exportedRoot.style.transform && !exportedRoot.style.clipPath;
+      return {
+        worldReachability: {
+          status: worldOk ? 'pass' : 'fail',
+          nodeCount: sourceNodeIds.length,
+          reachedNodeCount: sourceNodeIds.length - missingNodeIds.length,
+          edgeCount: sourceEdges.length,
+          reachedEdgeCount: sourceEdges.length - missingEdgeIds.length,
+          guidedViewCount: document.querySelectorAll('[data-guided-view-id]').length,
+          missingNodeIds: missingNodeIds,
+          missingEdgeIds: missingEdgeIds,
+          cameraStateRestored: stateRestored,
+          canonicalViewBoxUnchanged: viewBoxUnchanged,
+          canonicalGeometryUnchanged: geometryUnchanged
+        },
+        exportCompleteness: {
+          status: exportOk ? 'pass' : 'fail',
+          format: 'svg',
+          sourceNodeCount: sourceNodeIds.length,
+          exportedNodeCount: exportedNodeIds.length,
+          sourceEdgeCount: sourceEdges.length,
+          exportedEdgeCount: exportedEdges.length,
+          canonicalViewBoxUnchanged: Boolean(exportedRoot) && exportedRoot.getAttribute('viewBox') === initialViewBox,
+          canonicalBytesStableAfterCamera: beforeExport === afterExport,
+          cameraStateClean: Boolean(exportedRoot) && !exportedRoot.hasAttribute('data-view-scale') &&
+            !exportedRoot.style.transform && !exportedRoot.style.clipPath
+        }
+      };
+    })()`, true);
+  }
+
   async close() {
     this.cdp.failAll(new Error('visual-check finished'));
     if (this.child.exitCode === null && this.child.signalCode === null) {
@@ -1972,6 +2114,8 @@ function baseReceipt({ artifactPath, artifact, sidecars, chrome, deliveryProvena
     containment: { status: 'fail', viewports: [] },
     readability: { status: 'fail', minimumProjectedNodeTextPx: MIN_PROJECTED_NODE_TEXT_PX, viewports: [] },
     viewerChrome: { status: 'fail', viewports: [] },
+    worldReachability: { status: 'fail' },
+    exportCompleteness: { status: 'fail' },
     captures: { status: 'fail', screenshots: [], contactSheet: null },
     sidecars: { ...sidecars, files: [] },
   };
@@ -2205,6 +2349,8 @@ export async function runVisualCheck({
     receipt.containment.status = 'skipped';
     receipt.readability.status = 'skipped';
     receipt.viewerChrome.status = 'skipped';
+    receipt.worldReachability.status = 'skipped';
+    receipt.exportCompleteness.status = 'skipped';
     receipt.captures.status = 'skipped';
     receipt.error = 'Chrome or Chromium is unavailable. Set ARCHIFY_CHROME to its executable path.';
     receipt.diagnostics = [failureDiagnostic({
@@ -2230,6 +2376,7 @@ export async function runVisualCheck({
   try {
     browser = await browserFactory(resolvedChrome);
     const observations = new Map();
+    let canonicalAudit = null;
     const screenshotsByKey = new Map(outputs.screenshots.map((entry, index) => [
       screenshotKey(entry.width, entry.height, entry.theme),
       { ...entry, stagedPath: ownership.stagedOutputs.screenshots[index].path },
@@ -2259,8 +2406,14 @@ export async function runVisualCheck({
         }
       }
       observations.set(key, observation({ ...viewport, theme: 'light', metrics }));
+      if (!canonicalAudit) {
+        if (typeof browser.auditCanonicalWorld !== 'function') {
+          throw new Error('The visual browser does not implement canonical world auditing.');
+        }
+        canonicalAudit = await browser.auditCanonicalWorld();
+      }
     }
-    for (const viewport of CAPTURE_VIEWPORTS) {
+    for (const viewport of VISUAL_CHECK_VIEWPORTS) {
       const key = screenshotKey(viewport.width, viewport.height, 'dark');
       const screenshot = screenshotsByKey.get(key);
       const metrics = await browser.inspect({
@@ -2292,11 +2445,13 @@ export async function runVisualCheck({
       throw regularFileCaptureError('The delivered artifact changed while visual-check was running', artifactVerification);
     }
 
-    receipt.containment.viewports = VISUAL_CHECK_VIEWPORTS.map(({ width, height }) => (
-      observations.get(screenshotKey(width, height, 'light'))
-    ));
+    receipt.containment.viewports = THEMES.flatMap((theme) => VISUAL_CHECK_VIEWPORTS.map(({ width, height }) => (
+      observations.get(screenshotKey(width, height, theme))
+    )));
     receipt.readability.viewports = receipt.containment.viewports.map((entry) => ({ ...entry }));
     receipt.viewerChrome.viewports = receipt.containment.viewports.map((entry) => ({ ...entry }));
+    receipt.worldReachability = canonicalAudit.worldReachability;
+    receipt.exportCompleteness = canonicalAudit.exportCompleteness;
     receipt.captures.screenshots = outputs.screenshots.map((entry) => ({
       ...observations.get(screenshotKey(entry.width, entry.height, entry.theme)),
       file: path.basename(entry.path),
@@ -2305,6 +2460,8 @@ export async function runVisualCheck({
     const containmentPass = allObservations.every((entry) => entry.ok);
     const readabilityPass = receipt.readability.viewports.every((entry) => entry.readabilityOk);
     const viewerChromePass = allObservations.every((entry) => entry.viewerChromeOk);
+    const worldReachabilityPass = receipt.worldReachability.status === 'pass';
+    const exportCompletenessPass = receipt.exportCompleteness.status === 'pass';
     receipt.diagnostics = observationDiagnostics({
       artifact,
       allObservations,
@@ -2315,8 +2472,27 @@ export async function runVisualCheck({
     receipt.viewerChrome.status = viewerChromePass ? 'pass' : 'fail';
     receipt.captures.status = 'pass';
     receipt.captures.contactSheet = path.basename(outputs.contactSheet);
-    receipt.status = containmentPass && readabilityPass && viewerChromePass ? 'pass' : 'fail';
-    receipt.ok = containmentPass && readabilityPass && viewerChromePass;
+    if (!worldReachabilityPass) {
+      receipt.diagnostics.push(failureDiagnostic({
+        code: 'viewer/world-unreachable',
+        message: 'The shared camera could not reach every semantic entity without changing canonical geometry.',
+        subject: { artifact },
+        evidence: receipt.worldReachability,
+        supportedFixes: ['repair camera focus coverage or canonical bounds, then rerun visual-check'],
+      }));
+    }
+    if (!exportCompletenessPass) {
+      receipt.diagnostics.push(failureDiagnostic({
+        code: 'viewer/export-incomplete',
+        message: 'The full canonical SVG export changed or omitted semantic entities after camera navigation.',
+        subject: { artifact },
+        evidence: receipt.exportCompleteness,
+        supportedFixes: ['restore camera-independent full-frame export, then rerun visual-check'],
+      }));
+    }
+    receipt.status = containmentPass && readabilityPass && viewerChromePass
+      && worldReachabilityPass && exportCompletenessPass ? 'pass' : 'fail';
+    receipt.ok = receipt.status === 'pass';
     writeStagedEvidence(ownership, outputs.contactSheet, contactSheetHtml({
       artifactPath: artifact,
       receipt,
@@ -2347,6 +2523,8 @@ export async function runVisualCheck({
     receipt.containment.status = 'fail';
     receipt.readability.status = 'fail';
     receipt.viewerChrome.status = 'fail';
+    receipt.worldReachability.status = 'fail';
+    receipt.exportCompleteness.status = 'fail';
     receipt.captures.status = 'fail';
     receipt.captures.screenshots = [];
     receipt.captures.contactSheet = null;

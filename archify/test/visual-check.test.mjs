@@ -44,7 +44,16 @@ function stagingDirectories(directory) {
   return fs.readdirSync(directory).filter((name) => name.startsWith('.archify-visual-check-'));
 }
 
-function fakeBrowser({ overflowAt, unreadableAt, chromeCollisionAt, stageCollisionAt, stageGapAt, screenshotFailure } = {}) {
+function fakeBrowser({
+  overflowAt,
+  unreadableAt,
+  chromeCollisionAt,
+  stageCollisionAt,
+  stageGapAt,
+  screenshotFailure,
+  worldReachabilityStatus = 'pass',
+  exportCompletenessStatus = 'pass',
+} = {}) {
   const calls = [];
   return {
     calls,
@@ -83,6 +92,34 @@ function fakeBrowser({ overflowAt, unreadableAt, chromeCollisionAt, stageCollisi
         viewerChromeRequiredGap: 10,
         viewerChromeReserve: chromeCollision || stageClearanceFailure ? 0 : 44,
         viewerChromeActive: !chromeCollision && !stageClearanceFailure,
+      };
+    },
+    async auditCanonicalWorld() {
+      return {
+        worldReachability: {
+          status: worldReachabilityStatus,
+          nodeCount: 30,
+          reachedNodeCount: worldReachabilityStatus === 'pass' ? 30 : 29,
+          edgeCount: 50,
+          reachedEdgeCount: 50,
+          guidedViewCount: 5,
+          missingNodeIds: worldReachabilityStatus === 'pass' ? [] : ['unreachable'],
+          missingEdgeIds: [],
+          cameraStateRestored: true,
+          canonicalViewBoxUnchanged: true,
+          canonicalGeometryUnchanged: true,
+        },
+        exportCompleteness: {
+          status: exportCompletenessStatus,
+          format: 'svg',
+          sourceNodeCount: 30,
+          exportedNodeCount: exportCompletenessStatus === 'pass' ? 30 : 29,
+          sourceEdgeCount: 50,
+          exportedEdgeCount: 50,
+          canonicalViewBoxUnchanged: true,
+          canonicalBytesStableAfterCamera: exportCompletenessStatus === 'pass',
+          cameraStateClean: true,
+        },
       };
     },
     async close() {},
@@ -256,7 +293,7 @@ test('visual-check reports Chrome early exit status and stderr without an uncaug
   assert.equal(result.receipt.diagnostics[0]?.code, 'viewer/visual-check-runtime');
 });
 
-test('visual-check records four containment viewports and four endpoint theme captures', async () => {
+test('visual-check records eight themed viewport observations and four endpoint captures', async () => {
   const input = artifact('passing.html');
   const before = sha256(input);
   const browser = fakeBrowser();
@@ -275,7 +312,13 @@ test('visual-check records four containment viewports and four endpoint theme ca
   assert.deepEqual(result.receipt.diagnostics, []);
   assert.equal(result.receipt.visualReview, 'pending');
   assert.equal(result.receipt.viewerChrome.status, 'pass');
-  assert.equal(result.receipt.containment.viewports.length, VISUAL_CHECK_VIEWPORTS.length);
+  assert.equal(result.receipt.worldReachability.status, 'pass');
+  assert.equal(result.receipt.exportCompleteness.status, 'pass');
+  assert.equal(result.receipt.containment.viewports.length, VISUAL_CHECK_VIEWPORTS.length * 2);
+  assert.deepEqual(
+    result.receipt.containment.viewports.map(({ width, height, theme }) => [width, height, theme]),
+    ['light', 'dark'].flatMap((theme) => VISUAL_CHECK_VIEWPORTS.map(({ width, height }) => [width, height, theme])),
+  );
   assert.equal(result.receipt.containment.viewports.every((entry) => entry.ok), true);
   assert.deepEqual(
     result.receipt.captures.screenshots.map(({ width, height, theme }) => [width, height, theme]),
@@ -2677,6 +2720,27 @@ test('visual-check returns 1 when the real reader projects node text below 6px',
   assert.equal(diagnostic?.evidence?.minimumRequiredNodeTextPx, 6);
 });
 
+test('visual-check reports world reachability and canonical export as independent failures', async () => {
+  const input = artifact('world-and-export-failure.html');
+  const result = await runVisualCheck({
+    artifactPath: input,
+    chromePath: '/fake/chrome',
+    browserFactory: async () => fakeBrowser({
+      worldReachabilityStatus: 'fail',
+      exportCompletenessStatus: 'fail',
+    }),
+  });
+
+  assert.equal(result.exitCode, 1);
+  assert.equal(result.receipt.containment.status, 'pass');
+  assert.equal(result.receipt.readability.status, 'pass');
+  assert.equal(result.receipt.viewerChrome.status, 'pass');
+  assert.equal(result.receipt.worldReachability.status, 'fail');
+  assert.equal(result.receipt.exportCompleteness.status, 'fail');
+  assert.ok(result.receipt.diagnostics.some(({ code }) => code === 'viewer/world-unreachable'));
+  assert.ok(result.receipt.diagnostics.some(({ code }) => code === 'viewer/export-incomplete'));
+});
+
 test('visual-check returns 1 when the navigation dock obscures the SVG legend', async () => {
   const input = artifact('viewer-chrome-collision.html');
   const result = await runVisualCheck({
@@ -2805,6 +2869,8 @@ test('visual-check returns 2 with a truthful skipped receipt when Chrome is unav
   assert.equal(result.receipt.status, 'skipped');
   assert.equal(result.receipt.containment.status, 'skipped');
   assert.equal(result.receipt.viewerChrome.status, 'skipped');
+  assert.equal(result.receipt.worldReachability.status, 'skipped');
+  assert.equal(result.receipt.exportCompleteness.status, 'skipped');
   assert.equal(result.receipt.captures.status, 'skipped');
   assert.equal(result.receipt.visualReview, 'pending');
   assert.equal(result.receipt.diagnostics[0]?.code, 'viewer/chrome-unavailable');
