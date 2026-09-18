@@ -263,6 +263,29 @@ test('Export preserves menu, clipboard, semantic cards and recording lifecycles'
     }
   });
 
+  await t.test('oversized raster and WebM fail before allocating a canvas and recommend SVG', async () => {
+    await load();
+    const result = await run(`(async()=>{
+      const svg=document.querySelector('.diagram-container > svg');
+      svg.setAttribute('viewBox','0 0 5000 100000');
+      let allocations=0;
+      const create=Document.prototype.createElement;
+      Document.prototype.createElement=function(name,...rest){if(String(name).toLowerCase()==='canvas')allocations++;return create.call(this,name,...rest);};
+      try {
+        Archify.exportMenu.run('png');
+        await exportWait(()=>exportAlerts.length===1);
+        const webm=await Archify.motion.recordWebm({duration:250,fps:10}).then(()=>null,error=>({code:error.code,receipt:error.receipt,message:error.message}));
+        return {allocations,alert:exportAlerts[0],webm};
+      } finally { Document.prototype.createElement=create; }
+    })()`);
+    assert.equal(result.allocations,0);
+    assert.match(result.alert,/SVG/);
+    assert.equal(result.webm.code,'export/raster-budget-exceeded');
+    assert.equal(result.webm.receipt.limit,16000000);
+    assert.equal(result.webm.receipt.fallback,'svg');
+    assert.ok(result.webm.receipt.candidates[0].pixels>16000000);
+  });
+
   await t.test('recording succeeds with real encoding and releases tracks and the background URL', async () => {
     await load();assert.equal(await run('Archify.motion.canRecord()'),true);
     const result = await run(`(async()=>{const blob=await Archify.motion.recordWebm({duration:500,fps:10});window.recordedBlob=blob;const url=URL.createObjectURL(blob),video=document.createElement('video');video.muted=true;video.src=url;await new Promise((resolve,reject)=>{video.onloadeddata=resolve;video.onerror=()=>reject(new Error('WebM decode failed'));});const dimensions=[video.videoWidth,video.videoHeight];await video.play();await new Promise(resolve=>video.requestVideoFrameCallback(resolve));video.pause();video.removeAttribute('src');video.load();URL.revokeObjectURL(url);return {type:blob.type,nonempty:blob.size>0,dimensions,cancelled:exportCancelled.length>0};})()`);

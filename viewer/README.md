@@ -947,3 +947,17 @@ isolated clone tests supplement them for restoration and idempotence.
 
 For required browser, output and package evidence, follow
 [Contributing](../CONTRIBUTING.md#local-setup-and-verification).
+
+## Camera and large-world state
+
+`Archify.view` keeps the existing public surface: `zoomIn`, `zoomOut`, `reset`,
+`reveal`, `centerAt`, `logicalViewport`, `sync`, and `state`. Scale remains a
+dimensionless multiplier where 1 is full Fit-all. The large-world work adds no
+public navigation API, authoring state, schema field, or second Home concept.
+
+Reader Layout owns the derived fixed-stage CSS variables and profile receipt.
+Camera owns only the current transform, finite dynamic cap, automatic-entry
+lease, and transaction. Reset/`0` restore `{scale: 1, x: 0, y: 0}`. Export owns
+the full canonical clone and pixel-budget preflight; it never reads the camera
+viewport as export geometry. Mobile, embed, presentation, and print keep their
+existing models and clear the large-world fixed stage.

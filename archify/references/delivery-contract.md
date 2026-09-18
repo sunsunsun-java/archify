@@ -421,3 +421,41 @@ correction_rounds: 0|1|2
 Derive `browser_evidence` only from the latest artifact-bound `visual-check` receipt. Record any manual browser work separately with its artifact binding, viewport/theme scope, and observations; never use it or `visual_review` to overwrite the automated status.
 
 Opening, preview status, Share Cards, and other viewer exports are not validation claims.
+
+## Large-world reader profile
+
+The standalone desktop viewer keeps the canonical SVG finite and unchanged. It
+derives a presentation-only `small` or `large` profile after fonts and Reader
+chrome settle. The authoritative constants and selectors live in
+`renderers/shared/desktop-readability.mjs`; the Viewer generator serializes that
+exact contract into the classic browser script. A second handwritten browser
+copy is not allowed.
+
+Fit-all uses `min(safeWidth/worldWidth, safeHeight/worldHeight)`. The measured
+labels are `text[data-node-label]`, `text[data-boundary-label]`, and node context
+text. Unrounded projected text below 6 CSS px selects `large`; exactly 6 px is
+`small`. Large mode is limited to ordinary standalone viewports wider than 720
+px with at least 360 px of available stage height. Its stage height is
+`min(900, floor(innerHeight - stageTop - belowStageRequiredHeight - 24))` and is
+independent of canonical world dimensions.
+
+Large mode deterministically frames the first readable candidate in this order:
+the first guided view, a start-kind node, then the first canonical node. A valid
+hash/deep link wins. Reset and `0` always return to scale 1 Fit-all. Any external
+camera call or trusted manual camera input releases the automatic-entry lease;
+late font, resize, or animation-frame work must not retake the camera.
+
+The maximum camera multiplier is finite and derived from the Fit-all world scale:
+`max(1, min(32, 4 / worldScaleFit))`. Target framing preserves complete bounds
+with 24 CSS px padding per side and raises the multiplier as needed for 6 px
+text. If complete containment and readability cannot both be met, completeness
+wins and browser evidence records `viewer/entry-text-unreadable` or
+`viewer/navigation-text-unreadable`. Camera transforms remain session-only and
+must never enter canonical SVG export.
+
+Raster and WebM export preflight the complete canonical output before creating a
+canvas. PNG/JPEG/WebP try integer scales from 4 down to 1 against an exact
+16,000,000-pixel limit. WebM retains `min(1, 1280 / viewBox.width)` and checks its
+actual even dimensions. If 1x (or the WebM size) is still over budget, no canvas
+is allocated; the error code is `export/raster-budget-exceeded` and SVG is the
+only suggested fallback.

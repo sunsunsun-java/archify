@@ -47,6 +47,7 @@ function stagingDirectories(directory) {
 function fakeBrowser({
   overflowAt,
   unreadableAt,
+  largeWorldAt,
   chromeCollisionAt,
   stageCollisionAt,
   stageGapAt,
@@ -68,6 +69,7 @@ function fakeBrowser({
       }
       const overflow = overflowAt?.({ width, height, theme }) || false;
       const unreadable = unreadableAt?.({ width, height, theme }) || false;
+      const largeWorld = largeWorldAt?.({ width, height, theme }) || false;
       const chromeCollision = chromeCollisionAt?.({ width, height, theme }) || false;
       const stageCollision = stageCollisionAt?.({ width, height, theme }) || false;
       const dockStageGap = stageGapAt?.({ width, height, theme }) ?? (stageCollision ? -12 : 10);
@@ -81,6 +83,9 @@ function fakeBrowser({
         readerWidth: 960,
         diagramWidth: 930,
         viewBoxWidth: 1300,
+        worldProfile: largeWorld ? 'large' : 'small',
+        cameraScale: largeWorld ? 4 : 1,
+        overviewProjectedNodeTextPx: largeWorld ? 2.2 : (unreadable ? 5.72 : 6.44),
         minimumProjectedNodeTextPx: unreadable ? 5.72 : 6.44,
         minimumProjectedNodeText: unreadable ? 'Compact node' : 'Readable node',
         minimumProjectedNodeTextDetail: unreadable ? 'primary' : 'context',
@@ -363,7 +368,7 @@ test('visual-check inspects a private snapshot even if the public artifact is re
       fs.renameSync(input, displaced);
       fs.writeFileSync(input, replacement, { flag: 'wx' });
     }
-    if (calls === 6) {
+    if (calls === 8) {
       fs.unlinkSync(input);
       fs.renameSync(displaced, input);
     }
@@ -377,7 +382,7 @@ test('visual-check inspects a private snapshot even if the public artifact is re
   });
 
   assert.equal(result.exitCode, 0, JSON.stringify(result.receipt.diagnostics));
-  assert.equal(inspectedPaths.length, 6);
+  assert.equal(inspectedPaths.length, 8);
   assert.equal(inspectedPaths.every((candidate) => candidate !== path.resolve(input)), true);
   assert.deepEqual(fs.readFileSync(input), original);
 });
@@ -2718,6 +2723,22 @@ test('visual-check returns 1 when the real reader projects node text below 6px',
   assert.equal(diagnostic?.evidence?.text, 'Compact node');
   assert.equal(diagnostic?.evidence?.minimumProjectedNodeTextPx, 5.72);
   assert.equal(diagnostic?.evidence?.minimumRequiredNodeTextPx, 6);
+});
+
+test('visual-check records an unreadable large-world overview but passes a readable automatic entry', async () => {
+  const input = artifact('large-world-readable-entry.html');
+  const result = await runVisualCheck({
+    artifactPath: input,
+    chromePath: '/fake/chrome',
+    browserFactory: async () => fakeBrowser({ largeWorldAt: () => true }),
+  });
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.receipt.schemaVersion, 2);
+  assert.equal(result.receipt.readability.status, 'pass');
+  assert.ok(result.receipt.readability.viewports.every((entry) => entry.worldProfile === 'large'));
+  assert.ok(result.receipt.readability.viewports.every((entry) => entry.overviewReadabilityOk === false));
+  assert.ok(result.receipt.readability.viewports.every((entry) => entry.readabilityOk === true));
 });
 
 test('visual-check reports world reachability and canonical export as independent failures', async () => {

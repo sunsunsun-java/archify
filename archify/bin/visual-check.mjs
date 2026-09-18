@@ -43,6 +43,7 @@ const CAPTURE_VIEWPORTS = Object.freeze([
 ]);
 const THEMES = Object.freeze(['light', 'dark']);
 const EXIT = Object.freeze({ pass: 0, fail: 1, skipped: 2 });
+const SCREEN_MEASUREMENT_EPSILON_PX = 0.0001;
 export const CHROME_NO_SANDBOX_ENV = 'ARCHIFY_CHROME_NO_SANDBOX';
 const VISUAL_SIDECAR_SUFFIXES = Object.freeze([
   '.visual-check.json',
@@ -674,7 +675,7 @@ function beginVisualEvidenceWrite(artifactPath, artifactBytes, outputs) {
       ...previousReceipt.evidence,
     });
 
-    if (previous?.schemaVersion !== 1 || previous?.command !== 'visual-check') {
+    if (![1, 2].includes(previous?.schemaVersion) || previous?.command !== 'visual-check') {
       return evidencePathConflict(artifactPath, outputs, outputs.receipt, {
         code: 'ownership-receipt-schema-mismatch',
       });
@@ -1613,9 +1614,19 @@ export class ChromeVisualBrowser {
       var legend = svg && svg.querySelector('[data-legend]');
       var navigationDock = diagram && diagram.querySelector('.diagram-nav');
       var viewBox = svg && svg.viewBox && svg.viewBox.baseVal;
-      var diagramWidth = svg ? svg.getBoundingClientRect().width : 0;
+      var diagramWidth = svg ? svg.clientWidth : 0;
       var viewBoxWidth = viewBox ? viewBox.width : 0;
-      var scale = viewBoxWidth > 0 ? Math.min(1, diagramWidth / viewBoxWidth) : 0;
+      var readerReceipt = window.Archify && Archify.readerLayout
+        && typeof Archify.readerLayout.receipt === 'function'
+        ? Archify.readerLayout.receipt()
+        : null;
+      var cameraState = window.Archify && Archify.view && typeof Archify.view.state === 'function'
+        ? Archify.view.state()
+        : null;
+      var scale = readerReceipt && Number.isFinite(readerReceipt.worldScaleFit)
+        ? readerReceipt.worldScaleFit
+        : (viewBoxWidth > 0 ? Math.min(1, diagramWidth / viewBoxWidth) : 0);
+      var cameraScale = cameraState && Number.isFinite(cameraState.scale) ? cameraState.scale : 1;
       var minimum = null;
       if (svg && scale > 0) {
         Array.from(svg.querySelectorAll('text[data-node-label], text[data-boundary-label], text[data-detail="context"], [data-edge-id] g[data-detail="context"] > text')).forEach(function (text) {
@@ -1625,12 +1636,18 @@ export class ChromeVisualBrowser {
           if (detail === 'context' && !text.closest('[data-node-id]')) return;
           var sourceFontPx = parseFloat(text.getAttribute('font-size') || '');
           if (!Number.isFinite(sourceFontPx)) return;
-          var projectedFontPx = sourceFontPx * scale;
+          var overviewProjectedFontPx = sourceFontPx * scale;
+          var screenMatrix = typeof text.getScreenCTM === 'function' ? text.getScreenCTM() : null;
+          var screenScale = screenMatrix ? Math.hypot(screenMatrix.a, screenMatrix.b) : 0;
+          var projectedFontPx = screenScale > 0
+            ? sourceFontPx * screenScale
+            : overviewProjectedFontPx * cameraScale;
           if (!minimum || projectedFontPx < minimum.projectedFontPx) {
             minimum = {
               text: (text.textContent || '').trim(),
               detail: detail,
               sourceFontPx: sourceFontPx,
+              overviewProjectedFontPx: overviewProjectedFontPx,
               projectedFontPx: projectedFontPx
             };
           }
@@ -1649,6 +1666,7 @@ export class ChromeVisualBrowser {
         : (stage ? stage.getBoundingClientRect() : null);
       var navigationDockRect = navigationDock ? navigationDock.getBoundingClientRect() : null;
       var stageDockIntersectionArea = intersectionArea(stageRect, navigationDockRect);
+      var fixedStageRect = diagram ? diagram.getBoundingClientRect() : null;
       var viewerChromeReceipt = window.Archify && Archify.viewerChromeLayout
         && typeof Archify.viewerChromeLayout.receipt === 'function'
         ? Archify.viewerChromeLayout.receipt()
@@ -1686,6 +1704,14 @@ export class ChromeVisualBrowser {
         diagramWidth: diagramWidth,
         viewBoxWidth: viewBoxWidth,
         workflowLanes: workflowLanes,
+        worldProfile: document.documentElement.getAttribute('data-world-profile') || 'small',
+        cameraScale: cameraScale,
+        stageWidth: fixedStageRect ? fixedStageRect.width : null,
+        stageHeight: fixedStageRect ? fixedStageRect.height : null,
+        expectedStageHeight: readerReceipt && Number.isFinite(readerReceipt.stageHeight)
+          ? readerReceipt.stageHeight
+          : null,
+        overviewProjectedNodeTextPx: minimum ? minimum.overviewProjectedFontPx : null,
         minimumProjectedNodeTextPx: minimum ? minimum.projectedFontPx : null,
         minimumProjectedNodeText: minimum ? minimum.text : null,
         minimumProjectedNodeTextDetail: minimum ? minimum.detail : null,
@@ -1891,11 +1917,19 @@ function observation({ width, height, theme, metrics }) {
   const scrollHeight = Number(metrics.scrollHeight);
   const overflowX = scrollWidth > innerWidth;
   const overflowY = scrollHeight > innerHeight;
-  const minimumProjectedNodeTextPx = metrics.minimumProjectedNodeTextPx == null
+  const screenMeasuredProjectedNodeTextPx = metrics.minimumProjectedNodeTextPx == null
     ? null
     : Number(metrics.minimumProjectedNodeTextPx);
+  const minimumProjectedNodeTextPx = screenMeasuredProjectedNodeTextPx != null
+    && Math.abs(screenMeasuredProjectedNodeTextPx - MIN_PROJECTED_NODE_TEXT_PX) <= SCREEN_MEASUREMENT_EPSILON_PX
+    ? MIN_PROJECTED_NODE_TEXT_PX
+    : screenMeasuredProjectedNodeTextPx;
+  const overviewProjectedNodeTextPx = metrics.overviewProjectedNodeTextPx == null
+    ? minimumProjectedNodeTextPx
+    : Number(metrics.overviewProjectedNodeTextPx);
+  const worldProfile = metrics.worldProfile === 'large' ? 'large' : 'small';
   const readabilityOk = minimumProjectedNodeTextPx == null
-    || minimumProjectedNodeTextPx >= MIN_PROJECTED_NODE_TEXT_PX;
+    || minimumProjectedNodeTextPx + SCREEN_MEASUREMENT_EPSILON_PX >= MIN_PROJECTED_NODE_TEXT_PX;
   const legendDockIntersectionArea = Number(metrics.legendDockIntersectionArea) || 0;
   const dockStageIntersectionArea = Number(metrics.dockStageIntersectionArea) || 0;
   const dockStageGap = metrics.dockStageGap == null ? null : Number(metrics.dockStageGap);
@@ -1924,7 +1958,16 @@ function observation({ width, height, theme, metrics }) {
     diagramWidth: Number(metrics.diagramWidth) || null,
     viewBoxWidth: Number(metrics.viewBoxWidth) || null,
     ...(metrics.workflowLanes?.length ? { workflowLanes: metrics.workflowLanes } : {}),
+    worldProfile,
+    cameraScale: Number(metrics.cameraScale) || 1,
+    stageWidth: metrics.stageWidth == null ? null : Number(metrics.stageWidth),
+    stageHeight: metrics.stageHeight == null ? null : Number(metrics.stageHeight),
+    expectedStageHeight: metrics.expectedStageHeight == null ? null : Number(metrics.expectedStageHeight),
+    overviewProjectedNodeTextPx,
+    overviewReadabilityOk: overviewProjectedNodeTextPx == null
+      || overviewProjectedNodeTextPx >= MIN_PROJECTED_NODE_TEXT_PX,
     minimumProjectedNodeTextPx,
+    screenMeasuredProjectedNodeTextPx,
     minimumProjectedNodeText: metrics.minimumProjectedNodeText || null,
     minimumProjectedNodeTextDetail: metrics.minimumProjectedNodeTextDetail || null,
     minimumRequiredNodeTextPx: MIN_PROJECTED_NODE_TEXT_PX,
@@ -2074,12 +2117,17 @@ function observationDiagnostics({ artifact, allObservations, readabilityObservat
   for (const entry of readabilityObservations) {
     if (entry.readabilityOk) continue;
     diagnostics.push(failureDiagnostic({
-      code: 'viewer/projected-text-readability',
-      message: `Projected ${entry.minimumProjectedNodeTextDetail || 'node'} text is below the readability floor at ${entry.width}x${entry.height}.`,
+      code: entry.worldProfile === 'large'
+        ? 'viewer/entry-text-unreadable'
+        : 'viewer/projected-text-readability',
+      message: `${entry.worldProfile === 'large' ? 'Entry' : 'Projected'} ${entry.minimumProjectedNodeTextDetail || 'node'} text is below the readability floor at ${entry.width}x${entry.height}.`,
       subject: viewportSubject(artifact, entry),
       evidence: {
         text: entry.minimumProjectedNodeText,
         detail: entry.minimumProjectedNodeTextDetail,
+        worldProfile: entry.worldProfile,
+        overviewProjectedNodeTextPx: entry.overviewProjectedNodeTextPx,
+        cameraScale: entry.cameraScale,
         minimumProjectedNodeTextPx: entry.minimumProjectedNodeTextPx,
         minimumRequiredNodeTextPx: entry.minimumRequiredNodeTextPx,
       },
@@ -2093,7 +2141,7 @@ function observationDiagnostics({ artifact, allObservations, readabilityObservat
 
 function baseReceipt({ artifactPath, artifact, sidecars, chrome, deliveryProvenance }) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     ok: false,
     command: 'visual-check',
     evidenceKind: 'automated-browser',
@@ -2420,16 +2468,20 @@ export async function runVisualCheck({
         artifactPath: inspectionArtifact,
         ...viewport,
         theme: 'dark',
-        screenshotPath: screenshot.stagedPath,
-        writeScreenshot: (bytes) => writeStagedEvidence(ownership, screenshot.path, bytes),
+        ...(screenshot ? {
+          screenshotPath: screenshot.stagedPath,
+          writeScreenshot: (bytes) => writeStagedEvidence(ownership, screenshot.path, bytes),
+        } : {}),
       });
       verifyInspectionArtifact();
-      if (!ownership.stagedEntries.has(screenshot.path)) {
-        registerStagedEvidence(ownership, screenshot.path);
-      } else {
-        const staged = ownership.stagedEntries.get(screenshot.path);
-        if (!currentEvidenceMatches(staged.path, staged.identity, staged.evidence)) {
-          throw new Error('The staged visual-check screenshot changed after capture.');
+      if (screenshot) {
+        if (!ownership.stagedEntries.has(screenshot.path)) {
+          registerStagedEvidence(ownership, screenshot.path);
+        } else {
+          const staged = ownership.stagedEntries.get(screenshot.path);
+          if (!currentEvidenceMatches(staged.path, staged.identity, staged.evidence)) {
+            throw new Error('The staged visual-check screenshot changed after capture.');
+          }
         }
       }
       observations.set(key, observation({ ...viewport, theme: 'dark', metrics }));
