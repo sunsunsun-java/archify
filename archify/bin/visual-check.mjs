@@ -2215,9 +2215,9 @@ export class ChromeVisualBrowser {
     // after the browser exits. Retire our endpoints before replacing Chrome.
     for (const stream of this.child.stdio) stream?.destroy();
     try {
-      fs.rmSync(this.profileRoot, { recursive: true, force: true });
+      fs.rmSync(this.profileRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
     } catch {
-      // Chrome may briefly retain profile files on Windows; evidence is done.
+      // Persistent profile cleanup failure must not mask the inspection error.
     }
   }
 }
