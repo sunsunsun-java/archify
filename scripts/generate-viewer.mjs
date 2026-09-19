@@ -3,7 +3,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LARGE_WORLD_READABILITY_CONTRACT } from '../archify/renderers/shared/desktop-readability.mjs';
+import {
+  LARGE_WORLD_READABILITY_CONTRACT,
+  deriveLargeWorldReadabilityWithContract,
+} from '../archify/renderers/shared/desktop-readability.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, 'archify/assets/template.html');
@@ -50,7 +53,8 @@ try {
   const readabilityParts = generated.split(readabilityMarker);
   if (readabilityParts.length !== 2) throw new Error('Viewer source must contain exactly one readability contract marker.');
   generated = readabilityParts[0] +
-    `var archifyReadabilityContract = Object.freeze(${JSON.stringify(LARGE_WORLD_READABILITY_CONTRACT)});` +
+    `var archifyReadabilityContract = Object.freeze(${JSON.stringify(LARGE_WORLD_READABILITY_CONTRACT)});\n` +
+    `var archifyDeriveLargeWorldReadability = (${deriveLargeWorldReadabilityWithContract.toString()}).bind(null, archifyReadabilityContract);` +
     readabilityParts[1];
   for (const [marker, file, indent = 0] of fragments) {
     const source = fs.readFileSync(path.join(root, 'viewer', file), 'utf8');

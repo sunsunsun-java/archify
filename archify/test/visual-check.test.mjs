@@ -2734,7 +2734,7 @@ test('visual-check records an unreadable large-world overview but passes a reada
   });
 
   assert.equal(result.exitCode, 0);
-  assert.equal(result.receipt.schemaVersion, 2);
+  assert.equal(result.receipt.schemaVersion, 3);
   assert.equal(result.receipt.readability.status, 'pass');
   assert.ok(result.receipt.readability.viewports.every((entry) => entry.worldProfile === 'large'));
   assert.ok(result.receipt.readability.viewports.every((entry) => entry.overviewReadabilityOk === false));
@@ -2758,7 +2758,7 @@ test('visual-check reports world reachability and canonical export as independen
   assert.equal(result.receipt.viewerChrome.status, 'pass');
   assert.equal(result.receipt.worldReachability.status, 'fail');
   assert.equal(result.receipt.exportCompleteness.status, 'fail');
-  assert.ok(result.receipt.diagnostics.some(({ code }) => code === 'viewer/world-unreachable'));
+  assert.ok(result.receipt.diagnostics.some(({ code }) => code === 'viewer/world-audit-incomplete'));
   assert.ok(result.receipt.diagnostics.some(({ code }) => code === 'viewer/export-incomplete'));
 });
 

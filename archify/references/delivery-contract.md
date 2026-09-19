@@ -122,15 +122,20 @@ symlink, or dangling symlink. Run deliveries targeting the same physical output
 directory serially; one attempt must finish or be recovered before another
 begins.
 
-A successful sidecar has `schemaVersion: 1`, `status: "current"`,
+A successful delivery sidecar has `schemaVersion: 1`, `status: "current"`,
 `command: "deliver"`, a unique `receiptId`, the diagram `type`, an absolute
-`input` path, an absolute `output` path matching the inspected
-artifact, and specification/artifact SHA-256 and byte counts. Checkers treat a
-missing, malformed, unsupported, or inconsistent field as invalid. They also
-reject a sidecar symlink, including a dangling one. A checker binds provenance
-to the artifact bytes it actually checks and verifies that binding again before
-reporting success; a concurrent byte change fails. The provenance directory
-entry itself must be a single-link regular file: `deliver` and strict check fail
+`input` path, an absolute `output` path matching the inspected artifact, and
+specification/artifact SHA-256 and byte counts. Checkers treat a missing,
+malformed, unsupported, or inconsistent field as invalid. They also reject a
+sidecar symlink, including a dangling one. A checker binds provenance to the
+artifact bytes it actually checks and verifies that binding again before
+reporting success; a concurrent byte change fails.
+
+The independently generated automated-browser visual-check receipt uses
+`schemaVersion: 3`; visual-check may replace evidence owned by compatible
+historical v1/v2 receipts after validating artifact and sidecar identity.
+The provenance directory entry itself must be a single-link regular file:
+`deliver` and strict check fail
 closed with `delivery/provenance-hardlink-unsupported` when it has another hard
 link, without scanning for or guessing the sibling name.
 

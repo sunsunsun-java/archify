@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "ok": true,
   "command": "visual-check",
   "evidenceKind": "automated-browser",
@@ -8,8 +8,8 @@
   "provenance": "unknown",
   "artifact": {
     "path": "/Users/sunhonghao/.codex/worktrees/b09f/archify/benchmarks/hybrid-large-world-viewer-pilot/artifacts/architecture-30.architecture.html",
-    "sha256": "2a07225fc8e50b0821064460e36f1486ada95926b78ba5d1d3083723d239493b",
-    "bytes": 869986
+    "sha256": "2c017b36f4ef81daf2eff8f68f1164d553a027b4e08426b9dce3b8f0505d3fa3",
+    "bytes": 876462
   },
   "state": {
     "detail": "read",
@@ -974,13 +974,24 @@
   },
   "worldReachability": {
     "status": "pass",
+    "auditMode": "exhaustive-navigation",
+    "sampleSeed": "archify-large-world-v1",
     "nodeCount": 30,
+    "staticallyProvedNodeCount": 30,
+    "navigatedNodeCount": 30,
     "reachedNodeCount": 30,
     "edgeCount": 49,
+    "staticallyProvedEdgeCount": 49,
+    "navigatedEdgeCount": 49,
     "reachedEdgeCount": 49,
     "guidedViewCount": 2,
+    "reachedGuidedViewCount": 2,
+    "worldPointCount": 5,
+    "reachedWorldPointCount": 5,
     "missingNodeIds": [],
     "missingEdgeIds": [],
+    "missingGuidedViewIds": [],
+    "missingWorldPoints": [],
     "cameraStateRestored": true,
     "canonicalViewBoxUnchanged": true,
     "canonicalGeometryUnchanged": true
@@ -994,6 +1005,9 @@
     "exportedEdgeCount": 49,
     "canonicalViewBoxUnchanged": true,
     "canonicalBytesStableAfterCamera": true,
+    "canonicalBytesBefore": 185465,
+    "canonicalBytesAfter": 185465,
+    "canonicalFirstDifference": null,
     "cameraStateClean": true
   },
   "captures": {
@@ -1172,8 +1186,8 @@
         "file": "architecture-30.architecture.visual-check.html"
       },
       {
-        "sha256": "03890a0dc9ccbb69e553840240af80547381c091e35bae93776817613abfa521",
-        "bytes": 215840,
+        "sha256": "8cf064493267e7cb815e086d095d16a925c5a9efcfa83d4ad16a88e1fd69bdd1",
+        "bytes": 215978,
         "file": "architecture-30.architecture.visual-check.1440x900.light.png"
       },
       {

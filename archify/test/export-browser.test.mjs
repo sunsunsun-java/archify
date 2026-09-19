@@ -234,7 +234,18 @@ test('Export preserves menu, clipboard, semantic cards and recording lifecycles'
       assert.equal(state.urls.length,1);assert.equal(state.urls[0].revoked,true);assert.deepEqual(state.downloads,[]);
       await run(`window.Image=savedImage;HTMLCanvasElement.prototype.getContext=savedContext;HTMLCanvasElement.prototype.toBlob=savedToBlob;Archify.exportMenu.run('png')`);
       await run('exportWait(()=>exportDownloads.length===1)');
-      assert.equal((await record('retry-' + fault)).receipt['data-last-export-error-format'],undefined);
+      const retry = await record('retry-' + fault);
+      assert.equal(retry.receipt['data-last-export-error-format'],undefined);
+      assert.equal(retry.receipt['data-last-export-requested-scale'],'4');
+      assert.ok(Number(retry.receipt['data-last-export-actual-scale']) >= 1);
+      assert.ok(Number(retry.receipt['data-last-export-actual-scale']) <= 4);
+      assert.ok(Number(retry.receipt['data-last-export-actual-width']) > 0);
+      assert.ok(Number(retry.receipt['data-last-export-actual-height']) > 0);
+      assert.equal(retry.receipt['data-last-export-pixel-limit'],'16000000');
+      assert.equal(retry.receipt['data-last-export-fallback'],'svg');
+      const candidates = JSON.parse(retry.receipt['data-last-export-candidate-pixels']);
+      assert.ok(candidates.length >= 1);
+      assert.ok(candidates.at(-1).pixels <= 16000000);
     }
     await load();
     const sync = await run(`(()=>{const svg=document.querySelector('.diagram-container > svg'),clone=svg.cloneNode;svg.cloneNode=()=>{throw new Error('sync serialization')};try{Archify.exportMenu.run('svg');return false;}catch(e){return e.message==='sync serialization';}finally{svg.cloneNode=clone;}})()`);
@@ -275,11 +286,21 @@ test('Export preserves menu, clipboard, semantic cards and recording lifecycles'
         Archify.exportMenu.run('png');
         await exportWait(()=>exportAlerts.length===1);
         const webm=await Archify.motion.recordWebm({duration:250,fps:10}).then(()=>null,error=>({code:error.code,receipt:error.receipt,message:error.message}));
-        return {allocations,alert:exportAlerts[0],webm};
+        const receipt=Object.fromEntries([...document.documentElement.attributes]
+          .filter(attribute=>attribute.name.startsWith('data-last-export-'))
+          .map(attribute=>[attribute.name,attribute.value]));
+        return {allocations,alert:exportAlerts[0],receipt,webm};
       } finally { Document.prototype.createElement=create; }
     })()`);
     assert.equal(result.allocations,0);
     assert.match(result.alert,/SVG/);
+    assert.equal(result.receipt['data-last-export-requested-scale'],'4');
+    assert.equal(result.receipt['data-last-export-actual-scale'],'none');
+    assert.equal(result.receipt['data-last-export-pixel-limit'],'16000000');
+    assert.equal(result.receipt['data-last-export-fallback'],'svg');
+    assert.ok(JSON.parse(result.receipt['data-last-export-candidate-pixels']).every(
+      (candidate) => candidate.pixels > 16000000,
+    ));
     assert.equal(result.webm.code,'export/raster-budget-exceeded');
     assert.equal(result.webm.receipt.limit,16000000);
     assert.equal(result.webm.receipt.fallback,'svg');
@@ -301,6 +322,13 @@ test('Export preserves menu, clipboard, semantic cards and recording lifecycles'
     const state=await record('webm-download');
     assert.equal(state.active,'btn-export');assert.equal(state.receipt['data-last-export-format'],'webm');
     assert.equal(state.receipt['data-last-export-canonical'],'true');assert.deepEqual(state.console,[]);
+    assert.ok(Number(state.receipt['data-last-export-requested-scale']) > 0);
+    assert.equal(state.receipt['data-last-export-requested-scale'],state.receipt['data-last-export-actual-scale']);
+    assert.equal(state.receipt['data-last-export-requested-width'],state.receipt['data-last-export-actual-width']);
+    assert.equal(state.receipt['data-last-export-requested-height'],state.receipt['data-last-export-actual-height']);
+    assert.equal(state.receipt['data-last-export-pixel-limit'],'16000000');
+    assert.equal(state.receipt['data-last-export-fallback'],'svg');
+    assert.ok(JSON.parse(state.receipt['data-last-export-candidate-pixels'])[0].pixels <= 16000000);
     assert.ok(state.downloads[0].name.endsWith('.webm'));assert.match(state.downloads[0].type,/^video\/webm/);
     assert.equal(await run('Number(document.documentElement.dataset.lastMotionBytes)===exportDownloads[0].blob.size&&exportDownloads[0].blob.size>0'),true);
     assert.ok(state.tracks.length>0);assert.ok(state.tracks.every(s=>s==='ended'));

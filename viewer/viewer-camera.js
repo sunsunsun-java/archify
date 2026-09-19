@@ -334,12 +334,20 @@
           ? readabilityContract.labelSelectors.join(',')
           : 'text[data-node-label],text[data-boundary-label],[data-node-id] text[data-detail="context"]';
         var minimum = null;
-        Array.prototype.forEach.call(svg.querySelectorAll(selectors), function (text) {
+        function include(text) {
           var owner = text.closest('[data-node-id]');
           if (owner && Object.keys(wanted).length && !wanted[owner.getAttribute('data-node-id')]) return;
           var size = parseFloat(getComputedStyle(text).fontSize || text.getAttribute('font-size'));
           if (Number.isFinite(size) && size > 0 && (minimum === null || size < minimum)) minimum = size;
-        });
+        }
+        Array.prototype.forEach.call(svg.querySelectorAll(selectors), include);
+        // Third-party/legacy standalone SVGs may have semantic node groups but
+        // predate Archify's label annotations. Keep navigation functional by
+        // measuring target-owned text only; profile classification still uses
+        // the authoritative annotated selector set.
+        if (minimum === null) {
+          Array.prototype.forEach.call(svg.querySelectorAll('[data-node-id] text'), include);
+        }
         return minimum === null ? 0 : minimum;
       }
       function frameDesktop(ids, options) {
@@ -361,17 +369,16 @@
           width: Math.max(1, (maxX - minX) * contentScale),
           height: Math.max(1, (maxY - minY) * contentScale)
         };
-        var padding = options.padding || 48;
-        var left = padding;
-        var right = svgWidth - padding;
-        var top = padding;
-        var bottom = svgHeight - Math.max(padding, 72);
+        var left = 0;
+        var right = svgWidth;
+        var top = 0;
+        var bottom = svgHeight;
         var containerRect = container.getBoundingClientRect();
         var visibleTop = Math.max(0, -containerRect.top);
         var visibleBottom = Math.min(svgHeight, window.innerHeight - containerRect.top);
         if (visibleBottom - visibleTop >= 240) {
-          top = Math.max(top, visibleTop + padding);
-          bottom = Math.min(bottom, visibleBottom - Math.max(padding, 72));
+          top = Math.max(top, visibleTop);
+          bottom = Math.min(bottom, visibleBottom);
         }
         var chip = document.getElementById('focus-chip');
         if (chip && !chip.hidden) {
@@ -386,11 +393,21 @@
           else bottom = Math.min(bottom, receiptTop - 24);
         }
         if (right <= left || bottom <= top) return false;
-        var targetFitScale = Math.min((right - left) / bounds.width, (bottom - top) / bounds.height);
         var sourceFont = minimumTargetSourceFont(ids);
-        var requiredScale = sourceFont > 0 && contentScale > 0
-          ? (readabilityContract.minimumProjectedTextPx || 6) / (sourceFont * contentScale)
-          : 1;
+        var derived = typeof archifyDeriveLargeWorldReadability === 'function'
+          ? archifyDeriveLargeWorldReadability({
+              safeStageWidth: right - left,
+              safeStageHeight: bottom - top,
+              canonicalWorldWidth: viewBox.width,
+              canonicalWorldHeight: viewBox.height,
+              minimumTargetSourceFontWorldUnits: sourceFont,
+              targetBoundsWidth: Math.max(1, maxX - minX),
+              targetBoundsHeight: Math.max(1, maxY - minY)
+            })
+          : null;
+        if (!derived || contentScale <= 0) return false;
+        var targetFitScale = derived.targetFitScale / contentScale;
+        var requiredScale = derived.requiredReadableScale / contentScale;
         var dynamicMaximum = maximumCameraScale();
         var legacyMaximum = Number(options.maxScale) || (options.includeNeighbors ? 1.9 : 2.15);
         var maxScale = document.documentElement.getAttribute('data-world-profile') === 'large'
@@ -398,7 +415,10 @@
           : Math.min(dynamicMaximum, legacyMaximum);
         var targetScale = targetFitScale;
         targetScale = Math.max(1, Math.min(maxScale, targetScale));
-        var readable = sourceFont > 0 && sourceFont * contentScale * targetScale >= (readabilityContract.minimumProjectedTextPx || 6);
+        // Compare the multiplier in the same unit as the authoritative
+        // requirement. Re-multiplying the quotient can turn an exact 6px
+        // boundary into 5.999999999999999 through floating-point drift.
+        var readable = sourceFont > 0 && targetScale >= requiredScale;
         if (!readable) {
           container.setAttribute('data-camera-diagnostic', options.automaticEntry
             ? 'viewer/entry-text-unreadable'
@@ -505,6 +525,24 @@
         if (Array.isArray(active) && active.length) return reveal(active, { reason: 'selection-sync' });
         return false;
       }
+      function hasSemanticHashIntent() {
+        var guided = Archify.guidedViews && typeof Archify.guidedViews.active === 'function'
+          ? Archify.guidedViews.active() : null;
+        var active = Archify.focus && typeof Archify.focus.active === 'function'
+          ? Archify.focus.active() : null;
+        return Boolean(guided || (typeof active === 'string' && active) || (Array.isArray(active) && active.length));
+      }
+      function syncExplicitHashIntent() {
+        if (!location.hash || location.hash.length <= 1) return false;
+        if (!hasSemanticHashIntent()) {
+          reset({ automatic: true });
+          container.setAttribute('data-camera-diagnostic', 'viewer/semantic-id-invalid');
+          return false;
+        }
+        var result = syncSemantic();
+        if (result) container.removeAttribute('data-camera-diagnostic');
+        return result;
+      }
       function initialGuidedFocus() {
         var data = document.getElementById('archify-guided-views-data');
         if (!data) return [];
@@ -518,7 +556,7 @@
         automaticEntryAttempted = true;
         if (location.hash && location.hash.length > 1) {
           releaseAutomaticEntry();
-          return syncSemantic();
+          return syncExplicitHashIntent();
         }
         var receipt = Archify.readerLayout && Archify.readerLayout.receipt ? Archify.readerLayout.receipt() : null;
         if (!receipt || receipt.worldProfile !== 'large') return false;
@@ -598,7 +636,7 @@
       });
       window.addEventListener('hashchange', function () {
         releaseAutomaticEntry();
-        requestAnimationFrame(syncSemantic);
+        requestAnimationFrame(syncExplicitHashIntent);
       });
       apply();
       pinControls();

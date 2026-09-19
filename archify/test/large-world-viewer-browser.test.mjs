@@ -63,9 +63,12 @@ test('shared large-world Viewer provides a fixed readable stage for Workflow and
     assert.equal(result.exceptionDetails, undefined, result.exceptionDetails?.exception?.description);
     return result.result?.value;
   }
+  let loadSequence = 0;
   async function load(file, hash = '') {
     const loaded = browser.cdp.waitFor('Page.loadEventFired', session);
-    const result = await send('Page.navigate', { url: pathToFileURL(file).href + '?theme=light' + hash });
+    const result = await send('Page.navigate', {
+      url: pathToFileURL(file).href + '?theme=light&load=' + (++loadSequence) + hash,
+    });
     assert.equal(result.errorText, undefined);
     await loaded;
     await evaluate(`(async()=>{
@@ -99,7 +102,7 @@ test('shared large-world Viewer provides a fixed readable stage for Workflow and
       await load(set[key]);
       const current = await snapshot();
       assert.equal(current.receipt.worldProfile, 'large', `${type} ${key}`);
-      assert.ok(current.state.scale > 3, `${type} ${key} dynamic scale`);
+      assert.ok(current.state.scale > 3, `${type} ${key} dynamic scale: ${JSON.stringify(current)}`);
       assert.ok(current.projectedEntryPx >= 6, `${type} ${key} readable entry: ${JSON.stringify(current)}`);
       assert.ok(current.entry.length > 0, `${type} ${key} deterministic entry`);
       assert.equal(current.diagnostic, null);
@@ -122,4 +125,33 @@ test('shared large-world Viewer provides a fixed readable stage for Workflow and
   const deepLink = await snapshot();
   assert.equal(deepLink.entry.length, 0, 'explicit deep link suppresses automatic entry');
   assert.equal(await evaluate('Archify.focus.active()'), 'api');
+
+  await load(fixtures.architecture.large300, '#focus=missing-node');
+  const invalidDeepLink = await snapshot();
+  assert.equal(invalidDeepLink.entry.length, 0, 'an invalid explicit deep link does not select another semantic target');
+  assert.equal(invalidDeepLink.state.scale, 1, 'an invalid explicit deep link falls back to the complete world');
+  assert.equal(invalidDeepLink.diagnostic, 'viewer/semantic-id-invalid');
+  assert.equal(await evaluate('Archify.focus.active()'), null);
+
+  await load(fixtures.architecture.small);
+  const validAudit = await browser.auditCanonicalWorld();
+  assert.equal(validAudit.worldReachability.status, 'pass', JSON.stringify(validAudit));
+  await evaluate(`(()=>{
+    const svg=document.querySelector('.diagram-container > svg');
+    const node=svg.querySelector('[data-node-id]');
+    svg.appendChild(node.cloneNode(true));
+  })()`);
+  const duplicateAudit = await browser.auditCanonicalWorld();
+  assert.equal(duplicateAudit.worldReachability.status, 'fail');
+  assert.ok(duplicateAudit.diagnostics.some((entry) => entry.code === 'viewer/semantic-id-invalid'));
+
+  await load(fixtures.architecture.small);
+  await evaluate(`(()=>{
+    const svg=document.querySelector('.diagram-container > svg');
+    const edge=svg.querySelector('path[data-edge-key]');
+    edge.removeAttribute('data-edge-to');
+  })()`);
+  const endpointAudit = await browser.auditCanonicalWorld();
+  assert.equal(endpointAudit.worldReachability.status, 'fail');
+  assert.ok(endpointAudit.diagnostics.some((entry) => entry.code === 'viewer/semantic-endpoint-invalid'));
 });

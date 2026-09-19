@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "branch": "codex/adaptive-workflow-canvas-pilot",
+  "branch": "labs/adaptive-workflow-canvas-pilot",
   "coreMutations": [
     {
       "candidate": "dynamic finite zoom",

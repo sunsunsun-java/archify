@@ -675,7 +675,7 @@ function beginVisualEvidenceWrite(artifactPath, artifactBytes, outputs) {
       ...previousReceipt.evidence,
     });
 
-    if (![1, 2].includes(previous?.schemaVersion) || previous?.command !== 'visual-check') {
+    if (![1, 2, 3].includes(previous?.schemaVersion) || previous?.command !== 'visual-check') {
       return evidencePathConflict(artifactPath, outputs, outputs.receipt, {
         code: 'ownership-receipt-schema-mismatch',
       });
@@ -1756,6 +1756,157 @@ export class ChromeVisualBrowser {
       function unique(values) {
         return Array.from(new Set(values)).sort();
       }
+      function firstDifference(left, right) {
+        if (left === right) return null;
+        var length = Math.min(left.length, right.length);
+        for (var index = 0; index < length; index += 1) {
+          if (left[index] !== right[index]) return index;
+        }
+        return length;
+      }
+      function finite(value) { return Number.isFinite(Number(value)); }
+      function canonicalFrame(root) {
+        var viewBox = root.viewBox && root.viewBox.baseVal;
+        return viewBox && [viewBox.x, viewBox.y, viewBox.width, viewBox.height].every(finite) &&
+          viewBox.width > 0 && viewBox.height > 0
+          ? { x: viewBox.x, y: viewBox.y, width: viewBox.width, height: viewBox.height }
+          : null;
+      }
+      function rootBox(element) {
+        var box;
+        var expandedByBrowser = false;
+        try {
+          box = element.getBBox({ fill: true, stroke: true, markers: true, clipped: false });
+          expandedByBrowser = true;
+        } catch (_) { try { box = element.getBBox(); } catch (_) { return null; } }
+        if (!box || ![box.x, box.y, box.width, box.height].every(finite)) return null;
+        var points = [
+          [box.x, box.y], [box.x + box.width, box.y],
+          [box.x + box.width, box.y + box.height], [box.x, box.y + box.height]
+        ];
+        try {
+          var matrix = element.getCTM();
+          var rootMatrix = svg.getCTM();
+          if (matrix && rootMatrix) {
+            var inverse = rootMatrix.inverse();
+            points = points.map(function (point) {
+              var svgPoint = svg.createSVGPoint();
+              svgPoint.x = point[0];
+              svgPoint.y = point[1];
+              var transformed = svgPoint.matrixTransform(matrix).matrixTransform(inverse);
+              return [transformed.x, transformed.y];
+            });
+          }
+        } catch (_) {}
+        var xs = points.map(function (point) { return point[0]; });
+        var ys = points.map(function (point) { return point[1]; });
+        var stroke = parseFloat(getComputedStyle(element).strokeWidth || element.getAttribute('stroke-width') || '0');
+        var expansion = !expandedByBrowser && Number.isFinite(stroke) ? stroke / 2 : 0;
+        return {
+          x: Math.min.apply(Math, xs) - expansion,
+          y: Math.min.apply(Math, ys) - expansion,
+          width: Math.max.apply(Math, xs) - Math.min.apply(Math, xs) + expansion * 2,
+          height: Math.max.apply(Math, ys) - Math.min.apply(Math, ys) + expansion * 2
+        };
+      }
+      function boxInsideFrame(box, frame) {
+        return Boolean(box && frame && [box.x, box.y, box.width, box.height].every(finite) &&
+          box.x >= frame.x - 0.5 && box.y >= frame.y - 0.5 &&
+          box.x + box.width <= frame.x + frame.width + 0.5 &&
+          box.y + box.height <= frame.y + frame.height + 0.5);
+      }
+      function nodeInventory(root, diagnostics) {
+        var records = new Map();
+        Array.from(root.querySelectorAll('[data-node-id], [data-node-kind]')).forEach(function (element) {
+          var id = (element.getAttribute('data-node-id') || '').trim();
+          if (!id) {
+            diagnostics.push({ code: 'viewer/semantic-id-invalid', subject: 'node', evidence: { reason: 'missing-node-id' } });
+            return;
+          }
+          if (records.has(id)) {
+            diagnostics.push({ code: 'viewer/semantic-id-invalid', subject: id, evidence: { reason: 'duplicate-node-id' } });
+            return;
+          }
+          records.set(id, { id: id, element: element, box: rootBox(element) });
+        });
+        return Array.from(records.values()).sort(function (left, right) { return left.id.localeCompare(right.id); });
+      }
+      function edgeInventory(root, nodes, diagnostics) {
+        var nodeSet = new Set(nodes.map(function (node) { return node.id; }));
+        var grouped = new Map();
+        Array.from(root.querySelectorAll('[data-edge-from], [data-edge-to], [data-edge-key]')).forEach(function (element) {
+          var key = (element.getAttribute('data-edge-key') || '').trim();
+          var from = (element.getAttribute('data-edge-from') || '').trim();
+          var to = (element.getAttribute('data-edge-to') || '').trim();
+          if (!key) {
+            diagnostics.push({ code: 'viewer/semantic-id-invalid', subject: from + '->' + to, evidence: { reason: 'missing-edge-key' } });
+            return;
+          }
+          if (!grouped.has(key)) grouped.set(key, []);
+          grouped.get(key).push({ element: element, from: from, to: to });
+        });
+        return Array.from(grouped.entries()).map(function (entry) {
+          var key = entry[0];
+          var fragments = entry[1];
+          var endpoints = unique(fragments.map(function (fragment) { return fragment.from + '\u0000' + fragment.to; }));
+          var from = fragments[0].from;
+          var to = fragments[0].to;
+          if (endpoints.length !== 1 || !from || !to || !nodeSet.has(from) || !nodeSet.has(to)) {
+            diagnostics.push({
+              code: 'viewer/semantic-endpoint-invalid', subject: key,
+              evidence: { endpoints: endpoints, from: from, to: to, knownFrom: nodeSet.has(from), knownTo: nodeSet.has(to) }
+            });
+          }
+          var drawableElements = [];
+          fragments.forEach(function (fragment) {
+            var element = fragment.element;
+            if (element.matches('path, line, polyline, polygon')) drawableElements.push(element);
+            Array.from(element.querySelectorAll('[data-composition-edge-from][data-composition-edge-to]')).forEach(function (candidate) {
+              if (candidate.matches('path, line, polyline, polygon')) drawableElements.push(candidate);
+            });
+          });
+          var drawable = Array.from(new Set(drawableElements));
+          if (drawable.length !== 1) {
+            diagnostics.push({
+              code: 'viewer/audit-inventory-mismatch', subject: key,
+              evidence: { reason: 'edge-drawable-count', expected: 1, actual: drawable.length }
+            });
+          }
+          var labelElements = [];
+          fragments.forEach(function (fragment) {
+            var element = fragment.element;
+            if (!(element.getAttribute('data-edge-label') || '').trim()) return;
+            if (element.hasAttribute('data-detail')) {
+              labelElements.push(element);
+            } else {
+              Array.from(element.querySelectorAll('[data-detail]')).filter(function (candidate) {
+                var owner = candidate.parentElement && candidate.parentElement.closest('[data-detail]');
+                return !owner || !element.contains(owner);
+              }).forEach(function (candidate) {
+                labelElements.push(candidate);
+              });
+            }
+          });
+          var labels = Array.from(new Set(labelElements));
+          var authoredLabel = fragments.some(function (fragment) {
+            return (fragment.element.getAttribute('data-edge-label') || '').trim();
+          });
+          if (authoredLabel && labels.length !== 1) {
+            diagnostics.push({
+              code: 'viewer/audit-inventory-mismatch', subject: key,
+              evidence: { reason: 'edge-label-count', expected: 1, actual: labels.length }
+            });
+          }
+          return {
+            key: key, id: fragments[0].element.getAttribute('data-edge-id') || '',
+            from: from, to: to,
+            path: drawable[0] || null,
+            label: labels[0] || null,
+            pathBox: drawable[0] ? rootBox(drawable[0]) : null,
+            labelBox: labels[0] ? rootBox(labels[0]) : null
+          };
+        }).sort(function (left, right) { return left.key.localeCompare(right.key); });
+      }
       function nodeIds(root) {
         return unique(Array.from(root.querySelectorAll('[data-node-id]')).map(function (element) {
           return element.getAttribute('data-node-id');
@@ -1763,16 +1914,14 @@ export class ChromeVisualBrowser {
       }
       function edgeRecords(root) {
         var records = new Map();
-        Array.from(root.querySelectorAll('[data-edge-from][data-edge-to]')).forEach(function (element) {
-          var from = element.getAttribute('data-edge-from') || '';
-          var to = element.getAttribute('data-edge-to') || '';
-          var id = element.getAttribute('data-edge-id') || '';
-          var key = id || from + '->' + to;
-          if (!records.has(key)) records.set(key, { id: id, key: key, from: from, to: to });
+        Array.from(root.querySelectorAll('[data-edge-key][data-edge-from][data-edge-to]')).forEach(function (element) {
+          var key = element.getAttribute('data-edge-key') || '';
+          if (!records.has(key)) records.set(key, {
+            id: element.getAttribute('data-edge-id') || '', key: key,
+            from: element.getAttribute('data-edge-from') || '', to: element.getAttribute('data-edge-to') || ''
+          });
         });
-        return Array.from(records.values()).sort(function (left, right) {
-          return left.key < right.key ? -1 : left.key > right.key ? 1 : 0;
-        });
+        return Array.from(records.values()).sort(function (left, right) { return left.key.localeCompare(right.key); });
       }
       function geometrySignature(root) {
         return JSON.stringify(Array.from(root.querySelectorAll('[data-node-id], [data-edge-from][data-edge-to]')).map(function (element) {
@@ -1780,15 +1929,42 @@ export class ChromeVisualBrowser {
             .map(function (name) { return element.getAttribute(name); });
         }));
       }
-      function boxCenterVisible(element) {
-        var box;
-        try { box = element.getBBox(); } catch (_) { return false; }
+      function pointVisible(point) {
         var viewport = Archify.view.logicalViewport();
-        if (!viewport || !box) return false;
-        var x = box.x + box.width / 2;
-        var y = box.y + box.height / 2;
-        return x >= viewport.x - 0.5 && x <= viewport.x + viewport.width + 0.5 &&
-          y >= viewport.y - 0.5 && y <= viewport.y + viewport.height + 0.5;
+        return Boolean(viewport && point && finite(point.x) && finite(point.y) &&
+          point.x >= viewport.x - 0.5 && point.x <= viewport.x + viewport.width + 0.5 &&
+          point.y >= viewport.y - 0.5 && point.y <= viewport.y + viewport.height + 0.5);
+      }
+      function boxVisible(box) {
+        var viewport = Archify.view.logicalViewport();
+        return Boolean(viewport && box && box.x >= viewport.x - 0.5 && box.y >= viewport.y - 0.5 &&
+          box.x + box.width <= viewport.x + viewport.width + 0.5 &&
+          box.y + box.height <= viewport.y + viewport.height + 0.5);
+      }
+      function pathRepresentative(element) {
+        if (!element) return null;
+        try {
+          var length = element.getTotalLength();
+          var point = element.getPointAtLength(length / 2);
+          var matrix = element.getCTM();
+          var rootMatrix = svg.getCTM();
+          if (matrix && rootMatrix) point = point.matrixTransform(matrix).matrixTransform(rootMatrix.inverse());
+          return { x: point.x, y: point.y };
+        } catch (_) { return null; }
+      }
+      function stableSample(records, key, limit) {
+        if (records.length <= limit) return records.slice();
+        function score(value) {
+          var hash = 2166136261;
+          for (var index = 0; index < value.length; index += 1) {
+            hash ^= value.charCodeAt(index);
+            hash = Math.imul(hash, 16777619);
+          }
+          return hash >>> 0;
+        }
+        return records.slice().sort(function (left, right) {
+          return score('archify-large-world-v1\u0000' + key(left)) - score('archify-large-world-v1\u0000' + key(right));
+        }).slice(0, limit).sort(function (left, right) { return key(left).localeCompare(key(right)); });
       }
       async function reveal(ids) {
         var receipt = Archify.view.reveal(ids, { instant: true, reason: 'visual-check' });
@@ -1822,21 +1998,100 @@ export class ChromeVisualBrowser {
       var initialState = JSON.stringify(Archify.view.state());
       var initialViewBox = svg.getAttribute('viewBox');
       var initialGeometry = geometrySignature(svg);
-      var sourceNodeIds = nodeIds(svg);
-      var sourceEdges = edgeRecords(svg);
-      var beforeExport = await exportedSvg();
-      var missingNodeIds = [];
-      for (var nodeIndex = 0; nodeIndex < sourceNodeIds.length; nodeIndex += 1) {
-        var nodeId = sourceNodeIds[nodeIndex];
-        var node = Array.from(svg.querySelectorAll('[data-node-id]')).find(function (element) {
-          return element.getAttribute('data-node-id') === nodeId;
+      var diagnostics = [];
+      var frame = canonicalFrame(svg);
+      if (!frame) diagnostics.push({ code: 'viewer/canonical-bounds-invalid', subject: 'svg', evidence: { viewBox: svg.getAttribute('viewBox') } });
+      var sourceNodes = nodeInventory(svg, diagnostics);
+      var sourceNodeIds = sourceNodes.map(function (node) { return node.id; });
+      var sourceEdges = edgeInventory(svg, sourceNodes, diagnostics);
+      sourceNodes.forEach(function (node) {
+        if (!boxInsideFrame(node.box, frame)) diagnostics.push({
+          code: 'viewer/canonical-bounds-invalid', subject: node.id,
+          evidence: { kind: 'node', box: node.box, canonicalFrame: frame }
         });
-        if (!await reveal([nodeId]) || !node || !boxCenterVisible(node)) missingNodeIds.push(nodeId);
+      });
+      sourceEdges.forEach(function (edge) {
+        if (!boxInsideFrame(edge.pathBox, frame) || (edge.label && !boxInsideFrame(edge.labelBox, frame))) diagnostics.push({
+          code: 'viewer/canonical-bounds-invalid', subject: edge.key,
+          evidence: { kind: 'edge', pathBox: edge.pathBox, labelBox: edge.labelBox, canonicalFrame: frame }
+        });
+      });
+      Array.from(svg.querySelectorAll('[data-legend], .brand-mark')).forEach(function (element, index) {
+        var box = rootBox(element);
+        if (!boxInsideFrame(box, frame)) diagnostics.push({
+          code: 'viewer/canonical-bounds-invalid', subject: element.hasAttribute('data-legend') ? 'legend' : 'brand-' + index,
+          evidence: { kind: element.hasAttribute('data-legend') ? 'legend' : 'brand', box: box, canonicalFrame: frame }
+        });
+      });
+      var beforeExport = await exportedSvg();
+      var exhaustive = sourceNodes.length <= 50 && sourceEdges.length <= 50;
+      var nodeSamples = exhaustive ? sourceNodes : stableSample(sourceNodes, function (node) { return node.id; }, 12);
+      var edgeSamples = exhaustive ? sourceEdges : stableSample(sourceEdges, function (edge) { return edge.key; }, 12);
+      var missingNodeIds = [];
+      for (var nodeIndex = 0; nodeIndex < nodeSamples.length; nodeIndex += 1) {
+        var node = nodeSamples[nodeIndex];
+        if (!await reveal([node.id]) || !boxVisible(node.box)) missingNodeIds.push(node.id);
       }
       var missingEdgeIds = [];
-      for (var edgeIndex = 0; edgeIndex < sourceEdges.length; edgeIndex += 1) {
-        var edge = sourceEdges[edgeIndex];
-        if (!await reveal([edge.from, edge.to])) missingEdgeIds.push(edge.key);
+      for (var edgeIndex = 0; edgeIndex < edgeSamples.length; edgeIndex += 1) {
+        var edge = edgeSamples[edgeIndex];
+        var pathPoint = pathRepresentative(edge.path);
+        var labelPoint = edge.labelBox ? {
+          x: edge.labelBox.x + edge.labelBox.width / 2,
+          y: edge.labelBox.y + edge.labelBox.height / 2
+        } : null;
+        var target = labelPoint && pathPoint
+          ? { x: (labelPoint.x + pathPoint.x) / 2, y: (labelPoint.y + pathPoint.y) / 2 }
+          : pathPoint;
+        var navigated = target && Archify.view.centerAt(target.x, target.y, { scale: 2, minimumScale: 1, instant: true });
+        if (!navigated || !pointVisible(pathPoint) || (labelPoint && !pointVisible(labelPoint))) missingEdgeIds.push(edge.key);
+      }
+      var guidedViewIds = unique(Array.from(document.querySelectorAll('[data-guided-view-id]')).map(function (button) {
+        return button.getAttribute('data-guided-view-id');
+      }).filter(Boolean));
+      var missingGuidedViewIds = [];
+      for (var guidedIndex = 0; guidedIndex < guidedViewIds.length; guidedIndex += 1) {
+        var guidedId = guidedViewIds[guidedIndex];
+        var activated = Archify.guidedViews && Archify.guidedViews.activate(guidedId, { updateUrl: false });
+        if (Archify.guidedViews && Archify.guidedViews.handoff && Archify.guidedViews.handoff() &&
+            typeof Archify.guidedViews.settleHandoff === 'function') {
+          Archify.guidedViews.settleHandoff('visual-check');
+        }
+        var guidedCamera = Archify.view.sync();
+        if (guidedCamera && guidedCamera.finished) await guidedCamera.finished;
+        await new Promise(function (resolve) { requestAnimationFrame(function () { requestAnimationFrame(resolve); }); });
+        var guidedFocus = Archify.guidedViews && Archify.guidedViews.focus ? Archify.guidedViews.focus() : [];
+        var guidedRecords = guidedFocus.map(function (id) {
+          return sourceNodes.find(function (node) { return node.id === id; });
+        }).filter(Boolean);
+        var guidedCenter = guidedRecords.length === guidedFocus.length && guidedRecords.length ? {
+          x: (Math.min.apply(Math, guidedRecords.map(function (node) { return node.box.x; })) +
+            Math.max.apply(Math, guidedRecords.map(function (node) { return node.box.x + node.box.width; }))) / 2,
+          y: (Math.min.apply(Math, guidedRecords.map(function (node) { return node.box.y; })) +
+            Math.max.apply(Math, guidedRecords.map(function (node) { return node.box.y + node.box.height; }))) / 2
+        } : null;
+        var guidedVisible = guidedCenter && pointVisible(guidedCenter);
+        if (!activated || !guidedVisible) missingGuidedViewIds.push(guidedId);
+      }
+      if (Archify.guidedViews && Archify.guidedViews.showAll) Archify.guidedViews.showAll({ updateUrl: false });
+      var worldPoints = frame ? [
+        { id: 'top-left', x: frame.x, y: frame.y },
+        { id: 'top-right', x: frame.x + frame.width, y: frame.y },
+        { id: 'bottom-right', x: frame.x + frame.width, y: frame.y + frame.height },
+        { id: 'bottom-left', x: frame.x, y: frame.y + frame.height },
+        { id: 'center', x: frame.x + frame.width / 2, y: frame.y + frame.height / 2 }
+      ] : [];
+      var missingWorldPoints = worldPoints.filter(function (point) {
+        return !Archify.view.centerAt(point.x, point.y, { scale: 2, minimumScale: 1, instant: true }) || !pointVisible(point);
+      }).map(function (point) { return point.id; });
+      if (missingNodeIds.length || missingEdgeIds.length || missingGuidedViewIds.length || missingWorldPoints.length) {
+        diagnostics.push({
+          code: 'viewer/camera-target-unreachable', subject: 'navigation-sample',
+          evidence: {
+            missingNodeIds: missingNodeIds, missingEdgeIds: missingEdgeIds,
+            missingGuidedViewIds: missingGuidedViewIds, missingWorldPoints: missingWorldPoints
+          }
+        });
       }
       Archify.view.reset({ automatic: true });
       var afterExport = await exportedSvg();
@@ -1848,7 +2103,8 @@ export class ChromeVisualBrowser {
       var stateRestored = JSON.stringify(Archify.view.state()) === initialState;
       var viewBoxUnchanged = svg.getAttribute('viewBox') === initialViewBox;
       var geometryUnchanged = geometrySignature(svg) === initialGeometry;
-      var worldOk = missingNodeIds.length === 0 && missingEdgeIds.length === 0 &&
+      var worldOk = diagnostics.length === 0 && missingNodeIds.length === 0 && missingEdgeIds.length === 0 &&
+        missingGuidedViewIds.length === 0 && missingWorldPoints.length === 0 &&
         stateRestored && viewBoxUnchanged && geometryUnchanged;
       var exportOk = Boolean(exportedRoot) && beforeExport === afterExport &&
         JSON.stringify(exportedNodeIds) === JSON.stringify(sourceNodeIds) &&
@@ -1857,20 +2113,35 @@ export class ChromeVisualBrowser {
         exportedRoot.getAttribute('viewBox') === initialViewBox &&
         !exportedRoot.hasAttribute('data-view-scale') &&
         !exportedRoot.style.transform && !exportedRoot.style.clipPath;
+      var exportDifference = beforeExport && afterExport ? firstDifference(beforeExport, afterExport) : null;
       return {
         worldReachability: {
           status: worldOk ? 'pass' : 'fail',
+          auditMode: exhaustive ? 'exhaustive-navigation' : 'static-proof-with-deterministic-navigation-sample',
+          sampleSeed: 'archify-large-world-v1',
           nodeCount: sourceNodeIds.length,
-          reachedNodeCount: sourceNodeIds.length - missingNodeIds.length,
+          staticallyProvedNodeCount: sourceNodes.filter(function (node) { return boxInsideFrame(node.box, frame); }).length,
+          navigatedNodeCount: nodeSamples.length,
+          reachedNodeCount: nodeSamples.length - missingNodeIds.length,
           edgeCount: sourceEdges.length,
-          reachedEdgeCount: sourceEdges.length - missingEdgeIds.length,
-          guidedViewCount: document.querySelectorAll('[data-guided-view-id]').length,
+          staticallyProvedEdgeCount: sourceEdges.filter(function (edge) {
+            return boxInsideFrame(edge.pathBox, frame) && (!edge.label || boxInsideFrame(edge.labelBox, frame));
+          }).length,
+          navigatedEdgeCount: edgeSamples.length,
+          reachedEdgeCount: edgeSamples.length - missingEdgeIds.length,
+          guidedViewCount: guidedViewIds.length,
+          reachedGuidedViewCount: guidedViewIds.length - missingGuidedViewIds.length,
+          worldPointCount: worldPoints.length,
+          reachedWorldPointCount: worldPoints.length - missingWorldPoints.length,
           missingNodeIds: missingNodeIds,
           missingEdgeIds: missingEdgeIds,
+          missingGuidedViewIds: missingGuidedViewIds,
+          missingWorldPoints: missingWorldPoints,
           cameraStateRestored: stateRestored,
           canonicalViewBoxUnchanged: viewBoxUnchanged,
           canonicalGeometryUnchanged: geometryUnchanged
         },
+        diagnostics: diagnostics,
         exportCompleteness: {
           status: exportOk ? 'pass' : 'fail',
           format: 'svg',
@@ -1880,6 +2151,9 @@ export class ChromeVisualBrowser {
           exportedEdgeCount: exportedEdges.length,
           canonicalViewBoxUnchanged: Boolean(exportedRoot) && exportedRoot.getAttribute('viewBox') === initialViewBox,
           canonicalBytesStableAfterCamera: beforeExport === afterExport,
+          canonicalBytesBefore: beforeExport ? beforeExport.length : null,
+          canonicalBytesAfter: afterExport ? afterExport.length : null,
+          canonicalFirstDifference: exportDifference,
           cameraStateClean: Boolean(exportedRoot) && !exportedRoot.hasAttribute('data-view-scale') &&
             !exportedRoot.style.transform && !exportedRoot.style.clipPath
         }
@@ -2141,7 +2415,7 @@ function observationDiagnostics({ artifact, allObservations, readabilityObservat
 
 function baseReceipt({ artifactPath, artifact, sidecars, chrome, deliveryProvenance }) {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     ok: false,
     command: 'visual-check',
     evidenceKind: 'automated-browser',
@@ -2519,6 +2793,25 @@ export async function runVisualCheck({
       allObservations,
       readabilityObservations: receipt.readability.viewports,
     });
+    for (const diagnostic of canonicalAudit.diagnostics || []) {
+      receipt.diagnostics.push(failureDiagnostic({
+        code: diagnostic.code || 'viewer/world-audit-incomplete',
+        message: diagnostic.code === 'viewer/semantic-id-invalid'
+          ? 'The canonical semantic inventory contains a missing or duplicate identifier.'
+          : diagnostic.code === 'viewer/semantic-endpoint-invalid'
+            ? 'A canonical relationship references an invalid or inconsistent endpoint.'
+            : diagnostic.code === 'viewer/audit-inventory-mismatch'
+              ? 'The canonical DOM and world-audit inventory do not agree.'
+              : diagnostic.code === 'viewer/canonical-bounds-invalid'
+                ? 'Canonical drawable paint extends outside the finite world or has invalid bounds.'
+                : 'A required canonical world navigation target could not be reached.',
+        subject: { artifact, auditSubject: diagnostic.subject },
+        evidence: diagnostic.evidence || {},
+        supportedFixes: [
+          'repair the canonical semantic inventory, drawable bounds, or camera target, then rerun visual-check',
+        ],
+      }));
+    }
     receipt.containment.status = containmentPass ? 'pass' : 'fail';
     receipt.readability.status = readabilityPass ? 'pass' : 'fail';
     receipt.viewerChrome.status = viewerChromePass ? 'pass' : 'fail';
@@ -2526,8 +2819,8 @@ export async function runVisualCheck({
     receipt.captures.contactSheet = path.basename(outputs.contactSheet);
     if (!worldReachabilityPass) {
       receipt.diagnostics.push(failureDiagnostic({
-        code: 'viewer/world-unreachable',
-        message: 'The shared camera could not reach every semantic entity without changing canonical geometry.',
+        code: 'viewer/world-audit-incomplete',
+        message: 'The canonical-world audit did not prove every required semantic, paint, and navigation invariant.',
         subject: { artifact },
         evidence: receipt.worldReachability,
         supportedFixes: ['repair camera focus coverage or canonical bounds, then rerun visual-check'],

@@ -153,14 +153,23 @@
         var safeStageWidth = Math.max(1, prospectiveStageWidth - horizontalChrome);
         var safeStageHeight = Math.max(1, stageHeight - verticalChrome);
         var sourceFont = minimumSourceFont();
-        var worldScaleFit = Math.min(safeStageWidth / viewBox.width, safeStageHeight / viewBox.height);
-        var projectedTextPx = sourceFont * worldScaleFit;
+        var derived = typeof archifyDeriveLargeWorldReadability === 'function'
+          ? archifyDeriveLargeWorldReadability({
+              safeStageWidth: safeStageWidth,
+              safeStageHeight: safeStageHeight,
+              canonicalWorldWidth: viewBox.width,
+              canonicalWorldHeight: viewBox.height,
+              minimumTargetSourceFontWorldUnits: sourceFont,
+              targetBoundsWidth: 1,
+              targetBoundsHeight: 1
+            })
+          : null;
         finishProspectiveMeasurement();
-        if (![sourceFont, worldScaleFit, projectedTextPx].every(Number.isFinite) || sourceFont <= 0 || worldScaleFit <= 0) {
+        if (!derived) {
           clearWorldProfile();
           return null;
         }
-        var profile = projectedTextPx < (worldContract.minimumProjectedTextPx || 6) ? 'large' : 'small';
+        var profile = derived.worldProfile;
         if (profile === 'large') html.style.setProperty('--archify-stage-height', stageHeight + 'px');
         else html.style.removeProperty('--archify-stage-height');
         html.setAttribute('data-world-profile', profile);
@@ -176,8 +185,8 @@
           canonicalWorldWidth: viewBox.width,
           canonicalWorldHeight: viewBox.height,
           minimumSourceFontWorldUnits: sourceFont,
-          worldScaleFit: worldScaleFit,
-          projectedTextPx: projectedTextPx,
+          worldScaleFit: derived.worldScaleFit,
+          projectedTextPx: derived.projectedTextPx,
           minimumProjectedTextPx: worldContract.minimumProjectedTextPx || 6,
           obscurers: ['diagram-padding', 'navigation-dock']
         };

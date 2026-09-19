@@ -407,6 +407,7 @@
       // devices. We pick the largest integer scale in {4,3,2,1} whose target
       // pixel count fits under this cap.
       var MAX_CANVAS_PIXELS = 16000000;
+      var exportPreflights = new WeakMap();
 
       function rasterBudgetError(receipt) {
         var error = exportError('viewer.export.error.rasterBudget', {
@@ -491,7 +492,10 @@
               var quality = format === 'png' ? undefined : 0.95;
               canvas.toBlob(function (blob) {
                 if (!blob) reject(exportError('viewer.export.error.toBlobNull', { label: format }));
-                else resolve(blob);
+                else {
+                  exportPreflights.set(blob, preflight);
+                  resolve(blob);
+                }
               }, mime, quality);
             } catch (error) {
               URL.revokeObjectURL(svgUrl);
@@ -909,7 +913,10 @@
               cleanup();
               var blob = new Blob(chunks, { type: recorder.mimeType || mime });
               if (!blob.size) reject(exportError('viewer.export.error.emptyWebm'));
-              else resolve(blob);
+              else {
+                exportPreflights.set(blob, preflight);
+                resolve(blob);
+              }
             };
             drawMotionFrame(ctx, backgroundImage, motionScene, 0);
             recorder.start(250);
@@ -1108,6 +1115,7 @@
             })
         ).catch(function (err) {
           console.error(err);
+          recordPreflightReceipt(err && err.receipt ? err.receipt : null);
           var technicalMessage = err && err.message ? err.message : format;
           var message = exportMessage(err);
           document.documentElement.setAttribute('data-last-export-error-format', format);
@@ -1201,6 +1209,27 @@
           document.documentElement.removeAttribute('data-last-export-width');
           document.documentElement.removeAttribute('data-last-export-height');
         }
+        recordPreflightReceipt(exportPreflights.get(blob) || null);
+      }
+
+      function recordPreflightReceipt(preflight) {
+        var names = [
+          'requested-width', 'requested-height', 'actual-width', 'actual-height',
+          'requested-scale', 'actual-scale', 'candidate-pixels', 'pixel-limit', 'fallback'
+        ];
+        if (!preflight) {
+          names.forEach(function (name) { document.documentElement.removeAttribute('data-last-export-' + name); });
+          return;
+        }
+        document.documentElement.setAttribute('data-last-export-requested-width', String(preflight.requestedWidth));
+        document.documentElement.setAttribute('data-last-export-requested-height', String(preflight.requestedHeight));
+        document.documentElement.setAttribute('data-last-export-actual-width', String(preflight.actualWidth));
+        document.documentElement.setAttribute('data-last-export-actual-height', String(preflight.actualHeight));
+        document.documentElement.setAttribute('data-last-export-requested-scale', String(preflight.requestedScale));
+        document.documentElement.setAttribute('data-last-export-actual-scale', preflight.actualScale == null ? 'none' : String(preflight.actualScale));
+        document.documentElement.setAttribute('data-last-export-candidate-pixels', JSON.stringify(preflight.candidates || []));
+        document.documentElement.setAttribute('data-last-export-pixel-limit', String(preflight.limit));
+        document.documentElement.setAttribute('data-last-export-fallback', String(preflight.fallback || 'svg'));
       }
 
       function clearExportReceipt() {
@@ -1214,6 +1243,7 @@
         document.documentElement.removeAttribute('data-last-export-reach-state-clean');
         document.documentElement.removeAttribute('data-last-export-error-format');
         document.documentElement.removeAttribute('data-last-export-error');
+        recordPreflightReceipt(null);
       }
 
       function writePngToClipboard(blobPromise) {

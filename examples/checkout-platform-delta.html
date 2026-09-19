@@ -10448,6 +10448,56 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
   &lt;script&gt;
     var Archify = {};
     var archifyReadabilityContract = Object.freeze({&quot;version&quot;:1,&quot;minimumProjectedTextPx&quot;:6,&quot;targetPaddingCssPx&quot;:24,&quot;maximumFitMultiplier&quot;:32,&quot;maximumWorldToCssScale&quot;:4,&quot;minimumDesktopViewportWidthExclusive&quot;:720,&quot;minimumAvailableStageHeight&quot;:360,&quot;maximumStageHeight&quot;:900,&quot;stageBottomGapCssPx&quot;:24,&quot;labelSelectors&quot;:[&quot;text[data-node-label]&quot;,&quot;text[data-boundary-label]&quot;,&quot;[data-node-id] text[data-detail=\&quot;context\&quot;]&quot;]});
+var archifyDeriveLargeWorldReadability = (function deriveLargeWorldReadabilityWithContract(contract, {
+  safeStageWidth,
+  safeStageHeight,
+  canonicalWorldWidth,
+  canonicalWorldHeight,
+  minimumTargetSourceFontWorldUnits,
+  targetBoundsWidth,
+  targetBoundsHeight,
+} = {}) {
+  const values = [
+    safeStageWidth,
+    safeStageHeight,
+    canonicalWorldWidth,
+    canonicalWorldHeight,
+    minimumTargetSourceFontWorldUnits,
+    targetBoundsWidth,
+    targetBoundsHeight,
+  ];
+  if (!values.every(Number.isFinite) || values.some((value) =&gt; value &lt;= 0)) return null;
+
+  if (!contract || typeof contract !== &#39;object&#39;) return null;
+  const worldScaleFit = Math.min(
+    safeStageWidth / canonicalWorldWidth,
+    safeStageHeight / canonicalWorldHeight,
+  );
+  const projectedTextPx = minimumTargetSourceFontWorldUnits * worldScaleFit;
+  const requiredReadableScale = contract.minimumProjectedTextPx / minimumTargetSourceFontWorldUnits;
+  const paddedWidth = safeStageWidth - contract.targetPaddingCssPx * 2;
+  const paddedHeight = safeStageHeight - contract.targetPaddingCssPx * 2;
+  const targetFitScale = paddedWidth &gt; 0 &amp;&amp; paddedHeight &gt; 0
+    ? Math.min(paddedWidth / targetBoundsWidth, paddedHeight / targetBoundsHeight)
+    : 0;
+  const maximumWorldToCssScale = Math.max(
+    worldScaleFit,
+    Math.min(worldScaleFit * contract.maximumFitMultiplier, contract.maximumWorldToCssScale),
+  );
+  const targetWorldToCssScale = Math.max(worldScaleFit, requiredReadableScale);
+
+  return {
+    worldProfile: projectedTextPx &lt; contract.minimumProjectedTextPx ? &#39;large&#39; : &#39;small&#39;,
+    worldScaleFit,
+    projectedTextPx,
+    requiredReadableScale,
+    targetFitScale,
+    maximumWorldToCssScale,
+    targetWorldToCssScale,
+    cameraMultiplier: targetWorldToCssScale / worldScaleFit,
+    targetReadableAndContained: targetWorldToCssScale &lt;= Math.min(targetFitScale, maximumWorldToCssScale),
+  };
+}).bind(null, archifyReadabilityContract);
     var archifyI18nData = (function () {
       var node = document.getElementById(&#39;archify-i18n-data&#39;);
       try { return JSON.parse(node ? node.textContent : &#39;{}&#39;); }
@@ -10824,6 +10874,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           el.removeAttribute(&#39;data-story-beat-state&#39;);
           el.removeAttribute(&#39;data-story-beat-step&#39;);
           el.style.removeProperty(&#39;--story-step&#39;);
+          if (!el.style.cssText) el.removeAttribute(&#39;style&#39;);
         });
         Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-focus-match], [data-focus-selected]&#39;), function (el) {
           el.removeAttribute(&#39;data-focus-match&#39;);
@@ -10863,6 +10914,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           el.removeAttribute(&#39;data-route-journey-state&#39;);
           el.removeAttribute(&#39;data-route-journey-current&#39;);
           el.style.removeProperty(&#39;--route-step&#39;);
+          if (!el.style.cssText) el.removeAttribute(&#39;style&#39;);
         });
         Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-share-route-match], [data-share-route-step], [data-share-route-start], [data-share-route-end], [data-share-route-middle]&#39;), function (el) {
           el.removeAttribute(&#39;data-share-route-match&#39;);
@@ -10883,6 +10935,14 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-node-id][aria-pressed]&#39;), function (el) {
           el.setAttribute(&#39;aria-pressed&#39;, &#39;false&#39;);
         });
+        // Interaction modules may remove their data attributes before export
+        // while leaving an empty inline style shell behind. Empty style
+        // attributes carry no authored geometry or appearance and would make
+        // the canonical bytes depend on navigation history.
+        Array.prototype.forEach.call(clone.querySelectorAll(&#39;[style]&#39;), function (el) {
+          if (!el.style.cssText) el.removeAttribute(&#39;style&#39;);
+        });
+        if (!clone.style.cssText) clone.removeAttribute(&#39;style&#39;);
         return !clone.hasAttribute(&#39;data-view-scale&#39;) &amp;&amp;
           !clone.hasAttribute(&#39;data-focus-active&#39;) &amp;&amp;
           !clone.hasAttribute(&#39;data-reach-active&#39;) &amp;&amp;
@@ -11273,6 +11333,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       // devices. We pick the largest integer scale in {4,3,2,1} whose target
       // pixel count fits under this cap.
       var MAX_CANVAS_PIXELS = 16000000;
+      var exportPreflights = new WeakMap();
 
       function rasterBudgetError(receipt) {
         var error = exportError(&#39;viewer.export.error.rasterBudget&#39;, {
@@ -11357,7 +11418,10 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
               var quality = format === &#39;png&#39; ? undefined : 0.95;
               canvas.toBlob(function (blob) {
                 if (!blob) reject(exportError(&#39;viewer.export.error.toBlobNull&#39;, { label: format }));
-                else resolve(blob);
+                else {
+                  exportPreflights.set(blob, preflight);
+                  resolve(blob);
+                }
               }, mime, quality);
             } catch (error) {
               URL.revokeObjectURL(svgUrl);
@@ -11775,7 +11839,10 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
               cleanup();
               var blob = new Blob(chunks, { type: recorder.mimeType || mime });
               if (!blob.size) reject(exportError(&#39;viewer.export.error.emptyWebm&#39;));
-              else resolve(blob);
+              else {
+                exportPreflights.set(blob, preflight);
+                resolve(blob);
+              }
             };
             drawMotionFrame(ctx, backgroundImage, motionScene, 0);
             recorder.start(250);
@@ -11974,6 +12041,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             })
         ).catch(function (err) {
           console.error(err);
+          recordPreflightReceipt(err &amp;&amp; err.receipt ? err.receipt : null);
           var technicalMessage = err &amp;&amp; err.message ? err.message : format;
           var message = exportMessage(err);
           document.documentElement.setAttribute(&#39;data-last-export-error-format&#39;, format);
@@ -12067,6 +12135,27 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           document.documentElement.removeAttribute(&#39;data-last-export-width&#39;);
           document.documentElement.removeAttribute(&#39;data-last-export-height&#39;);
         }
+        recordPreflightReceipt(exportPreflights.get(blob) || null);
+      }
+
+      function recordPreflightReceipt(preflight) {
+        var names = [
+          &#39;requested-width&#39;, &#39;requested-height&#39;, &#39;actual-width&#39;, &#39;actual-height&#39;,
+          &#39;requested-scale&#39;, &#39;actual-scale&#39;, &#39;candidate-pixels&#39;, &#39;pixel-limit&#39;, &#39;fallback&#39;
+        ];
+        if (!preflight) {
+          names.forEach(function (name) { document.documentElement.removeAttribute(&#39;data-last-export-&#39; + name); });
+          return;
+        }
+        document.documentElement.setAttribute(&#39;data-last-export-requested-width&#39;, String(preflight.requestedWidth));
+        document.documentElement.setAttribute(&#39;data-last-export-requested-height&#39;, String(preflight.requestedHeight));
+        document.documentElement.setAttribute(&#39;data-last-export-actual-width&#39;, String(preflight.actualWidth));
+        document.documentElement.setAttribute(&#39;data-last-export-actual-height&#39;, String(preflight.actualHeight));
+        document.documentElement.setAttribute(&#39;data-last-export-requested-scale&#39;, String(preflight.requestedScale));
+        document.documentElement.setAttribute(&#39;data-last-export-actual-scale&#39;, preflight.actualScale == null ? &#39;none&#39; : String(preflight.actualScale));
+        document.documentElement.setAttribute(&#39;data-last-export-candidate-pixels&#39;, JSON.stringify(preflight.candidates || []));
+        document.documentElement.setAttribute(&#39;data-last-export-pixel-limit&#39;, String(preflight.limit));
+        document.documentElement.setAttribute(&#39;data-last-export-fallback&#39;, String(preflight.fallback || &#39;svg&#39;));
       }
 
       function clearExportReceipt() {
@@ -12080,6 +12169,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         document.documentElement.removeAttribute(&#39;data-last-export-reach-state-clean&#39;);
         document.documentElement.removeAttribute(&#39;data-last-export-error-format&#39;);
         document.documentElement.removeAttribute(&#39;data-last-export-error&#39;);
+        recordPreflightReceipt(null);
       }
 
       function writePngToClipboard(blobPromise) {
@@ -15305,7 +15395,6 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         panel.setAttribute(&#39;data-story-follow-node&#39;, step.nodeId);
         var receipt = Archify.view.reveal(ids, {
           reason: options.manual === true ? &#39;story-beat&#39; : &#39;story-follow&#39;,
-          padding: 64,
           maxScale: 1.65,
           duration: STORY_FOLLOW_DURATION_MS,
           instant: options.instant === true || reducedMotion() || document.documentElement.getAttribute(&#39;data-motion&#39;) !== &#39;live&#39;
@@ -16075,6 +16164,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       };
     })();
 
+
     /* ============================================================
        Adaptive Reader Shell — one diagram across laptop and monitor.
        The canonical SVG and viewBox never change. On ordinary desktop pages,
@@ -16278,14 +16368,23 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         var safeStageWidth = Math.max(1, prospectiveStageWidth - horizontalChrome);
         var safeStageHeight = Math.max(1, stageHeight - verticalChrome);
         var sourceFont = minimumSourceFont();
-        var worldScaleFit = Math.min(safeStageWidth / viewBox.width, safeStageHeight / viewBox.height);
-        var projectedTextPx = sourceFont * worldScaleFit;
+        var derived = typeof archifyDeriveLargeWorldReadability === &#39;function&#39;
+          ? archifyDeriveLargeWorldReadability({
+              safeStageWidth: safeStageWidth,
+              safeStageHeight: safeStageHeight,
+              canonicalWorldWidth: viewBox.width,
+              canonicalWorldHeight: viewBox.height,
+              minimumTargetSourceFontWorldUnits: sourceFont,
+              targetBoundsWidth: 1,
+              targetBoundsHeight: 1
+            })
+          : null;
         finishProspectiveMeasurement();
-        if (![sourceFont, worldScaleFit, projectedTextPx].every(Number.isFinite) || sourceFont &lt;= 0 || worldScaleFit &lt;= 0) {
+        if (!derived) {
           clearWorldProfile();
           return null;
         }
-        var profile = projectedTextPx &lt; (worldContract.minimumProjectedTextPx || 6) ? &#39;large&#39; : &#39;small&#39;;
+        var profile = derived.worldProfile;
         if (profile === &#39;large&#39;) html.style.setProperty(&#39;--archify-stage-height&#39;, stageHeight + &#39;px&#39;);
         else html.style.removeProperty(&#39;--archify-stage-height&#39;);
         html.setAttribute(&#39;data-world-profile&#39;, profile);
@@ -16301,8 +16400,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           canonicalWorldWidth: viewBox.width,
           canonicalWorldHeight: viewBox.height,
           minimumSourceFontWorldUnits: sourceFont,
-          worldScaleFit: worldScaleFit,
-          projectedTextPx: projectedTextPx,
+          worldScaleFit: derived.worldScaleFit,
+          projectedTextPx: derived.projectedTextPx,
           minimumProjectedTextPx: worldContract.minimumProjectedTextPx || 6,
           obscurers: [&#39;diagram-padding&#39;, &#39;navigation-dock&#39;]
         };
@@ -17067,12 +17166,20 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           ? readabilityContract.labelSelectors.join(&#39;,&#39;)
           : &#39;text[data-node-label],text[data-boundary-label],[data-node-id] text[data-detail=&quot;context&quot;]&#39;;
         var minimum = null;
-        Array.prototype.forEach.call(svg.querySelectorAll(selectors), function (text) {
+        function include(text) {
           var owner = text.closest(&#39;[data-node-id]&#39;);
           if (owner &amp;&amp; Object.keys(wanted).length &amp;&amp; !wanted[owner.getAttribute(&#39;data-node-id&#39;)]) return;
           var size = parseFloat(getComputedStyle(text).fontSize || text.getAttribute(&#39;font-size&#39;));
           if (Number.isFinite(size) &amp;&amp; size &gt; 0 &amp;&amp; (minimum === null || size &lt; minimum)) minimum = size;
-        });
+        }
+        Array.prototype.forEach.call(svg.querySelectorAll(selectors), include);
+        // Third-party/legacy standalone SVGs may have semantic node groups but
+        // predate Archify&#39;s label annotations. Keep navigation functional by
+        // measuring target-owned text only; profile classification still uses
+        // the authoritative annotated selector set.
+        if (minimum === null) {
+          Array.prototype.forEach.call(svg.querySelectorAll(&#39;[data-node-id] text&#39;), include);
+        }
         return minimum === null ? 0 : minimum;
       }
       function frameDesktop(ids, options) {
@@ -17094,17 +17201,16 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           width: Math.max(1, (maxX - minX) * contentScale),
           height: Math.max(1, (maxY - minY) * contentScale)
         };
-        var padding = options.padding || 48;
-        var left = padding;
-        var right = svgWidth - padding;
-        var top = padding;
-        var bottom = svgHeight - Math.max(padding, 72);
+        var left = 0;
+        var right = svgWidth;
+        var top = 0;
+        var bottom = svgHeight;
         var containerRect = container.getBoundingClientRect();
         var visibleTop = Math.max(0, -containerRect.top);
         var visibleBottom = Math.min(svgHeight, window.innerHeight - containerRect.top);
         if (visibleBottom - visibleTop &gt;= 240) {
-          top = Math.max(top, visibleTop + padding);
-          bottom = Math.min(bottom, visibleBottom - Math.max(padding, 72));
+          top = Math.max(top, visibleTop);
+          bottom = Math.min(bottom, visibleBottom);
         }
         var chip = document.getElementById(&#39;focus-chip&#39;);
         if (chip &amp;&amp; !chip.hidden) {
@@ -17119,11 +17225,21 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           else bottom = Math.min(bottom, receiptTop - 24);
         }
         if (right &lt;= left || bottom &lt;= top) return false;
-        var targetFitScale = Math.min((right - left) / bounds.width, (bottom - top) / bounds.height);
         var sourceFont = minimumTargetSourceFont(ids);
-        var requiredScale = sourceFont &gt; 0 &amp;&amp; contentScale &gt; 0
-          ? (readabilityContract.minimumProjectedTextPx || 6) / (sourceFont * contentScale)
-          : 1;
+        var derived = typeof archifyDeriveLargeWorldReadability === &#39;function&#39;
+          ? archifyDeriveLargeWorldReadability({
+              safeStageWidth: right - left,
+              safeStageHeight: bottom - top,
+              canonicalWorldWidth: viewBox.width,
+              canonicalWorldHeight: viewBox.height,
+              minimumTargetSourceFontWorldUnits: sourceFont,
+              targetBoundsWidth: Math.max(1, maxX - minX),
+              targetBoundsHeight: Math.max(1, maxY - minY)
+            })
+          : null;
+        if (!derived || contentScale &lt;= 0) return false;
+        var targetFitScale = derived.targetFitScale / contentScale;
+        var requiredScale = derived.requiredReadableScale / contentScale;
         var dynamicMaximum = maximumCameraScale();
         var legacyMaximum = Number(options.maxScale) || (options.includeNeighbors ? 1.9 : 2.15);
         var maxScale = document.documentElement.getAttribute(&#39;data-world-profile&#39;) === &#39;large&#39;
@@ -17131,7 +17247,10 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           : Math.min(dynamicMaximum, legacyMaximum);
         var targetScale = targetFitScale;
         targetScale = Math.max(1, Math.min(maxScale, targetScale));
-        var readable = sourceFont &gt; 0 &amp;&amp; sourceFont * contentScale * targetScale &gt;= (readabilityContract.minimumProjectedTextPx || 6);
+        // Compare the multiplier in the same unit as the authoritative
+        // requirement. Re-multiplying the quotient can turn an exact 6px
+        // boundary into 5.999999999999999 through floating-point drift.
+        var readable = sourceFont &gt; 0 &amp;&amp; targetScale &gt;= requiredScale;
         if (!readable) {
           container.setAttribute(&#39;data-camera-diagnostic&#39;, options.automaticEntry
             ? &#39;viewer/entry-text-unreadable&#39;
@@ -17238,6 +17357,24 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         if (Array.isArray(active) &amp;&amp; active.length) return reveal(active, { reason: &#39;selection-sync&#39; });
         return false;
       }
+      function hasSemanticHashIntent() {
+        var guided = Archify.guidedViews &amp;&amp; typeof Archify.guidedViews.active === &#39;function&#39;
+          ? Archify.guidedViews.active() : null;
+        var active = Archify.focus &amp;&amp; typeof Archify.focus.active === &#39;function&#39;
+          ? Archify.focus.active() : null;
+        return Boolean(guided || (typeof active === &#39;string&#39; &amp;&amp; active) || (Array.isArray(active) &amp;&amp; active.length));
+      }
+      function syncExplicitHashIntent() {
+        if (!location.hash || location.hash.length &lt;= 1) return false;
+        if (!hasSemanticHashIntent()) {
+          reset({ automatic: true });
+          container.setAttribute(&#39;data-camera-diagnostic&#39;, &#39;viewer/semantic-id-invalid&#39;);
+          return false;
+        }
+        var result = syncSemantic();
+        if (result) container.removeAttribute(&#39;data-camera-diagnostic&#39;);
+        return result;
+      }
       function initialGuidedFocus() {
         var data = document.getElementById(&#39;archify-guided-views-data&#39;);
         if (!data) return [];
@@ -17251,7 +17388,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         automaticEntryAttempted = true;
         if (location.hash &amp;&amp; location.hash.length &gt; 1) {
           releaseAutomaticEntry();
-          return syncSemantic();
+          return syncExplicitHashIntent();
         }
         var receipt = Archify.readerLayout &amp;&amp; Archify.readerLayout.receipt ? Archify.readerLayout.receipt() : null;
         if (!receipt || receipt.worldProfile !== &#39;large&#39;) return false;
@@ -17331,7 +17468,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       });
       window.addEventListener(&#39;hashchange&#39;, function () {
         releaseAutomaticEntry();
-        requestAnimationFrame(syncSemantic);
+        requestAnimationFrame(syncExplicitHashIntent);
       });
       apply();
       pinControls();
@@ -18862,7 +18999,6 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             includeNeighbors: false,
             reason: &#39;route-journey&#39;,
             maxScale: 1.65,
-            padding: 64,
             duration: 360,
             instant: !journeyMotionAllowed()
           });
@@ -19357,6 +19493,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         }
       };
     })();
+
 
     /* ============================================================
        Semantic Lens — a counted, viewer-only legend over data-node-kind.
@@ -26185,6 +26322,56 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
   &lt;script&gt;
     var Archify = {};
     var archifyReadabilityContract = Object.freeze({&quot;version&quot;:1,&quot;minimumProjectedTextPx&quot;:6,&quot;targetPaddingCssPx&quot;:24,&quot;maximumFitMultiplier&quot;:32,&quot;maximumWorldToCssScale&quot;:4,&quot;minimumDesktopViewportWidthExclusive&quot;:720,&quot;minimumAvailableStageHeight&quot;:360,&quot;maximumStageHeight&quot;:900,&quot;stageBottomGapCssPx&quot;:24,&quot;labelSelectors&quot;:[&quot;text[data-node-label]&quot;,&quot;text[data-boundary-label]&quot;,&quot;[data-node-id] text[data-detail=\&quot;context\&quot;]&quot;]});
+var archifyDeriveLargeWorldReadability = (function deriveLargeWorldReadabilityWithContract(contract, {
+  safeStageWidth,
+  safeStageHeight,
+  canonicalWorldWidth,
+  canonicalWorldHeight,
+  minimumTargetSourceFontWorldUnits,
+  targetBoundsWidth,
+  targetBoundsHeight,
+} = {}) {
+  const values = [
+    safeStageWidth,
+    safeStageHeight,
+    canonicalWorldWidth,
+    canonicalWorldHeight,
+    minimumTargetSourceFontWorldUnits,
+    targetBoundsWidth,
+    targetBoundsHeight,
+  ];
+  if (!values.every(Number.isFinite) || values.some((value) =&gt; value &lt;= 0)) return null;
+
+  if (!contract || typeof contract !== &#39;object&#39;) return null;
+  const worldScaleFit = Math.min(
+    safeStageWidth / canonicalWorldWidth,
+    safeStageHeight / canonicalWorldHeight,
+  );
+  const projectedTextPx = minimumTargetSourceFontWorldUnits * worldScaleFit;
+  const requiredReadableScale = contract.minimumProjectedTextPx / minimumTargetSourceFontWorldUnits;
+  const paddedWidth = safeStageWidth - contract.targetPaddingCssPx * 2;
+  const paddedHeight = safeStageHeight - contract.targetPaddingCssPx * 2;
+  const targetFitScale = paddedWidth &gt; 0 &amp;&amp; paddedHeight &gt; 0
+    ? Math.min(paddedWidth / targetBoundsWidth, paddedHeight / targetBoundsHeight)
+    : 0;
+  const maximumWorldToCssScale = Math.max(
+    worldScaleFit,
+    Math.min(worldScaleFit * contract.maximumFitMultiplier, contract.maximumWorldToCssScale),
+  );
+  const targetWorldToCssScale = Math.max(worldScaleFit, requiredReadableScale);
+
+  return {
+    worldProfile: projectedTextPx &lt; contract.minimumProjectedTextPx ? &#39;large&#39; : &#39;small&#39;,
+    worldScaleFit,
+    projectedTextPx,
+    requiredReadableScale,
+    targetFitScale,
+    maximumWorldToCssScale,
+    targetWorldToCssScale,
+    cameraMultiplier: targetWorldToCssScale / worldScaleFit,
+    targetReadableAndContained: targetWorldToCssScale &lt;= Math.min(targetFitScale, maximumWorldToCssScale),
+  };
+}).bind(null, archifyReadabilityContract);
     var archifyI18nData = (function () {
       var node = document.getElementById(&#39;archify-i18n-data&#39;);
       try { return JSON.parse(node ? node.textContent : &#39;{}&#39;); }
@@ -26561,6 +26748,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           el.removeAttribute(&#39;data-story-beat-state&#39;);
           el.removeAttribute(&#39;data-story-beat-step&#39;);
           el.style.removeProperty(&#39;--story-step&#39;);
+          if (!el.style.cssText) el.removeAttribute(&#39;style&#39;);
         });
         Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-focus-match], [data-focus-selected]&#39;), function (el) {
           el.removeAttribute(&#39;data-focus-match&#39;);
@@ -26600,6 +26788,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           el.removeAttribute(&#39;data-route-journey-state&#39;);
           el.removeAttribute(&#39;data-route-journey-current&#39;);
           el.style.removeProperty(&#39;--route-step&#39;);
+          if (!el.style.cssText) el.removeAttribute(&#39;style&#39;);
         });
         Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-share-route-match], [data-share-route-step], [data-share-route-start], [data-share-route-end], [data-share-route-middle]&#39;), function (el) {
           el.removeAttribute(&#39;data-share-route-match&#39;);
@@ -26620,6 +26809,14 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         Array.prototype.forEach.call(clone.querySelectorAll(&#39;[data-node-id][aria-pressed]&#39;), function (el) {
           el.setAttribute(&#39;aria-pressed&#39;, &#39;false&#39;);
         });
+        // Interaction modules may remove their data attributes before export
+        // while leaving an empty inline style shell behind. Empty style
+        // attributes carry no authored geometry or appearance and would make
+        // the canonical bytes depend on navigation history.
+        Array.prototype.forEach.call(clone.querySelectorAll(&#39;[style]&#39;), function (el) {
+          if (!el.style.cssText) el.removeAttribute(&#39;style&#39;);
+        });
+        if (!clone.style.cssText) clone.removeAttribute(&#39;style&#39;);
         return !clone.hasAttribute(&#39;data-view-scale&#39;) &amp;&amp;
           !clone.hasAttribute(&#39;data-focus-active&#39;) &amp;&amp;
           !clone.hasAttribute(&#39;data-reach-active&#39;) &amp;&amp;
@@ -27010,6 +27207,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       // devices. We pick the largest integer scale in {4,3,2,1} whose target
       // pixel count fits under this cap.
       var MAX_CANVAS_PIXELS = 16000000;
+      var exportPreflights = new WeakMap();
 
       function rasterBudgetError(receipt) {
         var error = exportError(&#39;viewer.export.error.rasterBudget&#39;, {
@@ -27094,7 +27292,10 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
               var quality = format === &#39;png&#39; ? undefined : 0.95;
               canvas.toBlob(function (blob) {
                 if (!blob) reject(exportError(&#39;viewer.export.error.toBlobNull&#39;, { label: format }));
-                else resolve(blob);
+                else {
+                  exportPreflights.set(blob, preflight);
+                  resolve(blob);
+                }
               }, mime, quality);
             } catch (error) {
               URL.revokeObjectURL(svgUrl);
@@ -27512,7 +27713,10 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
               cleanup();
               var blob = new Blob(chunks, { type: recorder.mimeType || mime });
               if (!blob.size) reject(exportError(&#39;viewer.export.error.emptyWebm&#39;));
-              else resolve(blob);
+              else {
+                exportPreflights.set(blob, preflight);
+                resolve(blob);
+              }
             };
             drawMotionFrame(ctx, backgroundImage, motionScene, 0);
             recorder.start(250);
@@ -27711,6 +27915,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             })
         ).catch(function (err) {
           console.error(err);
+          recordPreflightReceipt(err &amp;&amp; err.receipt ? err.receipt : null);
           var technicalMessage = err &amp;&amp; err.message ? err.message : format;
           var message = exportMessage(err);
           document.documentElement.setAttribute(&#39;data-last-export-error-format&#39;, format);
@@ -27804,6 +28009,27 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           document.documentElement.removeAttribute(&#39;data-last-export-width&#39;);
           document.documentElement.removeAttribute(&#39;data-last-export-height&#39;);
         }
+        recordPreflightReceipt(exportPreflights.get(blob) || null);
+      }
+
+      function recordPreflightReceipt(preflight) {
+        var names = [
+          &#39;requested-width&#39;, &#39;requested-height&#39;, &#39;actual-width&#39;, &#39;actual-height&#39;,
+          &#39;requested-scale&#39;, &#39;actual-scale&#39;, &#39;candidate-pixels&#39;, &#39;pixel-limit&#39;, &#39;fallback&#39;
+        ];
+        if (!preflight) {
+          names.forEach(function (name) { document.documentElement.removeAttribute(&#39;data-last-export-&#39; + name); });
+          return;
+        }
+        document.documentElement.setAttribute(&#39;data-last-export-requested-width&#39;, String(preflight.requestedWidth));
+        document.documentElement.setAttribute(&#39;data-last-export-requested-height&#39;, String(preflight.requestedHeight));
+        document.documentElement.setAttribute(&#39;data-last-export-actual-width&#39;, String(preflight.actualWidth));
+        document.documentElement.setAttribute(&#39;data-last-export-actual-height&#39;, String(preflight.actualHeight));
+        document.documentElement.setAttribute(&#39;data-last-export-requested-scale&#39;, String(preflight.requestedScale));
+        document.documentElement.setAttribute(&#39;data-last-export-actual-scale&#39;, preflight.actualScale == null ? &#39;none&#39; : String(preflight.actualScale));
+        document.documentElement.setAttribute(&#39;data-last-export-candidate-pixels&#39;, JSON.stringify(preflight.candidates || []));
+        document.documentElement.setAttribute(&#39;data-last-export-pixel-limit&#39;, String(preflight.limit));
+        document.documentElement.setAttribute(&#39;data-last-export-fallback&#39;, String(preflight.fallback || &#39;svg&#39;));
       }
 
       function clearExportReceipt() {
@@ -27817,6 +28043,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         document.documentElement.removeAttribute(&#39;data-last-export-reach-state-clean&#39;);
         document.documentElement.removeAttribute(&#39;data-last-export-error-format&#39;);
         document.documentElement.removeAttribute(&#39;data-last-export-error&#39;);
+        recordPreflightReceipt(null);
       }
 
       function writePngToClipboard(blobPromise) {
@@ -31042,7 +31269,6 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         panel.setAttribute(&#39;data-story-follow-node&#39;, step.nodeId);
         var receipt = Archify.view.reveal(ids, {
           reason: options.manual === true ? &#39;story-beat&#39; : &#39;story-follow&#39;,
-          padding: 64,
           maxScale: 1.65,
           duration: STORY_FOLLOW_DURATION_MS,
           instant: options.instant === true || reducedMotion() || document.documentElement.getAttribute(&#39;data-motion&#39;) !== &#39;live&#39;
@@ -31812,6 +32038,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       };
     })();
 
+
     /* ============================================================
        Adaptive Reader Shell — one diagram across laptop and monitor.
        The canonical SVG and viewBox never change. On ordinary desktop pages,
@@ -32015,14 +32242,23 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         var safeStageWidth = Math.max(1, prospectiveStageWidth - horizontalChrome);
         var safeStageHeight = Math.max(1, stageHeight - verticalChrome);
         var sourceFont = minimumSourceFont();
-        var worldScaleFit = Math.min(safeStageWidth / viewBox.width, safeStageHeight / viewBox.height);
-        var projectedTextPx = sourceFont * worldScaleFit;
+        var derived = typeof archifyDeriveLargeWorldReadability === &#39;function&#39;
+          ? archifyDeriveLargeWorldReadability({
+              safeStageWidth: safeStageWidth,
+              safeStageHeight: safeStageHeight,
+              canonicalWorldWidth: viewBox.width,
+              canonicalWorldHeight: viewBox.height,
+              minimumTargetSourceFontWorldUnits: sourceFont,
+              targetBoundsWidth: 1,
+              targetBoundsHeight: 1
+            })
+          : null;
         finishProspectiveMeasurement();
-        if (![sourceFont, worldScaleFit, projectedTextPx].every(Number.isFinite) || sourceFont &lt;= 0 || worldScaleFit &lt;= 0) {
+        if (!derived) {
           clearWorldProfile();
           return null;
         }
-        var profile = projectedTextPx &lt; (worldContract.minimumProjectedTextPx || 6) ? &#39;large&#39; : &#39;small&#39;;
+        var profile = derived.worldProfile;
         if (profile === &#39;large&#39;) html.style.setProperty(&#39;--archify-stage-height&#39;, stageHeight + &#39;px&#39;);
         else html.style.removeProperty(&#39;--archify-stage-height&#39;);
         html.setAttribute(&#39;data-world-profile&#39;, profile);
@@ -32038,8 +32274,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           canonicalWorldWidth: viewBox.width,
           canonicalWorldHeight: viewBox.height,
           minimumSourceFontWorldUnits: sourceFont,
-          worldScaleFit: worldScaleFit,
-          projectedTextPx: projectedTextPx,
+          worldScaleFit: derived.worldScaleFit,
+          projectedTextPx: derived.projectedTextPx,
           minimumProjectedTextPx: worldContract.minimumProjectedTextPx || 6,
           obscurers: [&#39;diagram-padding&#39;, &#39;navigation-dock&#39;]
         };
@@ -32804,12 +33040,20 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           ? readabilityContract.labelSelectors.join(&#39;,&#39;)
           : &#39;text[data-node-label],text[data-boundary-label],[data-node-id] text[data-detail=&quot;context&quot;]&#39;;
         var minimum = null;
-        Array.prototype.forEach.call(svg.querySelectorAll(selectors), function (text) {
+        function include(text) {
           var owner = text.closest(&#39;[data-node-id]&#39;);
           if (owner &amp;&amp; Object.keys(wanted).length &amp;&amp; !wanted[owner.getAttribute(&#39;data-node-id&#39;)]) return;
           var size = parseFloat(getComputedStyle(text).fontSize || text.getAttribute(&#39;font-size&#39;));
           if (Number.isFinite(size) &amp;&amp; size &gt; 0 &amp;&amp; (minimum === null || size &lt; minimum)) minimum = size;
-        });
+        }
+        Array.prototype.forEach.call(svg.querySelectorAll(selectors), include);
+        // Third-party/legacy standalone SVGs may have semantic node groups but
+        // predate Archify&#39;s label annotations. Keep navigation functional by
+        // measuring target-owned text only; profile classification still uses
+        // the authoritative annotated selector set.
+        if (minimum === null) {
+          Array.prototype.forEach.call(svg.querySelectorAll(&#39;[data-node-id] text&#39;), include);
+        }
         return minimum === null ? 0 : minimum;
       }
       function frameDesktop(ids, options) {
@@ -32831,17 +33075,16 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           width: Math.max(1, (maxX - minX) * contentScale),
           height: Math.max(1, (maxY - minY) * contentScale)
         };
-        var padding = options.padding || 48;
-        var left = padding;
-        var right = svgWidth - padding;
-        var top = padding;
-        var bottom = svgHeight - Math.max(padding, 72);
+        var left = 0;
+        var right = svgWidth;
+        var top = 0;
+        var bottom = svgHeight;
         var containerRect = container.getBoundingClientRect();
         var visibleTop = Math.max(0, -containerRect.top);
         var visibleBottom = Math.min(svgHeight, window.innerHeight - containerRect.top);
         if (visibleBottom - visibleTop &gt;= 240) {
-          top = Math.max(top, visibleTop + padding);
-          bottom = Math.min(bottom, visibleBottom - Math.max(padding, 72));
+          top = Math.max(top, visibleTop);
+          bottom = Math.min(bottom, visibleBottom);
         }
         var chip = document.getElementById(&#39;focus-chip&#39;);
         if (chip &amp;&amp; !chip.hidden) {
@@ -32856,11 +33099,21 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           else bottom = Math.min(bottom, receiptTop - 24);
         }
         if (right &lt;= left || bottom &lt;= top) return false;
-        var targetFitScale = Math.min((right - left) / bounds.width, (bottom - top) / bounds.height);
         var sourceFont = minimumTargetSourceFont(ids);
-        var requiredScale = sourceFont &gt; 0 &amp;&amp; contentScale &gt; 0
-          ? (readabilityContract.minimumProjectedTextPx || 6) / (sourceFont * contentScale)
-          : 1;
+        var derived = typeof archifyDeriveLargeWorldReadability === &#39;function&#39;
+          ? archifyDeriveLargeWorldReadability({
+              safeStageWidth: right - left,
+              safeStageHeight: bottom - top,
+              canonicalWorldWidth: viewBox.width,
+              canonicalWorldHeight: viewBox.height,
+              minimumTargetSourceFontWorldUnits: sourceFont,
+              targetBoundsWidth: Math.max(1, maxX - minX),
+              targetBoundsHeight: Math.max(1, maxY - minY)
+            })
+          : null;
+        if (!derived || contentScale &lt;= 0) return false;
+        var targetFitScale = derived.targetFitScale / contentScale;
+        var requiredScale = derived.requiredReadableScale / contentScale;
         var dynamicMaximum = maximumCameraScale();
         var legacyMaximum = Number(options.maxScale) || (options.includeNeighbors ? 1.9 : 2.15);
         var maxScale = document.documentElement.getAttribute(&#39;data-world-profile&#39;) === &#39;large&#39;
@@ -32868,7 +33121,10 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           : Math.min(dynamicMaximum, legacyMaximum);
         var targetScale = targetFitScale;
         targetScale = Math.max(1, Math.min(maxScale, targetScale));
-        var readable = sourceFont &gt; 0 &amp;&amp; sourceFont * contentScale * targetScale &gt;= (readabilityContract.minimumProjectedTextPx || 6);
+        // Compare the multiplier in the same unit as the authoritative
+        // requirement. Re-multiplying the quotient can turn an exact 6px
+        // boundary into 5.999999999999999 through floating-point drift.
+        var readable = sourceFont &gt; 0 &amp;&amp; targetScale &gt;= requiredScale;
         if (!readable) {
           container.setAttribute(&#39;data-camera-diagnostic&#39;, options.automaticEntry
             ? &#39;viewer/entry-text-unreadable&#39;
@@ -32975,6 +33231,24 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         if (Array.isArray(active) &amp;&amp; active.length) return reveal(active, { reason: &#39;selection-sync&#39; });
         return false;
       }
+      function hasSemanticHashIntent() {
+        var guided = Archify.guidedViews &amp;&amp; typeof Archify.guidedViews.active === &#39;function&#39;
+          ? Archify.guidedViews.active() : null;
+        var active = Archify.focus &amp;&amp; typeof Archify.focus.active === &#39;function&#39;
+          ? Archify.focus.active() : null;
+        return Boolean(guided || (typeof active === &#39;string&#39; &amp;&amp; active) || (Array.isArray(active) &amp;&amp; active.length));
+      }
+      function syncExplicitHashIntent() {
+        if (!location.hash || location.hash.length &lt;= 1) return false;
+        if (!hasSemanticHashIntent()) {
+          reset({ automatic: true });
+          container.setAttribute(&#39;data-camera-diagnostic&#39;, &#39;viewer/semantic-id-invalid&#39;);
+          return false;
+        }
+        var result = syncSemantic();
+        if (result) container.removeAttribute(&#39;data-camera-diagnostic&#39;);
+        return result;
+      }
       function initialGuidedFocus() {
         var data = document.getElementById(&#39;archify-guided-views-data&#39;);
         if (!data) return [];
@@ -32988,7 +33262,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         automaticEntryAttempted = true;
         if (location.hash &amp;&amp; location.hash.length &gt; 1) {
           releaseAutomaticEntry();
-          return syncSemantic();
+          return syncExplicitHashIntent();
         }
         var receipt = Archify.readerLayout &amp;&amp; Archify.readerLayout.receipt ? Archify.readerLayout.receipt() : null;
         if (!receipt || receipt.worldProfile !== &#39;large&#39;) return false;
@@ -33068,7 +33342,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       });
       window.addEventListener(&#39;hashchange&#39;, function () {
         releaseAutomaticEntry();
-        requestAnimationFrame(syncSemantic);
+        requestAnimationFrame(syncExplicitHashIntent);
       });
       apply();
       pinControls();
@@ -34599,7 +34873,6 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             includeNeighbors: false,
             reason: &#39;route-journey&#39;,
             maxScale: 1.65,
-            padding: 64,
             duration: 360,
             instant: !journeyMotionAllowed()
           });
@@ -35094,6 +35367,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         }
       };
     })();
+
 
     /* ============================================================
        Semantic Lens — a counted, viewer-only legend over data-node-kind.

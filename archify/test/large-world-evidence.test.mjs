@@ -27,7 +27,7 @@ test('checked-in large-world browser evidence is artifact-bound and complete', (
   for (const type of ['workflow', 'architecture']) {
     for (const size of [30, 100, 300]) {
       const { artifact, receipt } = load(`${type}-${size}`, type);
-      assert.equal(receipt.schemaVersion, 2, `${type}-${size} receipt schema`);
+      assert.equal(receipt.schemaVersion, 3, `${type}-${size} receipt schema`);
       assert.equal(receipt.artifact.sha256, sha256(artifact), `${type}-${size} artifact hash`);
       assert.equal(receipt.artifact.bytes, artifact.byteLength, `${type}-${size} artifact bytes`);
       assert.equal(receipt.status, 'pass', `${type}-${size} visual-check`);
@@ -37,7 +37,31 @@ test('checked-in large-world browser evidence is artifact-bound and complete', (
       assert.equal(receipt.worldReachability.status, 'pass');
       assert.equal(receipt.exportCompleteness.status, 'pass');
       assert.equal(receipt.worldReachability.nodeCount, size);
-      assert.equal(receipt.worldReachability.reachedNodeCount, size);
+      assert.equal(receipt.worldReachability.staticallyProvedNodeCount, size);
+      assert.equal(receipt.worldReachability.navigatedNodeCount, size === 30 ? size : 12);
+      assert.equal(receipt.worldReachability.reachedNodeCount, size === 30 ? size : 12);
+      assert.equal(
+        receipt.worldReachability.staticallyProvedEdgeCount,
+        receipt.worldReachability.edgeCount,
+      );
+      assert.equal(
+        receipt.worldReachability.navigatedEdgeCount,
+        size === 30 ? receipt.worldReachability.edgeCount : 12,
+      );
+      assert.equal(
+        receipt.worldReachability.reachedEdgeCount,
+        receipt.worldReachability.navigatedEdgeCount,
+      );
+      assert.equal(
+        receipt.worldReachability.reachedGuidedViewCount,
+        receipt.worldReachability.guidedViewCount,
+      );
+      assert.equal(receipt.worldReachability.worldPointCount, 5);
+      assert.equal(receipt.worldReachability.reachedWorldPointCount, 5);
+      assert.deepEqual(receipt.worldReachability.missingNodeIds, []);
+      assert.deepEqual(receipt.worldReachability.missingEdgeIds, []);
+      assert.deepEqual(receipt.worldReachability.missingGuidedViewIds, []);
+      assert.deepEqual(receipt.worldReachability.missingWorldPoints, []);
       assert.equal(receipt.exportCompleteness.sourceNodeCount, size);
       assert.equal(receipt.exportCompleteness.exportedNodeCount, size);
       assert.ok(receipt.containment.viewports.every((entry) => !entry.overflowX && !entry.overflowY));

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "ok": true,
   "command": "visual-check",
   "evidenceKind": "automated-browser",
@@ -8,8 +8,8 @@
   "provenance": "unknown",
   "artifact": {
     "path": "/Users/sunhonghao/.codex/worktrees/b09f/archify/benchmarks/hybrid-large-world-viewer-pilot/artifacts/architecture-300.architecture.html",
-    "sha256": "d862ab9a83d3fe785ee265b195d6818efee4ac9d2bdd181902c50ec235e6ce0e",
-    "bytes": 1327545
+    "sha256": "091517700621ef0db832a0d88e9d8cfe3f8ad32747f9d2a94d5e0f9b9cf1631e",
+    "bytes": 1334021
   },
   "state": {
     "detail": "read",
@@ -38,7 +38,7 @@
         "diagramWidth": 1346,
         "viewBoxWidth": 11060,
         "worldProfile": "large",
-        "cameraScale": 5.477959385834572,
+        "cameraScale": 5.477959385834571,
         "stageWidth": 1376,
         "stageHeight": 624,
         "expectedStageHeight": 624,
@@ -194,7 +194,7 @@
         "diagramWidth": 1346,
         "viewBoxWidth": 11060,
         "worldProfile": "large",
-        "cameraScale": 5.477959385834572,
+        "cameraScale": 5.477959385834571,
         "stageWidth": 1376,
         "stageHeight": 624,
         "expectedStageHeight": 624,
@@ -356,7 +356,7 @@
         "diagramWidth": 1346,
         "viewBoxWidth": 11060,
         "worldProfile": "large",
-        "cameraScale": 5.477959385834572,
+        "cameraScale": 5.477959385834571,
         "stageWidth": 1376,
         "stageHeight": 624,
         "expectedStageHeight": 624,
@@ -512,7 +512,7 @@
         "diagramWidth": 1346,
         "viewBoxWidth": 11060,
         "worldProfile": "large",
-        "cameraScale": 5.477959385834572,
+        "cameraScale": 5.477959385834571,
         "stageWidth": 1376,
         "stageHeight": 624,
         "expectedStageHeight": 624,
@@ -673,7 +673,7 @@
         "diagramWidth": 1346,
         "viewBoxWidth": 11060,
         "worldProfile": "large",
-        "cameraScale": 5.477959385834572,
+        "cameraScale": 5.477959385834571,
         "stageWidth": 1376,
         "stageHeight": 624,
         "expectedStageHeight": 624,
@@ -829,7 +829,7 @@
         "diagramWidth": 1346,
         "viewBoxWidth": 11060,
         "worldProfile": "large",
-        "cameraScale": 5.477959385834572,
+        "cameraScale": 5.477959385834571,
         "stageWidth": 1376,
         "stageHeight": 624,
         "expectedStageHeight": 624,
@@ -974,13 +974,24 @@
   },
   "worldReachability": {
     "status": "pass",
+    "auditMode": "static-proof-with-deterministic-navigation-sample",
+    "sampleSeed": "archify-large-world-v1",
     "nodeCount": 300,
-    "reachedNodeCount": 300,
+    "staticallyProvedNodeCount": 300,
+    "navigatedNodeCount": 12,
+    "reachedNodeCount": 12,
     "edgeCount": 560,
-    "reachedEdgeCount": 560,
+    "staticallyProvedEdgeCount": 560,
+    "navigatedEdgeCount": 12,
+    "reachedEdgeCount": 12,
     "guidedViewCount": 2,
+    "reachedGuidedViewCount": 2,
+    "worldPointCount": 5,
+    "reachedWorldPointCount": 5,
     "missingNodeIds": [],
     "missingEdgeIds": [],
+    "missingGuidedViewIds": [],
+    "missingWorldPoints": [],
     "cameraStateRestored": true,
     "canonicalViewBoxUnchanged": true,
     "canonicalGeometryUnchanged": true
@@ -994,6 +1005,9 @@
     "exportedEdgeCount": 560,
     "canonicalViewBoxUnchanged": true,
     "canonicalBytesStableAfterCamera": true,
+    "canonicalBytesBefore": 619927,
+    "canonicalBytesAfter": 619927,
+    "canonicalFirstDifference": null,
     "cameraStateClean": true
   },
   "captures": {
@@ -1014,7 +1028,7 @@
         "diagramWidth": 1346,
         "viewBoxWidth": 11060,
         "worldProfile": "large",
-        "cameraScale": 5.477959385834572,
+        "cameraScale": 5.477959385834571,
         "stageWidth": 1376,
         "stageHeight": 624,
         "expectedStageHeight": 624,
@@ -1054,7 +1068,7 @@
         "diagramWidth": 1346,
         "viewBoxWidth": 11060,
         "worldProfile": "large",
-        "cameraScale": 5.477959385834572,
+        "cameraScale": 5.477959385834571,
         "stageWidth": 1376,
         "stageHeight": 624,
         "expectedStageHeight": 624,
@@ -1172,23 +1186,23 @@
         "file": "architecture-300.architecture.visual-check.html"
       },
       {
-        "sha256": "9357cef5f7ab433c5d7b409aa10feb4ea5e0ee2c15251b875cbf2a299370673f",
-        "bytes": 188039,
+        "sha256": "7bbf9f01ffc20709491a1abd21cfbbf5e9228f11b0297a93382ce456d63812ac",
+        "bytes": 186281,
         "file": "architecture-300.architecture.visual-check.1440x900.light.png"
       },
       {
-        "sha256": "496ea74245d79e2d0e53f0e9f9254cbad6ec838829388ce496753ca0f45dc2bd",
-        "bytes": 193380,
+        "sha256": "cdca4c9270f7d7b05dfb4717b8848039c4d545da4197ad43cfb223a8a6082a29",
+        "bytes": 191150,
         "file": "architecture-300.architecture.visual-check.1440x900.dark.png"
       },
       {
-        "sha256": "b7acdad42da62aceab67d934716083b55221003c11cab75616cba6ce0155480c",
-        "bytes": 242565,
+        "sha256": "8be53e892a8aa3c9feede0e3f969bf75f7498ba1784541089c78733afe61a53c",
+        "bytes": 240507,
         "file": "architecture-300.architecture.visual-check.2048x1320.light.png"
       },
       {
-        "sha256": "25a0d1fc9f20eee1c5b904e9b519aa71b84359628159f5b53295007d0aefabf9",
-        "bytes": 247155,
+        "sha256": "57e5b6dc3ee52fa16c5223019689a31a4edbf81265b84942d07dbdb190e9bbff",
+        "bytes": 244244,
         "file": "architecture-300.architecture.visual-check.2048x1320.dark.png"
       }
     ]

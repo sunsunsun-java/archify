@@ -27,8 +27,8 @@
       "engineeringProfile": null,
       "nodeCount": 12,
       "edgeCount": 11,
-      "artifactBytes": 844197,
-      "artifactSha256": "b8eaa224cb5a06a47d8b7a02b753625b903cb63a1a37842a5936ff416b04e63f",
+      "artifactBytes": 850673,
+      "artifactSha256": "edeaf76f29b27bdd880754560c5474779fd5f78f5cbb75673740b60bc034a535",
       "sourceBytes": 5687,
       "sourceSha256": "4d3f6c23de2ca7d306e05d0041a9506833bb5a164a2bddc2d1984cf4da3ee90c",
       "checks": [
@@ -85,7 +85,7 @@
           "labelCanvasOverflowIssues": 0,
           "minLabelRouteClearance": 29,
           "desktopReadabilityIssues": 0,
-          "minProjectedNodeTextPx": null,
+          "minProjectedNodeTextPx": 6.788321167883212,
           "maxBends": 3,
           "routesOverSuggestedBends": 1,
           "maxStretch": 1.225,
@@ -102,6 +102,17 @@
           "stretch": 1.35,
           "segmentPx": 16,
           "microSegmentPx": 8
+        },
+        "readability": {
+          "nodeId": "user",
+          "viewBoxWidth": 1096,
+          "scale": 0.8485401459854015,
+          "text": "asks for work",
+          "detail": "context",
+          "sourceFontPx": 8,
+          "projectedFontPx": 6.788321167883212,
+          "status": "small-static-pass",
+          "browserEvidenceRequired": false
         },
         "issues": []
       }
@@ -128,8 +139,8 @@
       "engineeringProfile": "deployment-ownership",
       "nodeCount": 12,
       "edgeCount": 12,
-      "artifactBytes": 846054,
-      "artifactSha256": "3e6e1f4b0c5c14b2c1525f2568f0e4e3838ae582dd63467e2a2e38ac799e78db",
+      "artifactBytes": 852530,
+      "artifactSha256": "39912b23e1be01e24a0f10d57e5e4942dc0498e8b51b8a1742c5c526badbe261",
       "sourceBytes": 5476,
       "sourceSha256": "ec484aa8576664fdb207b543fa49486b23273faccb7a5071e1a0becfb48c22eb",
       "checks": [
@@ -186,7 +197,7 @@
           "labelCanvasOverflowIssues": 0,
           "minLabelRouteClearance": 36,
           "desktopReadabilityIssues": 0,
-          "minProjectedNodeTextPx": null,
+          "minProjectedNodeTextPx": 6.000000675872092,
           "maxBends": 2,
           "routesOverSuggestedBends": 0,
           "maxStretch": 1.098,
@@ -203,6 +214,16 @@
           "stretch": 1.35,
           "segmentPx": 16,
           "microSegmentPx": 8
+        },
+        "readability": {
+          "viewBoxWidth": 1376,
+          "scale": 0.6758720930232558,
+          "text": "AWS eu-west-1 / disaster recovery",
+          "detail": "boundary",
+          "sourceFontPx": 8.877420354838709,
+          "projectedFontPx": 6.000000675872092,
+          "status": "small-static-pass",
+          "browserEvidenceRequired": false
         },
         "issues": []
       }
@@ -229,8 +250,8 @@
       "engineeringProfile": null,
       "nodeCount": 7,
       "edgeCount": 12,
-      "artifactBytes": 839309,
-      "artifactSha256": "f406bbe7450fdc9c019f6b7143b2b26dc55f82c9134403074e70e378a6b18219",
+      "artifactBytes": 845785,
+      "artifactSha256": "07824791afeecc42451c69453183b362f56a8c0367546046b882365e6bfc3543",
       "sourceBytes": 4374,
       "sourceSha256": "9a799a3661c16cd6ab4f6373ff6a04da95a9ab70d93b0a349b668466f4912fd7",
       "checks": [
@@ -287,7 +308,7 @@
           "labelCanvasOverflowIssues": 0,
           "minLabelRouteClearance": 8,
           "desktopReadabilityIssues": 0,
-          "minProjectedNodeTextPx": null,
+          "minProjectedNodeTextPx": 6.027777777777779,
           "maxBends": 0,
           "routesOverSuggestedBends": 0,
           "maxStretch": 1,
@@ -304,6 +325,17 @@
           "stretch": 1.35,
           "segmentPx": 16,
           "microSegmentPx": 8
+        },
+        "readability": {
+          "nodeId": "user",
+          "viewBoxWidth": 1080,
+          "scale": 0.8611111111111112,
+          "text": "browser session",
+          "detail": "context",
+          "sourceFontPx": 7,
+          "projectedFontPx": 6.027777777777779,
+          "status": "small-static-pass",
+          "browserEvidenceRequired": false
         },
         "issues": []
       }
@@ -330,8 +362,8 @@
       "engineeringProfile": null,
       "nodeCount": 10,
       "edgeCount": 10,
-      "artifactBytes": 840395,
-      "artifactSha256": "4f12201c3f5d4b790ebea40c009c063ff30d2a0a43762b7b156988520a01d8b5",
+      "artifactBytes": 846871,
+      "artifactSha256": "ab7cd2cf5c7de226c026503c4fd421f755749fd586989b1e4a268452bbe32045",
       "sourceBytes": 5164,
       "sourceSha256": "e5c880417eac1623923c3dd5461e0c78acd762e1621a28bd53fc14a84cad6a91",
       "checks": [
@@ -388,7 +420,7 @@
           "labelCanvasOverflowIssues": 0,
           "minLabelRouteClearance": 36.3,
           "desktopReadabilityIssues": 0,
-          "minProjectedNodeTextPx": null,
+          "minProjectedNodeTextPx": 6.2,
           "maxBends": 2,
           "routesOverSuggestedBends": 0,
           "maxStretch": 1.214,
@@ -405,6 +437,17 @@
           "stretch": 1.35,
           "segmentPx": 16,
           "microSegmentPx": 8
+        },
+        "readability": {
+          "nodeId": "rollback",
+          "viewBoxWidth": 720,
+          "scale": 1,
+          "text": "last good image",
+          "detail": "context",
+          "sourceFontPx": 6.2,
+          "projectedFontPx": 6.2,
+          "status": "small-static-pass",
+          "browserEvidenceRequired": false
         },
         "issues": []
       }
@@ -431,8 +474,8 @@
       "engineeringProfile": null,
       "nodeCount": 11,
       "edgeCount": 10,
-      "artifactBytes": 837710,
-      "artifactSha256": "ce8b1c56728988cd33ac711c8ac9b53db71c022b8bb3743290968a4464fe84a7",
+      "artifactBytes": 844186,
+      "artifactSha256": "44d2e8b77b9568067bf19b4d4094a3131be09627fcb346211fdacbc2bc0109ff",
       "sourceBytes": 5375,
       "sourceSha256": "5c760c82eee545dfb7da38a4e628059d7891af4cfbfc13c8a7009ea64f69aa1b",
       "checks": [
@@ -489,7 +532,7 @@
           "labelCanvasOverflowIssues": 0,
           "minLabelRouteClearance": 119,
           "desktopReadabilityIssues": 0,
-          "minProjectedNodeTextPx": null,
+          "minProjectedNodeTextPx": 7.7,
           "maxBends": 3,
           "routesOverSuggestedBends": 1,
           "maxStretch": 3.465,
@@ -506,6 +549,17 @@
           "stretch": 1.35,
           "segmentPx": 16,
           "microSegmentPx": 8
+        },
+        "readability": {
+          "nodeId": "triage",
+          "viewBoxWidth": 720,
+          "scale": 1,
+          "text": "scope impact",
+          "detail": "context",
+          "sourceFontPx": 7.7,
+          "projectedFontPx": 7.7,
+          "status": "small-static-pass",
+          "browserEvidenceRequired": false
         },
         "issues": []
       }
@@ -532,8 +586,8 @@
       "engineeringProfile": null,
       "nodeCount": 10,
       "edgeCount": 10,
-      "artifactBytes": 841664,
-      "artifactSha256": "b485fb54121163be8aa63ab095ead426ca24131698e4f06f7821e26b050f1791",
+      "artifactBytes": 848140,
+      "artifactSha256": "3df829ef086c0daea6ba9727e887dd8c89315bc2d7043c1009ebd88e028e9616",
       "sourceBytes": 5618,
       "sourceSha256": "91411404fb4828a3b7ea358f3a7b9877781c9e9dc9c04b42b6eb4a757281b59f",
       "checks": [
@@ -590,7 +644,7 @@
           "labelCanvasOverflowIssues": 0,
           "minLabelRouteClearance": 44.3,
           "desktopReadabilityIssues": 0,
-          "minProjectedNodeTextPx": null,
+          "minProjectedNodeTextPx": 6.027777777777779,
           "maxBends": 3,
           "routesOverSuggestedBends": 1,
           "maxStretch": 1.369,
@@ -607,6 +661,17 @@
           "stretch": 1.35,
           "segmentPx": 16,
           "microSegmentPx": 8
+        },
+        "readability": {
+          "nodeId": "web",
+          "viewBoxWidth": 1080,
+          "scale": 0.8611111111111112,
+          "text": "browser SDK",
+          "detail": "context",
+          "sourceFontPx": 7,
+          "projectedFontPx": 6.027777777777779,
+          "status": "small-static-pass",
+          "browserEvidenceRequired": false
         },
         "issues": []
       }
@@ -633,8 +698,8 @@
       "engineeringProfile": null,
       "nodeCount": 7,
       "edgeCount": 14,
-      "artifactBytes": 838427,
-      "artifactSha256": "ace8d63decab88b20f9cf9d2430aba7528ceb4e24d3ac7d19808030c31a30f50",
+      "artifactBytes": 844903,
+      "artifactSha256": "c2faf9b197f774c0ee71f5f49084f4a55f9105569460a6828056debb241757e2",
       "sourceBytes": 4370,
       "sourceSha256": "545f20920c89b69c2bb1f15508d5543fddbeb15cffba61e102206e04bd5a5cd9",
       "checks": [
@@ -691,7 +756,7 @@
           "labelCanvasOverflowIssues": 0,
           "minLabelRouteClearance": 22,
           "desktopReadabilityIssues": 0,
-          "minProjectedNodeTextPx": null,
+          "minProjectedNodeTextPx": 7,
           "maxBends": 0,
           "routesOverSuggestedBends": 0,
           "maxStretch": 1,
@@ -708,6 +773,17 @@
           "stretch": 1.35,
           "segmentPx": 16,
           "microSegmentPx": 8
+        },
+        "readability": {
+          "nodeId": "client",
+          "viewBoxWidth": 820,
+          "scale": 1,
+          "text": "mobile app",
+          "detail": "context",
+          "sourceFontPx": 7,
+          "projectedFontPx": 7,
+          "status": "small-static-pass",
+          "browserEvidenceRequired": false
         },
         "issues": []
       }
@@ -734,8 +810,8 @@
       "engineeringProfile": null,
       "nodeCount": 12,
       "edgeCount": 12,
-      "artifactBytes": 845662,
-      "artifactSha256": "cdd4b9e54603753a10ce3d0931d68b55e56a6bce3c89db1f0fef558b584e913f",
+      "artifactBytes": 852138,
+      "artifactSha256": "87f2068e2f88e7f85413a08df6c6dc1ba3fb8fa9673166ad92d8967d014f5964",
       "sourceBytes": 5433,
       "sourceSha256": "a92d6597ddbe164f395da32a7d4b33cfae08edd7d9600a6fb45a2058e5bbb43e",
       "checks": [
@@ -792,7 +868,7 @@
           "labelCanvasOverflowIssues": 0,
           "minLabelRouteClearance": 9,
           "desktopReadabilityIssues": 0,
-          "minProjectedNodeTextPx": null,
+          "minProjectedNodeTextPx": 6.027777777777779,
           "maxBends": 4,
           "routesOverSuggestedBends": 1,
           "maxStretch": 2.663,
@@ -809,6 +885,17 @@
           "stretch": 1.35,
           "segmentPx": 16,
           "microSegmentPx": 8
+        },
+        "readability": {
+          "nodeId": "checkout",
+          "viewBoxWidth": 1080,
+          "scale": 0.8611111111111112,
+          "text": "order producer",
+          "detail": "context",
+          "sourceFontPx": 7,
+          "projectedFontPx": 6.027777777777779,
+          "status": "small-static-pass",
+          "browserEvidenceRequired": false
         },
         "issues": []
       }
@@ -835,8 +922,8 @@
       "engineeringProfile": null,
       "nodeCount": 10,
       "edgeCount": 6,
-      "artifactBytes": 834741,
-      "artifactSha256": "7ce6d438f39564db2b37bbfb53633692e25ba742acbba35088b84539df6d8d20",
+      "artifactBytes": 841217,
+      "artifactSha256": "400696dbcbdd02553a66477b1719f73e71aa334aee7fabfa4eeb43e748c71f7c",
       "sourceBytes": 4044,
       "sourceSha256": "7c0ad72ee7affbd6c6e4758b7520d61ddd4508c917acf36beabcad3ee7ca3ba7",
       "checks": [
@@ -893,7 +980,7 @@
           "labelCanvasOverflowIssues": 0,
           "minLabelRouteClearance": null,
           "desktopReadabilityIssues": 0,
-          "minProjectedNodeTextPx": null,
+          "minProjectedNodeTextPx": 6.320388349514563,
           "maxBends": 3,
           "routesOverSuggestedBends": 2,
           "maxStretch": 3.267,
@@ -910,6 +997,17 @@
           "stretch": 1.35,
           "segmentPx": 16,
           "microSegmentPx": 8
+        },
+        "readability": {
+          "nodeId": "queued",
+          "viewBoxWidth": 1030,
+          "scale": 0.9029126213592233,
+          "text": "request accepted",
+          "detail": "context",
+          "sourceFontPx": 7,
+          "projectedFontPx": 6.320388349514563,
+          "status": "small-static-pass",
+          "browserEvidenceRequired": false
         },
         "issues": []
       }
@@ -936,8 +1034,8 @@
       "engineeringProfile": null,
       "nodeCount": 11,
       "edgeCount": 6,
-      "artifactBytes": 836283,
-      "artifactSha256": "07ee8858782cf34f1d330d524798fe8df4cdd0d868c8a4f63b1984334d3ccef5",
+      "artifactBytes": 842759,
+      "artifactSha256": "cc1977ddba5ed6e1570872350c067caa448922ca224ed42f35a5a3d3b3b5708b",
       "sourceBytes": 4274,
       "sourceSha256": "735c2c5819266e6ea2a71775b6eefce98b53030ce90cb721dc8e1d022ce5be71",
       "checks": [
@@ -994,7 +1092,7 @@
           "labelCanvasOverflowIssues": 0,
           "minLabelRouteClearance": null,
           "desktopReadabilityIssues": 0,
-          "minProjectedNodeTextPx": null,
+          "minProjectedNodeTextPx": 6.642857142857143,
           "maxBends": 0,
           "routesOverSuggestedBends": 0,
           "maxStretch": 1,
@@ -1011,6 +1109,17 @@
           "stretch": 1.35,
           "segmentPx": 16,
           "microSegmentPx": 8
+        },
+        "readability": {
+          "nodeId": "queued",
+          "viewBoxWidth": 980,
+          "scale": 0.9489795918367347,
+          "text": "change accepted",
+          "detail": "context",
+          "sourceFontPx": 7,
+          "projectedFontPx": 6.642857142857143,
+          "status": "small-static-pass",
+          "browserEvidenceRequired": false
         },
         "issues": []
       }
@@ -1037,8 +1146,8 @@
       "engineeringProfile": null,
       "nodeCount": 10,
       "edgeCount": 9,
-      "artifactBytes": 836380,
-      "artifactSha256": "da5ab29e3956e1e82a5aee895617264a2c10d9570758ad319c68481d055983e6",
+      "artifactBytes": 842856,
+      "artifactSha256": "26493cf38e2c778f11a07b7415fb7f4ffc30a5f48fceb3c41ef6e3fa6df1ebe4",
       "sourceBytes": 3793,
       "sourceSha256": "483350f5297df682aba4e4a0fa491307ce3d3abd725ae4df07fab177490752cf",
       "checks": [
@@ -1095,7 +1204,7 @@
           "labelCanvasOverflowIssues": 0,
           "minLabelRouteClearance": 20,
           "desktopReadabilityIssues": 0,
-          "minProjectedNodeTextPx": null,
+          "minProjectedNodeTextPx": 7.75,
           "maxBends": 3,
           "routesOverSuggestedBends": 1,
           "maxStretch": 1,
@@ -1112,6 +1221,17 @@
           "stretch": 1.35,
           "segmentPx": 16,
           "microSegmentPx": 8
+        },
+        "readability": {
+          "nodeId": "users",
+          "viewBoxWidth": 1080,
+          "scale": 0.8611111111111112,
+          "text": "Browser / Mobile",
+          "detail": "context",
+          "sourceFontPx": 9,
+          "projectedFontPx": 7.75,
+          "status": "small-static-pass",
+          "browserEvidenceRequired": false
         },
         "issues": []
       }

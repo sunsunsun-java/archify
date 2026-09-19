@@ -21,7 +21,7 @@ export const LARGE_WORLD_READABILITY_CONTRACT = Object.freeze({
   ]),
 });
 
-export function deriveLargeWorldReadability({
+export function deriveLargeWorldReadabilityWithContract(contract, {
   safeStageWidth,
   safeStageHeight,
   canonicalWorldWidth,
@@ -41,7 +41,7 @@ export function deriveLargeWorldReadability({
   ];
   if (!values.every(Number.isFinite) || values.some((value) => value <= 0)) return null;
 
-  const contract = LARGE_WORLD_READABILITY_CONTRACT;
+  if (!contract || typeof contract !== 'object') return null;
   const worldScaleFit = Math.min(
     safeStageWidth / canonicalWorldWidth,
     safeStageHeight / canonicalWorldHeight,
@@ -70,6 +70,10 @@ export function deriveLargeWorldReadability({
     cameraMultiplier: targetWorldToCssScale / worldScaleFit,
     targetReadableAndContained: targetWorldToCssScale <= Math.min(targetFitScale, maximumWorldToCssScale),
   };
+}
+
+export function deriveLargeWorldReadability(measurements = {}) {
+  return deriveLargeWorldReadabilityWithContract(LARGE_WORLD_READABILITY_CONTRACT, measurements);
 }
 
 export function projectedNodeTextPx(sourceFontPx, viewBoxWidth, diagramWidth = DESKTOP_READER_DIAGRAM_WIDTH) {

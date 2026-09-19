@@ -25,22 +25,25 @@ const artifacts = manifest.entries.map((entry) => {
     stageHeight: desktop.stageHeight,
     expectedStageHeight: desktop.expectedStageHeight,
     documentContained: desktop.ok,
-    reachedNodes: receipt.worldReachability.reachedNodeCount,
-    reachedEdges: receipt.worldReachability.reachedEdgeCount,
+    staticallyProvedNodes: receipt.worldReachability.staticallyProvedNodeCount,
+    navigatedNodes: receipt.worldReachability.reachedNodeCount,
+    staticallyProvedEdges: receipt.worldReachability.staticallyProvedEdgeCount,
+    navigatedEdges: receipt.worldReachability.reachedEdgeCount,
     canonicalExportComplete: receipt.exportCompleteness.status === 'pass',
   };
 });
 
 const summary = {
-  schemaVersion: 1,
+  schemaVersion: 3,
   benchmark: 'hybrid-large-world-viewer-pilot',
-  generatedFrom: 'artifact-bound visual-check schema 2 receipts',
+  generatedFrom: 'artifact-bound visual-check schema 3 receipts',
   artifacts,
   mandatoryFunctionalEvidence: artifacts.every((entry) => entry.status === 'pass') ? 'pass' : 'fail',
+  prerequisiteBaseline: 'not-run: matched base P0 raw receipts missing',
   runtimePerformanceMatrix: 'not-run: matched base/candidate P4 receipt missing',
   readerAB: 'not-run',
   stress1000: 'not-run: prerequisite-incomplete',
-  technicalDecision: 'Retain experiment',
+  technicalDecision: 'not-run: prerequisite-invalid',
   promotionDecision: 'evidence-incomplete',
 };
 

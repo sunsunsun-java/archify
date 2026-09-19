@@ -5,7 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { LARGE_WORLD_READABILITY_CONTRACT } from '../renderers/shared/desktop-readability.mjs';
+import {
+  LARGE_WORLD_READABILITY_CONTRACT,
+  deriveLargeWorldReadabilityWithContract,
+} from '../renderers/shared/desktop-readability.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const marker = '/* ARCHIFY:READER_LAYOUT */';
@@ -172,7 +175,7 @@ test('assembly preserves literal replacement tokens, Unicode and source line end
   // marker line itself are stripped from `parts[1]` so the reindented CSS
   // ends flush with the closing </style> tag.
   const indentedCss = css.split('\n').map((line) => line.length === 0 ? line : '    ' + line).join('\n');
-  const injected = `var archifyReadabilityContract = Object.freeze(${JSON.stringify(LARGE_WORLD_READABILITY_CONTRACT)});`;
+  const injected = `var archifyReadabilityContract = Object.freeze(${JSON.stringify(LARGE_WORLD_READABILITY_CONTRACT)});\nvar archifyDeriveLargeWorldReadability = (${deriveLargeWorldReadabilityWithContract.toString()}).bind(null, archifyReadabilityContract);`;
   assert.equal(
     fs.readFileSync(f.output, 'utf8'),
     `<style>${indentedCss}</style><script>\r\n${injected}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}</script>\n`,
@@ -183,6 +186,7 @@ test('assembly preserves literal replacement tokens, Unicode and source line end
 test('browser readability contract is generated field-for-field from the authoritative module', () => {
   const template = fs.readFileSync(path.join(repoRoot, 'archify/assets/template.html'), 'utf8');
   assert.match(template, new RegExp(`var archifyReadabilityContract = Object\\.freeze\\(${JSON.stringify(LARGE_WORLD_READABILITY_CONTRACT).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\);`));
+  assert.ok(template.includes(`var archifyDeriveLargeWorldReadability = (${deriveLargeWorldReadabilityWithContract.toString()}).bind(null, archifyReadabilityContract);`));
 });
 
 test('an invalid invocation cannot silently regenerate the template', (t) => {

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "ok": true,
   "command": "visual-check",
   "evidenceKind": "automated-browser",
@@ -8,8 +8,8 @@
   "provenance": "unknown",
   "artifact": {
     "path": "/Users/sunhonghao/.codex/worktrees/b09f/archify/benchmarks/hybrid-large-world-viewer-pilot/artifacts/workflow-300.workflow.html",
-    "sha256": "d2cc8dde6e36ce2b93be35f8aa777936b7b3b90918e0df0d2b92333591eb697b",
-    "bytes": 1379822
+    "sha256": "520c5e5d0d1df183a4d6640d518f2370611153f29a0b494e826789673303b0ae",
+    "bytes": 1386298
   },
   "state": {
     "detail": "read",
@@ -3326,13 +3326,24 @@
   },
   "worldReachability": {
     "status": "pass",
+    "auditMode": "static-proof-with-deterministic-navigation-sample",
+    "sampleSeed": "archify-large-world-v1",
     "nodeCount": 300,
-    "reachedNodeCount": 300,
+    "staticallyProvedNodeCount": 300,
+    "navigatedNodeCount": 12,
+    "reachedNodeCount": 12,
     "edgeCount": 545,
-    "reachedEdgeCount": 545,
+    "staticallyProvedEdgeCount": 545,
+    "navigatedEdgeCount": 12,
+    "reachedEdgeCount": 12,
     "guidedViewCount": 2,
+    "reachedGuidedViewCount": 2,
+    "worldPointCount": 5,
+    "reachedWorldPointCount": 5,
     "missingNodeIds": [],
     "missingEdgeIds": [],
+    "missingGuidedViewIds": [],
+    "missingWorldPoints": [],
     "cameraStateRestored": true,
     "canonicalViewBoxUnchanged": true,
     "canonicalGeometryUnchanged": true
@@ -3346,6 +3357,9 @@
     "exportedEdgeCount": 545,
     "canonicalViewBoxUnchanged": true,
     "canonicalBytesStableAfterCamera": true,
+    "canonicalBytesBefore": 631408,
+    "canonicalBytesAfter": 631408,
+    "canonicalFirstDifference": null,
     "cameraStateClean": true
   },
   "captures": {
