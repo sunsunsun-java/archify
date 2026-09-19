@@ -1420,7 +1420,9 @@ class PipeCdp {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(this.failure('command timeout', new Error(`${method}: timed out after ${timeoutMs}ms`)));
+        const error = this.failure('command timeout', new Error(`${method}: timed out after ${timeoutMs}ms`));
+        error.code = 'CHROME_CDP_TIMEOUT';
+        reject(error);
       }, timeoutMs);
       this.pending.set(id, { method, resolve, reject, timer });
       try {
@@ -1513,6 +1515,13 @@ export class ChromeVisualBrowser {
     getuid = typeof process.getuid === 'function' ? () => process.getuid() : null,
     spawnImpl = spawn,
   } = {}) {
+    this.closed = false;
+    const options = { env, getuid, spawnImpl };
+    this.launch(chromePath, options);
+    this.sessionPromise = this.attachWithRetry(chromePath, options);
+  }
+
+  launch(chromePath, { env, getuid, spawnImpl }) {
     this.profileRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-visual-check-profile-'));
     this.stderr = '';
     const args = chromeVisualBrowserArgs(this.profileRoot, { env, getuid });
@@ -1536,7 +1545,28 @@ export class ChromeVisualBrowser {
         ].filter(Boolean).join('\n');
       },
     });
-    this.sessionPromise = this.attach();
+  }
+
+  async attachWithRetry(chromePath, options) {
+    try {
+      return await this.attach();
+    } catch (firstError) {
+      // A running Chrome can accept the first pipe write but never answer it.
+      // Replace only that silent startup, once, before any page is inspected.
+      // Protocol errors, partial responses and later command failures stay fatal.
+      const silentStartup = firstError.code === 'CHROME_CDP_TIMEOUT'
+        && this.cdp.receivedBytes === 0 && this.cdp.completedWrites === 1
+        && this.child.exitCode === null && this.child.signalCode === null;
+      if (this.closed || !silentStartup) throw firstError;
+      await this.stopProcess();
+      if (this.closed) throw firstError;
+      this.launch(chromePath, options);
+      try {
+        return await this.attach();
+      } catch (retryError) {
+        throw new Error(`Chrome startup failed after one retry.\nFirst attempt:\n${firstError.message}\nRetry:\n${retryError.message}`, { cause: retryError });
+      }
+    }
   }
 
   async attach() {
@@ -2162,20 +2192,28 @@ export class ChromeVisualBrowser {
   }
 
   async close() {
+    this.closed = true;
+    await this.stopProcess();
+  }
+
+  async stopProcess() {
     this.cdp.failAll(new Error('visual-check finished'));
     if (this.child.exitCode === null && this.child.signalCode === null) {
-      this.child.kill('SIGTERM');
-      await new Promise((resolve) => {
-        const timer = setTimeout(() => {
-          if (this.child.exitCode === null && this.child.signalCode === null) this.child.kill('SIGKILL');
-          resolve();
+      await new Promise((resolve, reject) => {
+        let timer = setTimeout(() => {
+          this.child.kill('SIGKILL');
+          timer = setTimeout(() => reject(new Error('Chrome did not exit after SIGKILL.')), 1500);
         }, 1500);
         this.child.once('exit', () => {
           clearTimeout(timer);
           resolve();
         });
+        this.child.kill('SIGTERM');
       });
     }
+    // Descendants (notably recording workers) can retain inherited handles
+    // after the browser exits. Retire our endpoints before replacing Chrome.
+    for (const stream of this.child.stdio) stream?.destroy();
     try {
       fs.rmSync(this.profileRoot, { recursive: true, force: true });
     } catch {

@@ -830,6 +830,8 @@ restoring the previous camera state.
 
 Compact expansion may hide Passport temporarily. Failed expansion, returning to
 compact, unavailable space and closing restore it through their existing paths.
+Restoration asks Focus to reposition the visible Passport before Radar measures
+it again; hidden-panel measurements must not become its restored bounds.
 Space retry permits four 60ms attempts per round; success and external reflow
 can reset the count. Close clears that timer and both drag records, hides the
 panel and removes the shared panning class. It does not cancel the already queued

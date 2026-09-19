@@ -17785,6 +17785,9 @@ var archifyDeriveLargeWorldReadability = (function deriveLargeWorldReadabilityWi
         if (passportPreviousAriaHidden === null) passport.removeAttribute(&#39;aria-hidden&#39;);
         else passport.setAttribute(&#39;aria-hidden&#39;, passportPreviousAriaHidden);
         passportPreviousAriaHidden = null;
+        // Camera/layout callbacks may have positioned the yielded (zero-height)
+        // panel. Restore its real bounds before Radar measures this blocker.
+        if (Archify.focus &amp;&amp; typeof Archify.focus.reposition === &#39;function&#39;) Archify.focus.reposition();
       }
       function reflectVisible() {
         panel.hidden = false;
@@ -18119,6 +18122,7 @@ var archifyDeriveLargeWorldReadability = (function deriveLargeWorldReadabilityWi
         count: function () { return nodes.length; }
       };
     })();
+
 
     /* ============================================================
        Presentation Stage — a shareable, viewport-filling live view.
@@ -33659,6 +33663,9 @@ var archifyDeriveLargeWorldReadability = (function deriveLargeWorldReadabilityWi
         if (passportPreviousAriaHidden === null) passport.removeAttribute(&#39;aria-hidden&#39;);
         else passport.setAttribute(&#39;aria-hidden&#39;, passportPreviousAriaHidden);
         passportPreviousAriaHidden = null;
+        // Camera/layout callbacks may have positioned the yielded (zero-height)
+        // panel. Restore its real bounds before Radar measures this blocker.
+        if (Archify.focus &amp;&amp; typeof Archify.focus.reposition === &#39;function&#39;) Archify.focus.reposition();
       }
       function reflectVisible() {
         panel.hidden = false;
@@ -33993,6 +34000,7 @@ var archifyDeriveLargeWorldReadability = (function deriveLargeWorldReadabilityWi
         count: function () { return nodes.length; }
       };
     })();
+
 
     /* ============================================================
        Presentation Stage — a shareable, viewport-filling live view.
