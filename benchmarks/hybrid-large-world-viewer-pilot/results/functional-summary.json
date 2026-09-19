@@ -5,7 +5,7 @@
   "artifacts": [
     {
       "id": "workflow-30",
-      "artifactSha256": "a7d8397eddfdb73d74b3dfb021b33d9d1098b28c3c284fab6ce8a159a311a190",
+      "artifactSha256": "3624344c2a7ec31b7f00bd57963e0265acd864bb11f26252196cf7eab9e01ce4",
       "status": "pass",
       "worldProfile": "small",
       "overviewProjectedTextPx": 6.646310432569974,
@@ -21,7 +21,7 @@
     },
     {
       "id": "workflow-100",
-      "artifactSha256": "0f1ed3a121b033d7ae5dbe9339bd75e51c9826e548e57133e03350595fed8b05",
+      "artifactSha256": "e3428d3fce2c4e8157fa94ea2912199bf03b3b67eb9f7c6aede857cc401c8cd1",
       "status": "pass",
       "worldProfile": "large",
       "overviewProjectedTextPx": 1.9042645778938208,
@@ -37,7 +37,7 @@
     },
     {
       "id": "workflow-300",
-      "artifactSha256": "551ebe519e70102d85de2c3b2f8b0bae2f96ca218b560c5197a6f831ed4d58dc",
+      "artifactSha256": "d2cc8dde6e36ce2b93be35f8aa777936b7b3b90918e0df0d2b92333591eb697b",
       "status": "pass",
       "worldProfile": "large",
       "overviewProjectedTextPx": 0.677819083023544,
@@ -53,7 +53,7 @@
     },
     {
       "id": "architecture-30",
-      "artifactSha256": "b9480701ba1342dfab4e712ef811b7bca40b57c1ca90899951c06b831eccf99d",
+      "artifactSha256": "2a07225fc8e50b0821064460e36f1486ada95926b78ba5d1d3083723d239493b",
       "status": "pass",
       "worldProfile": "small",
       "overviewProjectedTextPx": 6.1000000000000005,
@@ -69,7 +69,7 @@
     },
     {
       "id": "architecture-100",
-      "artifactSha256": "61d5263f2c4ac361dcd7f2435f738fdac0a003ef6a5e1a0735507f213859d165",
+      "artifactSha256": "cd86e50a413b7e5ebcabb9cfa286215c41212322d990b10151de106b70852079",
       "status": "pass",
       "worldProfile": "large",
       "overviewProjectedTextPx": 2.0848101265822785,
@@ -85,7 +85,7 @@
     },
     {
       "id": "architecture-300",
-      "artifactSha256": "bf0489ac319396a319e47a495a5d6372c6d5cdd1ec8e2ba46d5e98fd1eaa1668",
+      "artifactSha256": "d862ab9a83d3fe785ee265b195d6818efee4ac9d2bdd181902c50ec235e6ce0e",
       "status": "pass",
       "worldProfile": "large",
       "overviewProjectedTextPx": 1.0952983725135623,

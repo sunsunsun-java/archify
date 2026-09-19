@@ -40,7 +40,7 @@
 - 30/30 节点、50/50 关系、5 个 guided views 可通过同一个 camera seam 到达；
 - camera 复位后 viewBox、canonical geometry 和 camera state 不变；
 - 全量 SVG 导出保留 30/30 节点、50/50 关系，导航前后字节相同，且没有 camera transform/clip 污染；
-- standalone HTML SHA-256 为 `06535afe9fbb589e51c549efdd95d046c76c37c7eab9dd466196b92b9c9fb3cf`。
+- standalone HTML SHA-256 为 `3624344c2a7ec31b7f00bd57963e0265acd864bb11f26252196cf7eab9e01ce4`。
 
 自动 receipt 按合同保留 `visualReview: "pending"`。另行对四张端点截图进行了图像目检，light/dark 下节点、泳道、回路、图例、导览条和控制 dock 均可辨认且没有页面级溢出或遮挡：
 
@@ -55,14 +55,14 @@ correction_rounds: 2
 最终整套命令在 Node `v22.23.1` 和真实 Google Chrome 下退出 `0`：
 
 ```text
-tests: 1434
-pass: 1430
+tests: 2206
+pass: 2195
 fail: 0
-skipped: 4
-duration: 361670.806542 ms
+skipped: 11
+duration: 482714.267292 ms
 ```
 
-四个 skip 均为既有条件性环境门，不是本切片失败。真实 Chrome 的大图、五类 packaged examples、camera、reader、guided views、导出与 viewer chrome 测试均实际运行。官方 Workflow v1 SVG byte golden、其余四类图 golden、CLI、HTML 与 export 合同通过。发布包用 canonical Node 22 工具链重建，可跨时区字节复现；最终 `archify.zip` SHA-256 为 `7eeab042cd845e7ce710c44e5996e1b731433b7a413951be0285a2c087b60201`。
+十一个 skip 均为既有的平台或条件性环境门，不是本切片失败。真实 Chrome 的大图、五类 packaged examples、camera、reader、guided views、导出与 viewer chrome 测试均实际运行。官方 Workflow v1 SVG byte golden、其余四类图 golden、CLI、HTML 与 export 合同通过。发布包用 canonical Node 22 工具链重建，可跨时区字节复现；最终 `archify.zip` SHA-256 为 `e2711ddd99f65b7cd2ab014c5a15bc3966b4966750747029b6456e7cb51e4ae6`。
 
 在完整回归之后，benchmark 汇总增加 P95 对照字段；其定向测试为 `3/3` 通过。
 

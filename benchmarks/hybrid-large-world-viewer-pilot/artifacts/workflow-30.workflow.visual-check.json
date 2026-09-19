@@ -5,10 +5,11 @@
   "evidenceKind": "automated-browser",
   "status": "pass",
   "visualReview": "pending",
+  "provenance": "unknown",
   "artifact": {
     "path": "/Users/sunhonghao/.codex/worktrees/b09f/archify/benchmarks/hybrid-large-world-viewer-pilot/artifacts/workflow-30.workflow.html",
-    "sha256": "a7d8397eddfdb73d74b3dfb021b33d9d1098b28c3c284fab6ce8a159a311a190",
-    "bytes": 869067
+    "sha256": "3624344c2a7ec31b7f00bd57963e0265acd864bb11f26252196cf7eab9e01ce4",
+    "bytes": 880183
   },
   "state": {
     "detail": "read",
@@ -36,6 +37,88 @@
         "readerWidth": 1062,
         "diagramWidth": 1032,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1062,
@@ -75,6 +158,88 @@
         "readerWidth": 1090,
         "diagramWidth": 1060,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1090,
@@ -114,6 +279,88 @@
         "readerWidth": 1214,
         "diagramWidth": 1184,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1214,
@@ -153,6 +400,88 @@
         "readerWidth": 1554,
         "diagramWidth": 1504,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1554,
@@ -192,6 +521,88 @@
         "readerWidth": 1062,
         "diagramWidth": 1032,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1062,
@@ -231,6 +642,88 @@
         "readerWidth": 1090,
         "diagramWidth": 1060,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1090,
@@ -270,6 +763,88 @@
         "readerWidth": 1214,
         "diagramWidth": 1184,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1214,
@@ -309,6 +884,88 @@
         "readerWidth": 1554,
         "diagramWidth": 1504,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1554,
@@ -354,6 +1011,88 @@
         "readerWidth": 1062,
         "diagramWidth": 1032,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1062,
@@ -393,6 +1132,88 @@
         "readerWidth": 1090,
         "diagramWidth": 1060,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1090,
@@ -432,6 +1253,88 @@
         "readerWidth": 1214,
         "diagramWidth": 1184,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1214,
@@ -471,6 +1374,88 @@
         "readerWidth": 1554,
         "diagramWidth": 1504,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1554,
@@ -510,6 +1495,88 @@
         "readerWidth": 1062,
         "diagramWidth": 1032,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1062,
@@ -549,6 +1616,88 @@
         "readerWidth": 1090,
         "diagramWidth": 1060,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1090,
@@ -588,6 +1737,88 @@
         "readerWidth": 1214,
         "diagramWidth": 1184,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1214,
@@ -627,6 +1858,88 @@
         "readerWidth": 1554,
         "diagramWidth": 1504,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1554,
@@ -671,6 +1984,88 @@
         "readerWidth": 1062,
         "diagramWidth": 1032,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1062,
@@ -710,6 +2105,88 @@
         "readerWidth": 1090,
         "diagramWidth": 1060,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1090,
@@ -749,6 +2226,88 @@
         "readerWidth": 1214,
         "diagramWidth": 1184,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1214,
@@ -788,6 +2347,88 @@
         "readerWidth": 1554,
         "diagramWidth": 1504,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1554,
@@ -827,6 +2468,88 @@
         "readerWidth": 1062,
         "diagramWidth": 1032,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1062,
@@ -866,6 +2589,88 @@
         "readerWidth": 1090,
         "diagramWidth": 1060,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 92,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 59,
+            "spaceAboveNodesPx": 30,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1090,
@@ -905,6 +2710,88 @@
         "readerWidth": 1214,
         "diagramWidth": 1184,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 103,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 66,
+            "spaceAboveNodesPx": 33,
+            "spaceBelowNodesPx": 4
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1214,
@@ -944,6 +2831,88 @@
         "readerWidth": 1554,
         "diagramWidth": 1504,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1554,
@@ -1012,6 +2981,88 @@
         "readerWidth": 1062,
         "diagramWidth": 1032,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1062,
@@ -1052,6 +3103,88 @@
         "readerWidth": 1062,
         "diagramWidth": 1032,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 90,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 58,
+            "spaceAboveNodesPx": 29,
+            "spaceBelowNodesPx": 3
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1062,
@@ -1092,6 +3225,88 @@
         "readerWidth": 1554,
         "diagramWidth": 1504,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1554,
@@ -1132,6 +3347,88 @@
         "readerWidth": 1554,
         "diagramWidth": 1504,
         "viewBoxWidth": 1220,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "intake-0",
+              "intake-1",
+              "intake-2",
+              "intake-3",
+              "intake-4",
+              "intake-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "policy-0",
+              "policy-1",
+              "policy-2",
+              "policy-3",
+              "policy-4",
+              "policy-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "runtime-0",
+              "runtime-1",
+              "runtime-2",
+              "runtime-3",
+              "runtime-4",
+              "runtime-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "data-0",
+              "data-1",
+              "data-2",
+              "data-3",
+              "data-4",
+              "data-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 131,
+            "nodeCount": 6,
+            "nodeIds": [
+              "observe-0",
+              "observe-1",
+              "observe-2",
+              "observe-3",
+              "observe-4",
+              "observe-5"
+            ],
+            "nodeSpanPx": 84,
+            "spaceAboveNodesPx": 42,
+            "spaceBelowNodesPx": 5
+          }
+        ],
         "worldProfile": "small",
         "cameraScale": 1,
         "stageWidth": 1554,
@@ -1163,6 +3460,33 @@
   },
   "sidecars": {
     "receipt": "workflow-30.workflow.visual-check.json",
-    "contactSheet": "workflow-30.workflow.visual-check.html"
+    "contactSheet": "workflow-30.workflow.visual-check.html",
+    "files": [
+      {
+        "sha256": "be8c83b833de35d2aaa153c2c3e258f52fdc308b2ad9bde1043604bfd9bd1b97",
+        "bytes": 1964,
+        "file": "workflow-30.workflow.visual-check.html"
+      },
+      {
+        "sha256": "3ce92a4466f90efaac711584dc13faa0bb6d5d4e3d2907ee18c05478ebf83bb0",
+        "bytes": 424769,
+        "file": "workflow-30.workflow.visual-check.1440x900.light.png"
+      },
+      {
+        "sha256": "17b930614ce6334439509f261d5b869fc1230d4023206b9851d02a3fedf2b032",
+        "bytes": 458658,
+        "file": "workflow-30.workflow.visual-check.1440x900.dark.png"
+      },
+      {
+        "sha256": "5755faba813e3f5193cb5087dfc23481f4622444dfcafdbf340adfb3db6cd0b3",
+        "bytes": 621138,
+        "file": "workflow-30.workflow.visual-check.2048x1320.light.png"
+      },
+      {
+        "sha256": "0c5ea4c025dcc18a00b3805c84bb6000987778b990e7ea936d307da04db87ef8",
+        "bytes": 674083,
+        "file": "workflow-30.workflow.visual-check.2048x1320.dark.png"
+      }
+    ]
   }
 }

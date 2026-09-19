@@ -5,10 +5,11 @@
   "evidenceKind": "automated-browser",
   "status": "pass",
   "visualReview": "pending",
+  "provenance": "unknown",
   "artifact": {
     "path": "/Users/sunhonghao/.codex/worktrees/b09f/archify/benchmarks/hybrid-large-world-viewer-pilot/artifacts/workflow-100.workflow.html",
-    "sha256": "0f1ed3a121b033d7ae5dbe9339bd75e51c9826e548e57133e03350595fed8b05",
-    "bytes": 991895
+    "sha256": "e3428d3fce2c4e8157fa94ea2912199bf03b3b67eb9f7c6aede857cc401c8cd1",
+    "bytes": 1002976
   },
   "state": {
     "detail": "read",
@@ -36,6 +37,104 @@
         "readerWidth": 1376,
         "diagramWidth": 1346,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 56,
+            "spaceAboveNodesPx": 28,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.4401197604790417,
         "stageWidth": 1376,
@@ -75,6 +174,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1410,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.050442477876106,
         "stageWidth": 1440,
@@ -114,6 +311,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1410,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.672093023255814,
         "stageWidth": 1440,
@@ -153,6 +448,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1390,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.15,
         "stageWidth": 1440,
@@ -192,6 +585,104 @@
         "readerWidth": 1376,
         "diagramWidth": 1346,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.1508226691042047,
         "stageWidth": 1376,
@@ -231,6 +722,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1410,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.050442477876106,
         "stageWidth": 1440,
@@ -270,6 +859,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1410,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.672093023255814,
         "stageWidth": 1440,
@@ -309,6 +996,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1390,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.15,
         "stageWidth": 1440,
@@ -354,6 +1139,104 @@
         "readerWidth": 1376,
         "diagramWidth": 1346,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 56,
+            "spaceAboveNodesPx": 28,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.4401197604790417,
         "stageWidth": 1376,
@@ -393,6 +1276,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1410,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.050442477876106,
         "stageWidth": 1440,
@@ -432,6 +1413,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1410,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.672093023255814,
         "stageWidth": 1440,
@@ -471,6 +1550,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1390,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.15,
         "stageWidth": 1440,
@@ -510,6 +1687,104 @@
         "readerWidth": 1376,
         "diagramWidth": 1346,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.1508226691042047,
         "stageWidth": 1376,
@@ -549,6 +1824,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1410,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.050442477876106,
         "stageWidth": 1440,
@@ -588,6 +1961,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1410,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.672093023255814,
         "stageWidth": 1440,
@@ -627,6 +2098,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1390,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.15,
         "stageWidth": 1440,
@@ -671,6 +2240,104 @@
         "readerWidth": 1376,
         "diagramWidth": 1346,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 56,
+            "spaceAboveNodesPx": 28,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.4401197604790417,
         "stageWidth": 1376,
@@ -710,6 +2377,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1410,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.050442477876106,
         "stageWidth": 1440,
@@ -749,6 +2514,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1410,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.672093023255814,
         "stageWidth": 1440,
@@ -788,6 +2651,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1390,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.15,
         "stageWidth": 1440,
@@ -827,6 +2788,104 @@
         "readerWidth": 1376,
         "diagramWidth": 1346,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.1508226691042047,
         "stageWidth": 1376,
@@ -866,6 +2925,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1410,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.050442477876106,
         "stageWidth": 1440,
@@ -905,6 +3062,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1410,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.672093023255814,
         "stageWidth": 1440,
@@ -944,6 +3199,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1390,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.15,
         "stageWidth": 1440,
@@ -1012,6 +3365,104 @@
         "readerWidth": 1376,
         "diagramWidth": 1346,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 56,
+            "spaceAboveNodesPx": 28,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 87,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 43,
+            "spaceAboveNodesPx": 34,
+            "spaceBelowNodesPx": 10
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.4401197604790417,
         "stageWidth": 1376,
@@ -1052,6 +3503,104 @@
         "readerWidth": 1376,
         "diagramWidth": 1346,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 3.1508226691042047,
         "stageWidth": 1376,
@@ -1092,6 +3641,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1390,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.15,
         "stageWidth": 1440,
@@ -1132,6 +3779,104 @@
         "readerWidth": 1440,
         "diagramWidth": 1390,
         "viewBoxWidth": 2012,
+        "workflowLanes": [
+          {
+            "frameId": "lane-0",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-0",
+              "w-1",
+              "w-2",
+              "w-3",
+              "w-4",
+              "w-5"
+            ],
+            "nodeSpanPx": 51,
+            "spaceAboveNodesPx": 26,
+            "spaceBelowNodesPx": 3
+          },
+          {
+            "frameId": "lane-1",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-6",
+              "w-7",
+              "w-8",
+              "w-9",
+              "w-10",
+              "w-11"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-2",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-12",
+              "w-13",
+              "w-14",
+              "w-15",
+              "w-16",
+              "w-17"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-3",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-18",
+              "w-19",
+              "w-20",
+              "w-21",
+              "w-22",
+              "w-23"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-4",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-24",
+              "w-25",
+              "w-26",
+              "w-27",
+              "w-28",
+              "w-29"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          },
+          {
+            "frameId": "lane-5",
+            "heightPx": 80,
+            "nodeCount": 6,
+            "nodeIds": [
+              "w-30",
+              "w-31",
+              "w-32",
+              "w-33",
+              "w-34",
+              "w-35"
+            ],
+            "nodeSpanPx": 39,
+            "spaceAboveNodesPx": 32,
+            "spaceBelowNodesPx": 9
+          }
+        ],
         "worldProfile": "large",
         "cameraScale": 2.15,
         "stageWidth": 1440,
@@ -1163,6 +3908,33 @@
   },
   "sidecars": {
     "receipt": "workflow-100.workflow.visual-check.json",
-    "contactSheet": "workflow-100.workflow.visual-check.html"
+    "contactSheet": "workflow-100.workflow.visual-check.html",
+    "files": [
+      {
+        "sha256": "2a43f6772be42e058c4d3c9c2f68e705f7d9bc70343a74080c2ab1facd27d37f",
+        "bytes": 1970,
+        "file": "workflow-100.workflow.visual-check.html"
+      },
+      {
+        "sha256": "4e3426fde715a658d44a0045dc93a1dbe773ab1c2a92a0b15b9891e229d9d844",
+        "bytes": 200441,
+        "file": "workflow-100.workflow.visual-check.1440x900.light.png"
+      },
+      {
+        "sha256": "3eb6ff956f1037d752948a993d1092792fa4786df1dd678d2cda682bd0a707ee",
+        "bytes": 127635,
+        "file": "workflow-100.workflow.visual-check.1440x900.dark.png"
+      },
+      {
+        "sha256": "e14c4ae025d96fae64e09dc63257609c7159163598154868be912f37d6228bff",
+        "bytes": 268706,
+        "file": "workflow-100.workflow.visual-check.2048x1320.light.png"
+      },
+      {
+        "sha256": "2d13e33194c47b0834fe7fb81bea1134a58d918d07006224129ac6b10cde472c",
+        "bytes": 265701,
+        "file": "workflow-100.workflow.visual-check.2048x1320.dark.png"
+      }
+    ]
   }
 }

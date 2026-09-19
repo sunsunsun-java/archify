@@ -4,6 +4,7 @@
   "meta": {
     "title": "大型自适应工作流验收图",
     "subtitle": "30 个节点、50 条关系、长中文标签、跨泳道交接与有界恢复回路",
+    "output": "large-adaptive.workflow.html",
     "locale": "zh-CN",
     "quality_profile": "showcase",
     "visual_preset": "signal-flow",

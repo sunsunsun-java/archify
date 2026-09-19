@@ -5,10 +5,11 @@
   "evidenceKind": "automated-browser",
   "status": "pass",
   "visualReview": "pending",
+  "provenance": "unknown",
   "artifact": {
     "path": "/Users/sunhonghao/.codex/worktrees/b09f/archify/benchmarks/hybrid-large-world-viewer-pilot/artifacts/architecture-300.architecture.html",
-    "sha256": "bf0489ac319396a319e47a495a5d6372c6d5cdd1ec8e2ba46d5e98fd1eaa1668",
-    "bytes": 1316527
+    "sha256": "d862ab9a83d3fe785ee265b195d6818efee4ac9d2bdd181902c50ec235e6ce0e",
+    "bytes": 1327545
   },
   "state": {
     "detail": "read",
@@ -1163,6 +1164,33 @@
   },
   "sidecars": {
     "receipt": "architecture-300.architecture.visual-check.json",
-    "contactSheet": "architecture-300.architecture.visual-check.html"
+    "contactSheet": "architecture-300.architecture.visual-check.html",
+    "files": [
+      {
+        "sha256": "0e395a67faf4e89f98aa07628e19667279b12c8deb59b59244cb0ca82715b3f0",
+        "bytes": 2018,
+        "file": "architecture-300.architecture.visual-check.html"
+      },
+      {
+        "sha256": "9357cef5f7ab433c5d7b409aa10feb4ea5e0ee2c15251b875cbf2a299370673f",
+        "bytes": 188039,
+        "file": "architecture-300.architecture.visual-check.1440x900.light.png"
+      },
+      {
+        "sha256": "496ea74245d79e2d0e53f0e9f9254cbad6ec838829388ce496753ca0f45dc2bd",
+        "bytes": 193380,
+        "file": "architecture-300.architecture.visual-check.1440x900.dark.png"
+      },
+      {
+        "sha256": "b7acdad42da62aceab67d934716083b55221003c11cab75616cba6ce0155480c",
+        "bytes": 242565,
+        "file": "architecture-300.architecture.visual-check.2048x1320.light.png"
+      },
+      {
+        "sha256": "25a0d1fc9f20eee1c5b904e9b519aa71b84359628159f5b53295007d0aefabf9",
+        "bytes": 247155,
+        "file": "architecture-300.architecture.visual-check.2048x1320.dark.png"
+      }
+    ]
   }
 }
