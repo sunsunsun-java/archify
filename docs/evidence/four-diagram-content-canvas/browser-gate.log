@@ -1,0 +1,1468 @@
+
+> archify@2.17.0-dev.1 test:browser
+> node ../scripts/run-browser-tests.mjs
+
+TAP version 13
+# Subtest: adaptive Workflow world is reachable and exports canonically at every desktop viewport and theme
+ok 1 - adaptive Workflow world is reachable and exports canonically at every desktop viewport and theme
+  ---
+  duration_ms: 7452.979667
+  type: 'test'
+  ...
+# Subtest: Chrome replaces a silent first-handshake process once before any navigation
+ok 2 - Chrome replaces a silent first-handshake process once before any navigation
+  ---
+  duration_ms: 7.794958
+  type: 'test'
+  ...
+# Subtest: Chrome first-command timeout reports the running process, pipe progress and stderr
+ok 3 - Chrome first-command timeout reports the running process, pipe progress and stderr
+  ---
+  duration_ms: 12.237708
+  type: 'test'
+  ...
+# Subtest: Chrome does not restart after partial protocol input or a later command timeout
+ok 4 - Chrome does not restart after partial protocol input or a later command timeout
+  ---
+  duration_ms: 11.483209
+  type: 'test'
+  ...
+# Subtest: closing Chrome during startup cleanup prevents a replacement process
+ok 5 - closing Chrome during startup cleanup prevents a replacement process
+  ---
+  duration_ms: 7.097125
+  type: 'test'
+  ...
+# Subtest: Chrome cleanup releases inherited pipes after the browser process exits
+ok 6 - Chrome cleanup releases inherited pipes after the browser process exits
+  ---
+  duration_ms: 0.491625
+  type: 'test'
+  ...
+# Subtest: Chrome pipe EOF fails the pending first command without waiting for process close
+ok 7 - Chrome pipe EOF fails the pending first command without waiting for process close
+  ---
+  duration_ms: 0.83175
+  type: 'test'
+  ...
+# Subtest: Chrome startup recovery reaches a real browser after retiring a silent subprocess
+ok 8 - Chrome startup recovery reaches a real browser after retiring a silent subprocess
+  ---
+  duration_ms: 1008.9235
+  type: 'test'
+  ...
+# Subtest: all frozen capacity examples contain independently measured browser paint
+ok 9 - all frozen capacity examples contain independently measured browser paint
+  ---
+  duration_ms: 21346.251833
+  type: 'test'
+  ...
+# Subtest: four content canvases retain exhaustive desktop navigation and canonical export
+ok 10 - four content canvases retain exhaustive desktop navigation and canonical export
+  ---
+  duration_ms: 14659.744958
+  type: 'test'
+  ...
+# Subtest: four content canvases preserve narrow-screen selection and real raster export budgets
+ok 11 - four content canvases preserve narrow-screen selection and real raster export budgets
+  ---
+  duration_ms: 8578.058917
+  type: 'test'
+  ...
+# Subtest: all packaged HTML examples pass the real visual-check desktop gate
+ok 12 - all packaged HTML examples pass the real visual-check desktop gate
+  ---
+  duration_ms: 47271.964708
+  type: 'test'
+  ...
+# Subtest: production showcase is readable in the real 1440 by 900 adaptive reader
+ok 13 - production showcase is readable in the real 1440 by 900 adaptive reader
+  ---
+  duration_ms: 18062.201667
+  type: 'test'
+  ...
+# Subtest: offline intrinsic workflows fit while authored overflow still identifies lane frames
+ok 14 - offline intrinsic workflows fit while authored overflow still identifies lane frames
+  ---
+  duration_ms: 12713.054083
+  type: 'test'
+  ...
+# Subtest: issue \#250 tall intrinsic workflow fits every required desktop viewport
+ok 15 - issue \#250 tall intrinsic workflow fits every required desktop viewport
+  ---
+  duration_ms: 4410.196458
+  type: 'test'
+  ...
+# Subtest: issue \#250 five-stage stack fits below source scale without crossing the readability floor
+ok 16 - issue \#250 five-stage stack fits below source scale without crossing the readability floor
+  ---
+  duration_ms: 4530.225708
+  type: 'test'
+  ...
+# Subtest: Export preserves menu, clipboard, semantic cards and recording lifecycles
+    # Subtest: native menu input skips unavailable entries and preserves focus and mutual exclusion
+    ok 1 - native menu input skips unavailable entries and preserves focus and mutual exclusion
+      ---
+      duration_ms: 1205.755541
+      type: 'test'
+      ...
+    # Subtest: auto-open and themed menu rendering keep stable layout
+    ok 2 - auto-open and themed menu rendering keep stable layout
+      ---
+      duration_ms: 469.595542
+      type: 'test'
+      ...
+    # Subtest: semantic card downloads retain snapshots, receipts and URL lifetime
+    ok 3 - semantic card downloads retain snapshots, receipts and URL lifetime
+      ---
+      duration_ms: 2567.180917
+      type: 'test'
+      ...
+    # Subtest: clipboard keeps promise construction in the click and distinct fallback/error receipts
+    ok 4 - clipboard keeps promise construction in the click and distinct fallback/error receipts
+      ---
+      duration_ms: 2034.694458
+      type: 'test'
+      ...
+    # Subtest: raster failures release sources and retain retry and synchronous SVG behavior
+    ok 5 - raster failures release sources and retain retry and synchronous SVG behavior
+      ---
+      duration_ms: 1131.6435
+      type: 'test'
+      ...
+    # Subtest: SVG download declares UTF-8 and preserves CJK text
+    ok 6 - SVG download declares UTF-8 and preserves CJK text
+      ---
+      duration_ms: 404.290542
+      type: 'test'
+      ...
+    # Subtest: oversized raster and WebM fail before allocating a canvas and recommend SVG
+    ok 7 - oversized raster and WebM fail before allocating a canvas and recommend SVG
+      ---
+      duration_ms: 253.351416
+      type: 'test'
+      ...
+    # Subtest: recording succeeds with real encoding and releases tracks and the background URL
+    ok 8 - recording succeeds with real encoding and releases tracks and the background URL
+      ---
+      duration_ms: 874.590666
+      type: 'test'
+      ...
+    # Subtest: menu recording writes its receipt and downloads the real default-duration WebM
+    ok 9 - menu recording writes its receipt and downloads the real default-duration WebM
+      ---
+      duration_ms: 7376.711834
+      type: 'test'
+      ...
+    # Subtest: recording constructor/error/empty failures clean up and public run disables WebM
+    ok 10 - recording constructor/error/empty failures clean up and public run disables WebM
+      ---
+      duration_ms: 1307.294417
+      type: 'test'
+      ...
+    1..10
+ok 17 - Export preserves menu, clipboard, semantic cards and recording lifecycles
+  ---
+  duration_ms: 18613.995083
+  type: 'test'
+  ...
+# Subtest: Export cleanup preserves canonical artifacts and live interaction state
+    # Subtest: five modes export standalone SVG in both themes and reduced motion
+    ok 1 - five modes export standalone SVG in both themes and reduced motion
+      ---
+      duration_ms: 2741.094625
+      type: 'test'
+      ...
+    # Subtest: real zoom, focus, preview, lens, story and route actions leave exports clean
+    ok 2 - real zoom, focus, preview, lens, story and route actions leave exports clean
+      ---
+      duration_ms: 2187.041708
+      type: 'test'
+      ...
+    # Subtest: raster and share-card exports preserve dimensions and current theme
+    ok 3 - raster and share-card exports preserve dimensions and current theme
+      ---
+      duration_ms: 1580.484792
+      type: 'test'
+      ...
+    # Subtest: clone restoration, preservation and repeated cleanup are independent of live DOM
+    ok 4 - clone restoration, preservation and repeated cleanup are independent of live DOM
+      ---
+      duration_ms: 235.685666
+      type: 'test'
+      ...
+    # Subtest: share decoration follows cleanup and preserves snapshot rejection behavior
+    ok 5 - share decoration follows cleanup and preserves snapshot rejection behavior
+      ---
+      duration_ms: 694.299208
+      type: 'test'
+      ...
+    1..5
+ok 18 - Export cleanup preserves canonical artifacts and live interaction state
+  ---
+  duration_ms: 8757.921375
+  type: 'test'
+  ...
+# Subtest: Finder preserves search, keyboard, contextual Route selection and cleanup
+    # Subtest: five modes initialize one index and no external resources
+    ok 1 - five modes initialize one index and no external resources
+      ---
+      duration_ms: 1445.364459
+      type: 'test'
+      ...
+    # Subtest: search normalizes queries and preserves contextual lists and retained context
+    ok 2 - search normalizes queries and preserves contextual lists and retained context
+      ---
+      duration_ms: 416.047459
+      type: 'test'
+      ...
+    # Subtest: trusted keyboard navigation, selection and Escape preserve focus boundaries
+    ok 3 - trusted keyboard navigation, selection and Escape preserve focus boundaries
+      ---
+      duration_ms: 700.750125
+      type: 'test'
+      ...
+    # Subtest: real Route controls select source and target; cancellation restores Route focus
+    ok 4 - real Route controls select source and target; cancellation restores Route focus
+      ---
+      duration_ms: 1865.185375
+      type: 'test'
+      ...
+    # Subtest: panel coordination, outside clicks, repeated close and embed retain baseline semantics
+    ok 5 - panel coordination, outside clicks, repeated close and embed retain baseline semantics
+      ---
+      duration_ms: 718.808458
+      type: 'test'
+      ...
+    # Subtest: themes, constrained viewport, reduced motion and exported SVG
+    ok 6 - themes, constrained viewport, reduced motion and exported SVG
+      ---
+      duration_ms: 664.500041
+      type: 'test'
+      ...
+    1..6
+ok 19 - Finder preserves search, keyboard, contextual Route selection and cleanup
+  ---
+  duration_ms: 7156.239584
+  type: 'test'
+  ...
+# Subtest: Focus preserves semantic selection, relationships, reachability and shared flow tokens
+    # Subtest: five modes expose the same Focus and flowTokens surfaces at cold start
+    ok 1 - five modes expose the same Focus and flowTokens surfaces at cold start
+      ---
+      duration_ms: 2191.176083
+      type: 'test'
+      ...
+    # Subtest: native node input and option variants preserve selection and cleanup side effects
+    ok 2 - native node input and option variants preserve selection and cleanup side effects
+      ---
+      duration_ms: 788.309375
+      type: 'test'
+      ...
+    # Subtest: Passport rows preserve keyboard navigation, missing metadata and no-neighbor state
+    ok 3 - Passport rows preserve keyboard navigation, missing metadata and no-neighbor state
+      ---
+      duration_ms: 1090.112458
+      type: 'test'
+      ...
+    # Subtest: relationship focus and pointer intents yield to pins and direct keyboard exploration
+    ok 4 - relationship focus and pointer intents yield to pins and direct keyboard exploration
+      ---
+      duration_ms: 1501.253625
+      type: 'test'
+      ...
+    # Subtest: direct pointer delay, touch filtering and background input keep ownership rules
+    ok 5 - direct pointer delay, touch filtering and background input keep ownership rules
+      ---
+      duration_ms: 1333.312125
+      type: 'test'
+      ...
+    # Subtest: authored graph geometry and shared token kinds preserve grouping and direction
+    ok 6 - authored graph geometry and shared token kinds preserve grouping and direction
+      ---
+      duration_ms: 483.6015
+      type: 'test'
+      ...
+    # Subtest: reachability handles cycles, parallel edges, toggles and strict snapshot rejection
+    ok 7 - reachability handles cycles, parallel edges, toggles and strict snapshot rejection
+      ---
+      duration_ms: 2130.400792
+      type: 'test'
+      ...
+    # Subtest: cold URLs and hashchange preserve focus, relation, reach and query semantics
+    ok 8 - cold URLs and hashchange preserve focus, relation, reach and query semantics
+      ---
+      duration_ms: 2083.532375
+      type: 'test'
+      ...
+    # Subtest: copy fallback and delayed feedback retain node, reach and relation links
+    ok 9 - copy fallback and delayed feedback retain node, reach and relation links
+      ---
+      duration_ms: 11977.391625
+      type: 'test'
+      ...
+    # Subtest: real pulse completion and motion transitions preserve static relationship state
+    ok 10 - real pulse completion and motion transitions preserve static relationship state
+      ---
+      duration_ms: 2084.846666
+      type: 'test'
+      ...
+    # Subtest: real SVG export strips temporary Focus, Reach and relationship state from clones
+    ok 11 - real SVG export strips temporary Focus, Reach and relationship state from clones
+      ---
+      duration_ms: 1079.746292
+      type: 'test'
+      ...
+    # Subtest: Passport layout and dark/light output remain stable through viewport and camera changes
+    ok 12 - Passport layout and dark/light output remain stable through viewport and camera changes
+      ---
+      duration_ms: 3578.243958
+      type: 'test'
+      ...
+    1..12
+ok 20 - Focus preserves semantic selection, relationships, reachability and shared flow tokens
+  ---
+  duration_ms: 31619.066
+  type: 'test'
+  ...
+# Subtest: Guided Views preserves chapters, Story playback and handoff contracts
+    # Subtest: five modes, empty payloads and filtered chapter interfaces initialize faithfully
+    ok 1 - five modes, empty payloads and filtered chapter interfaces initialize faithfully
+      ---
+      duration_ms: 1956.852666
+      type: 'test'
+      ...
+    # Subtest: native chapter and beat input preserves preview, focus and Escape ordering
+    ok 2 - native chapter and beat input preserves preview, focus and Escape ordering
+      ---
+      duration_ms: 424.768
+      type: 'test'
+      ...
+    # Subtest: chapter preview retains independent pointer and focus intent with owner blocking
+    ok 3 - chapter preview retains independent pointer and focus intent with owner blocking
+      ---
+      duration_ms: 1532.124625
+      type: 'test'
+      ...
+    # Subtest: Story geometry distinguishes direction, grouping and duplicate fragments without BFS
+    ok 4 - Story geometry distinguishes direction, grouping and duplicate fragments without BFS
+      ---
+      duration_ms: 308.184083
+      type: 'test'
+      ...
+    # Subtest: handoff holds an authored anchor and preserves cancellation versus settling
+    ok 5 - handoff holds an authored anchor and preserves cancellation versus settling
+      ---
+      duration_ms: 4179.619333
+      type: 'test'
+      ...
+    # Subtest: real Story and chapter playback complete while precise clock fixtures preserve dwell
+    ok 6 - real Story and chapter playback complete while precise clock fixtures preserve dwell
+      ---
+      duration_ms: 11827.027916
+      type: 'test'
+      ...
+    # Subtest: Motion lifecycle and real capability handoffs preserve Story cleanup
+    ok 7 - Motion lifecycle and real capability handoffs preserve Story cleanup
+      ---
+      duration_ms: 7562.181416
+      type: 'test'
+      ...
+    # Subtest: hash and moment links retain restoration, query and clipboard feedback contracts
+    ok 8 - hash and moment links retain restoration, query and clipboard feedback contracts
+      ---
+      duration_ms: 11433.762042
+      type: 'test'
+      ...
+    # Subtest: active preview, handoff and carrier serialize without leaking transient state
+    ok 9 - active preview, handoff and carrier serialize without leaking transient state
+      ---
+      duration_ms: 2436.987917
+      type: 'test'
+      ...
+    # Subtest: theme, narrow layout, embed moments and real SVG exports keep canonical geometry
+    ok 10 - theme, narrow layout, embed moments and real SVG exports keep canonical geometry
+      ---
+      duration_ms: 4959.224042
+      type: 'test'
+      ...
+    1..10
+ok 21 - Guided Views preserves chapters, Story playback and handoff contracts
+  ---
+  duration_ms: 48036.762584
+  type: 'test'
+  ...
+# Subtest: zh-CN localizes renderer-owned output across all five modes without translating authored content
+ok 22 - zh-CN localizes renderer-owned output across all five modes without translating authored content
+  ---
+  duration_ms: 554.418542
+  type: 'test'
+  ...
+# Subtest: es localizes renderer-owned output across all five modes without translating authored content
+ok 23 - es localizes renderer-owned output across all five modes without translating authored content
+  ---
+  duration_ms: 546.867875
+  type: 'test'
+  ...
+# Subtest: explicit en and zh-CN preserve complete authored field inventories across all five modes
+ok 24 - explicit en and zh-CN preserve complete authored field inventories across all five modes
+  ---
+  duration_ms: 1089.719958
+  type: 'test'
+  ...
+# Subtest: omitted locale preserves non-English authored content and the English Viewer contract in all five modes
+ok 25 - omitted locale preserves non-English authored content and the English Viewer contract in all five modes
+  ---
+  duration_ms: 545.045791
+  type: 'test'
+  ...
+# Subtest: unsupported locale values fail schema validation in every mode
+ok 26 - unsupported locale values fail schema validation in every mode
+  ---
+  duration_ms: 864.016625
+  type: 'test'
+  ...
+# Subtest: real Chrome keeps zh-CN Finder, Route, Export, and accessibility UI localized in all five modes
+ok 27 - real Chrome keeps zh-CN Finder, Route, Export, and accessibility UI localized in all five modes
+  ---
+  duration_ms: 30976.629208
+  type: 'test'
+  ...
+# Subtest: real Chrome keeps es Finder, Route, Export, and accessibility UI localized in all five modes
+ok 28 - real Chrome keeps es Finder, Route, Export, and accessibility UI localized in all five modes
+  ---
+  duration_ms: 32479.61825
+  type: 'test'
+  ...
+# Subtest: every Viewer message reference resolves through the shared catalog
+ok 29 - every Viewer message reference resolves through the shared catalog
+  ---
+  duration_ms: 1.65575
+  type: 'test'
+  ...
+# Subtest: every supported catalog is complete and preserves interpolation variables
+ok 30 - every supported catalog is complete and preserves interpolation variables
+  ---
+  duration_ms: 2.436166
+  type: 'test'
+  ...
+# Subtest: runtime labels stay localized after composition
+ok 31 - runtime labels stay localized after composition
+  ---
+  duration_ms: 0.343375
+  type: 'test'
+  ...
+# Subtest: Share Card and export failures use catalog messages instead of fixed English
+ok 32 - Share Card and export failures use catalog messages instead of fixed English
+  ---
+  duration_ms: 1.726958
+  type: 'test'
+  ...
+# Subtest: Intent Trace preserves input handoffs, transient geometry and cleanup
+    # Subtest: five modes initialize and public return/broadcast contracts remain intact
+    ok 1 - five modes initialize and public return/broadcast contracts remain intact
+      ---
+      duration_ms: 1518.643333
+      type: 'test'
+      ...
+    # Subtest: real pointer delay, fast exit, keyboard focus and Escape share cleanup
+    ok 2 - real pointer delay, fast exit, keyboard focus and Escape share cleanup
+      ---
+      duration_ms: 1169.618
+      type: 'test'
+      ...
+    # Subtest: controlled timers preserve repeated-show, retained-input and input-filter semantics
+    ok 3 - controlled timers preserve repeated-show, retained-input and input-filter semantics
+      ---
+      duration_ms: 579.79
+      type: 'test'
+      ...
+    # Subtest: a minimal SVG fixture preserves counting, cloned geometry and isolated nodes
+    ok 4 - a minimal SVG fixture preserves counting, cloned geometry and isolated nodes
+      ---
+      duration_ms: 147.827833
+      type: 'test'
+      ...
+    # Subtest: blockers gate requests while actual Focus, Route and Lens retain handoff behavior
+    ok 5 - blockers gate requests while actual Focus, Route and Lens retain handoff behavior
+      ---
+      duration_ms: 1332.691916
+      type: 'test'
+      ...
+    # Subtest: real CSS completion, Motion ownership, reduced motion and themes preserve previews
+    ok 6 - real CSS completion, Motion ownership, reduced motion and themes preserve previews
+      ---
+      duration_ms: 6820.792833
+      type: 'test'
+      ...
+    1..6
+ok 33 - Intent Trace preserves input handoffs, transient geometry and cleanup
+  ---
+  duration_ms: 12983.275208
+  type: 'test'
+  ...
+# Subtest: shared large-world Viewer provides a fixed readable stage for Workflow and Architecture
+ok 34 - shared large-world Viewer provides a fixed readable stage for Workflow and Architecture
+  ---
+  duration_ms: 5278.451041
+  type: 'test'
+  ...
+# Subtest: lifecycle rail stays ordinary in READ and hides for hover, relationship preview, and committed focus
+ok 35 - lifecycle rail stays ordinary in READ and hides for hover, relationship preview, and committed focus
+  ---
+  duration_ms: 2389.93625
+  type: 'test'
+  ...
+# Subtest: Motion Governor preserves mode, ownership, ambient completion and real callers
+    # Subtest: five trace modes initialize; representative CSS animation completes once; static methods remain inert
+    ok 1 - five trace modes initialize; representative CSS animation completes once; static methods remain inert
+      ---
+      duration_ms: 5452.776042
+      type: 'test'
+      ...
+    # Subtest: stored user intent remains distinct from reduced motion and suspension
+    ok 2 - stored user intent remains distinct from reduced motion and suspension
+      ---
+      duration_ms: 518.921083
+      type: 'test'
+      ...
+    # Subtest: claims preempt cleanup, normal release does not, and SVG owners fall back automatically
+    ok 3 - claims preempt cleanup, normal release does not, and SVG owners fall back automatically
+      ---
+      duration_ms: 92.720333
+      type: 'test'
+      ...
+    # Subtest: counted suspensions and the existing visibility-key interaction remain distinct
+    ok 4 - counted suspensions and the existing visibility-key interaction remain distinct
+      ---
+      duration_ms: 58.717917
+      type: 'test'
+      ...
+    # Subtest: ambient cancellation, empty targets and optional platform interfaces keep their fallback
+    ok 5 - ambient cancellation, empty targets and optional platform interfaces keep their fallback
+      ---
+      duration_ms: 531.699583
+      type: 'test'
+      ...
+    # Subtest: Motion pauses actual Story, handoff and Route without discarding elapsed dwell
+    ok 6 - Motion pauses actual Story, handoff and Route without discarding elapsed dwell
+      ---
+      duration_ms: 460.751208
+      type: 'test'
+      ...
+    # Subtest: dark and light modes expose the same controls and computed Still state
+    ok 7 - dark and light modes expose the same controls and computed Still state
+      ---
+      duration_ms: 10342.516917
+      type: 'test'
+      ...
+    1..7
+ok 36 - Motion Governor preserves mode, ownership, ambient completion and real callers
+  ---
+  duration_ms: 18859.867125
+  type: 'test'
+  ...
+# Subtest: fresh viewers use bundled fonts with local fonts disabled and identical offline layout
+ok 37 - fresh viewers use bundled fonts with local fonts disabled and identical offline layout
+  ---
+  duration_ms: 8487.749708
+  type: 'test'
+  ...
+# Subtest: SVG and raster exports preserve the viewer font with local fonts and network disabled
+ok 38 - SVG and raster exports preserve the viewer font with local fonts and network disabled
+  ---
+  duration_ms: 2261.993291
+  type: 'test'
+  ...
+# Subtest: png requested at DOMContentLoaded matches a font-settled repeat
+ok 39 - png requested at DOMContentLoaded matches a font-settled repeat
+  ---
+  duration_ms: 1985.4945
+  type: 'test'
+  ...
+# png: fonts at initial click: loading; fonts ready for every Canvas text draw
+# Subtest: share-card requested at DOMContentLoaded matches a font-settled repeat
+ok 40 - share-card requested at DOMContentLoaded matches a font-settled repeat
+  ---
+  duration_ms: 1974.367125
+  type: 'test'
+  ...
+# share-card: fonts at initial click: loading; fonts ready for every Canvas text draw
+# Subtest: Reader Layout preserves final-artifact behavior across its ownership boundaries
+    # Subtest: five modes initialize, export clean SVG, and honor themes and reduced motion
+    ok 1 - five modes initialize, export clean SVG, and honor themes and reduced motion
+      ---
+      duration_ms: 11692.430666
+      type: 'test'
+      ...
+    # Subtest: ratio and desktop thresholds preserve shape while clearing temporary state
+    ok 2 - ratio and desktop thresholds preserve shape while clearing temporary state
+      ---
+      duration_ms: 6399.564042
+      type: 'test'
+      ...
+    # Subtest: desktop budgets, extreme content and limited horizontal space preserve geometry
+    ok 3 - desktop budgets, extreme content and limited horizontal space preserve geometry
+      ---
+      duration_ms: 3899.215167
+      type: 'test'
+      ...
+    # Subtest: embed, presentation and print return to ordinary layout without clearing shape
+    ok 4 - embed, presentation and print return to ordinary layout without clearing shape
+      ---
+      duration_ms: 5900.554417
+      type: 'test'
+      ...
+    # Subtest: content observers and burst scheduling converge while camera state remains usable
+    ok 5 - content observers and burst scheduling converge while camera state remains usable
+      ---
+      duration_ms: 1715.0965
+      type: 'test'
+      ...
+    # Subtest: optional content and browser interfaces retain their fallback behavior
+    ok 6 - optional content and browser interfaces retain their fallback behavior
+      ---
+      duration_ms: 1149.625042
+      type: 'test'
+      ...
+    # Subtest: font readiness gates sampling and pending-frame timeout remains explicit
+    ok 7 - font readiness gates sampling and pending-frame timeout remains explicit
+      ---
+      duration_ms: 1368.42975
+      type: 'test'
+      ...
+    1..7
+ok 41 - Reader Layout preserves final-artifact behavior across its ownership boundaries
+  ---
+  duration_ms: 33438.741667
+  type: 'test'
+  ...
+# Subtest: non-architecture sources reach real Viewer beacons, Focus and Finder
+ok 42 - non-architecture sources reach real Viewer beacons, Focus and Finder
+  ---
+  duration_ms: 3455.711625
+  type: 'test'
+  ...
+# Subtest: repository root accepts a different spelling of the same physical Git top-level
+ok 43 - repository root accepts a different spelling of the same physical Git top-level
+  ---
+  duration_ms: 89.418792
+  type: 'test'
+  ...
+# Subtest: repository root rejects a different physical directory inside the repository
+ok 44 - repository root rejects a different physical directory inside the repository
+  ---
+  duration_ms: 53.709292
+  type: 'test'
+  ...
+# Subtest: repository root fails closed when physical identity is indeterminate
+ok 45 - repository root fails closed when physical identity is indeterminate
+  ---
+  duration_ms: 51.040208
+  type: 'test'
+  ...
+# Subtest: Gitee evidence generates provider-specific revision and line links
+ok 46 - Gitee evidence generates provider-specific revision and line links
+  ---
+  duration_ms: 716.9415
+  type: 'test'
+  ...
+# Subtest: local-only evidence verifies HTTP self-hosted origins without generating links
+ok 47 - local-only evidence verifies HTTP self-hosted origins without generating links
+  ---
+  duration_ms: 260.425709
+  type: 'test'
+  ...
+# Subtest: local-only supports nested HTTPS and Git SSH identities with bounded port equivalence
+ok 48 - local-only supports nested HTTPS and Git SSH identities with bounded port equivalence
+  ---
+  duration_ms: 1388.531084
+  type: 'test'
+  ...
+# Subtest: local-only rejects relative versus absolute SSH paths before replacing a trusted artifact
+ok 49 - local-only rejects relative versus absolute SSH paths before replacing a trusted artifact
+  ---
+  duration_ms: 166.569042
+  type: 'test'
+  ...
+# Subtest: local-only rejects literal percent escapes in SCP paths before replacing a trusted artifact
+ok 50 - local-only rejects literal percent escapes in SCP paths before replacing a trusted artifact
+  ---
+  duration_ms: 166.687083
+  type: 'test'
+  ...
+# Subtest: local-only rejects different hosts, paths, path case, endpoints and guessed prefixes
+ok 51 - local-only rejects different hosts, paths, path case, endpoints and guessed prefixes
+  ---
+  duration_ms: 1760.80775
+  type: 'test'
+  ...
+# Subtest: local-only preserves root, origin, commit, blob, path and line checks
+ok 52 - local-only preserves root, origin, commit, blob, path and line checks
+  ---
+  duration_ms: 1142.95225
+  type: 'test'
+  ...
+# Subtest: unsupported web providers and invalid authored addresses fail without exposing credentials
+ok 53 - unsupported web providers and invalid authored addresses fail without exposing credentials
+  ---
+  duration_ms: 1032.696375
+  type: 'test'
+  ...
+# Subtest: portable origin failures redact HTTP credentials and query tokens
+ok 54 - portable origin failures redact HTTP credentials and query tokens
+  ---
+  duration_ms: 360.24625
+  type: 'test'
+  ...
+# Subtest: explicit providers retain GitHub links and encode Gitee source paths
+ok 55 - explicit providers retain GitHub links and encode Gitee source paths
+  ---
+  duration_ms: 320.950958
+  type: 'test'
+  ...
+# Subtest: local-only preview and compare publish only revision-verified evidence
+ok 56 - local-only preview and compare publish only revision-verified evidence
+  ---
+  duration_ms: 1270.000833
+  type: 'test'
+  ...
+# Subtest: browser renders local-only sources as searchable text and web sources as links
+ok 57 - browser renders local-only sources as searchable text and web sources as links
+  ---
+  duration_ms: 4116.290625
+  type: 'test'
+  ...
+# Subtest: repository evidence accepts canonical HTTPS and common SSH remotes
+ok 58 - repository evidence accepts canonical HTTPS and common SSH remotes
+  ---
+  duration_ms: 1187.516458
+  type: 'test'
+  ...
+# Subtest: repository evidence is revision-verified, receipt-backed, searchable, and export-clean
+ok 59 - repository evidence is revision-verified, receipt-backed, searchable, and export-clean
+  ---
+  duration_ms: 265.24125
+  type: 'test'
+  ...
+# Subtest: repository evidence is opt-in and never appears in ordinary artifacts
+ok 60 - repository evidence is opt-in and never appears in ordinary artifacts
+  ---
+  duration_ms: 106.946542
+  type: 'test'
+  ...
+# Subtest: origin-mismatch diagnostics redact HTTPS remote userinfo
+ok 61 - origin-mismatch diagnostics redact HTTPS remote userinfo
+  ---
+  duration_ms: 173.611458
+  type: 'test'
+  ...
+# Subtest: origin-mismatch diagnostics redact HTTP remote userinfo
+ok 62 - origin-mismatch diagnostics redact HTTP remote userinfo
+  ---
+  duration_ms: 171.712083
+  type: 'test'
+  ...
+# Subtest: validate accepts credentialed HTTPS remotes and redacts mismatch diagnostics
+ok 63 - validate accepts credentialed HTTPS remotes and redacts mismatch diagnostics
+  ---
+  duration_ms: 350.804834
+  type: 'test'
+  ...
+# Subtest: preview accepts credentialed HTTPS remotes and redacts mismatch diagnostics
+ok 64 - preview accepts credentialed HTTPS remotes and redacts mismatch diagnostics
+  ---
+  duration_ms: 445.681625
+  type: 'test'
+  ...
+# Subtest: evidence fails closed without a root, on wrong origin, missing blobs, or impossible lines
+ok 65 - evidence fails closed without a root, on wrong origin, missing blobs, or impossible lines
+  ---
+  duration_ms: 942.257458
+  type: 'test'
+  ...
+# Subtest: --repo-root reaches every typed renderer and schema limits evidence shape
+ok 66 - --repo-root reaches every typed renderer and schema limits evidence shape
+  ---
+  duration_ms: 297.981958
+  type: 'test'
+  ...
+# Subtest: live preview forwards repo-root and publishes only verified evidence
+ok 67 - live preview forwards repo-root and publishes only verified evidence
+  ---
+  duration_ms: 306.522959
+  type: 'test'
+  ...
+# Subtest: Route Probe preserves directed paths, Journey and export contracts
+    # Subtest: five modes initialize and trusted endpoint input preserves capture and error recovery
+    ok 1 - five modes initialize and trusted endpoint input preserves capture and error recovery
+      ---
+      duration_ms: 2314.394375
+      type: 'test'
+      ...
+    # Subtest: SVG graph fixtures preserve directed BFS order, parallel edges and strict export snapshots
+    ok 2 - SVG graph fixtures preserve directed BFS order, parallel edges and strict export snapshots
+      ---
+      duration_ms: 760.883208
+      type: 'test'
+      ...
+    # Subtest: native Journey controls, finite playback, pause and layered Escape preserve path state
+    ok 3 - native Journey controls, finite playback, pause and layered Escape preserve path state
+      ---
+      duration_ms: 6200.38075
+      type: 'test'
+      ...
+    # Subtest: controlled clocks preserve elapsed dwell, fresh steps, stale generations and pulse cleanup
+    ok 4 - controlled clocks preserve elapsed dwell, fresh steps, stale generations and pulse cleanup
+      ---
+      duration_ms: 1290.993958
+      type: 'test'
+      ...
+    # Subtest: actual Finder, Focus, Lens, Guide and Camera handoffs retain cleanup options
+    ok 5 - actual Finder, Focus, Lens, Guide and Camera handoffs retain cleanup options
+      ---
+      duration_ms: 1905.805833
+      type: 'test'
+      ...
+    # Subtest: hash restoration and controlled clipboard preserve invalid states, query and delayed feedback
+    ok 6 - hash restoration and controlled clipboard preserve invalid states, query and delayed feedback
+      ---
+      duration_ms: 8843.570833
+      type: 'test'
+      ...
+    # Subtest: docking rectangle and timer fixtures preserve top/bottom ties, resize and scroll
+    ok 7 - docking rectangle and timer fixtures preserve top/bottom ties, resize and scroll
+      ---
+      duration_ms: 1446.207625
+      type: 'test'
+      ...
+    # Subtest: theme snapshots, Still rendering and real exports retain authored route semantics
+    ok 8 - theme snapshots, Still rendering and real exports retain authored route semantics
+      ---
+      duration_ms: 948.106708
+      type: 'test'
+      ...
+    1..8
+ok 68 - Route Probe preserves directed paths, Journey and export contracts
+  ---
+  duration_ms: 25130.562875
+  type: 'test'
+  ...
+# Subtest: Semantic Lens preserves selection, legend preview and panel contracts
+    # Subtest: five modes and optional legend initialization preserve counts, roles and embed boundaries
+    ok 1 - five modes and optional legend initialization preserve counts, roles and embed boundaries
+      ---
+      duration_ms: 2023.101333
+      type: 'test'
+      ...
+    # Subtest: trusted buttons, selection transitions, return values and three cleanup operations stay distinct
+    ok 2 - trusted buttons, selection transitions, return values and three cleanup operations stay distinct
+      ---
+      duration_ms: 360.643917
+      type: 'test'
+      ...
+    # Subtest: native legend focus, pointer transitions, keyboard activation and opener restoration
+    ok 3 - native legend focus, pointer transitions, keyboard activation and opener restoration
+      ---
+      duration_ms: 704.700625
+      type: 'test'
+      ...
+    # Subtest: minimal SVG fixtures preserve node indexing, grouped directions, first-member geometry and 24/25 threshold
+    ok 4 - minimal SVG fixtures preserve node indexing, grouped directions, first-member geometry and 24/25 threshold
+      ---
+      duration_ms: 617.103583
+      type: 'test'
+      ...
+    # Subtest: initial URL, hashchange and controlled clipboard boundaries retain normalization and feedback
+    ok 5 - initial URL, hashchange and controlled clipboard boundaries retain normalization and feedback
+      ---
+      duration_ms: 8381.809958
+      type: 'test'
+      ...
+    # Subtest: actual capability handoffs and blocked previews preserve existing ownership
+    ok 6 - actual capability handoffs and blocked previews preserve existing ownership
+      ---
+      duration_ms: 951.252708
+      type: 'test'
+      ...
+    # Subtest: panel events, pending frames and controlled docking geometry preserve responsive branches
+    ok 7 - panel events, pending frames and controlled docking geometry preserve responsive branches
+      ---
+      duration_ms: 751.282084
+      type: 'test'
+      ...
+    # Subtest: themes, reduced motion, Still and real SVG export retain selection and preview rendering
+    ok 8 - themes, reduced motion, Still and real SVG export retain selection and preview rendering
+      ---
+      duration_ms: 2298.813333
+      type: 'test'
+      ...
+    1..8
+ok 69 - Semantic Lens preserves selection, legend preview and panel contracts
+  ---
+  duration_ms: 17542.607709
+  type: 'test'
+  ...
+# Subtest: Semantic Passport pointer movement honors threshold, capture, four-edge clamp, persistence, cancel, and resets
+ok 70 - Semantic Passport pointer movement honors threshold, capture, four-edge clamp, persistence, cancel, and resets
+  ---
+  duration_ms: 3000.967
+  type: 'test'
+  ...
+# Subtest: Semantic Passport keyboard movement uses coarse/fine steps, Home reset, and resize reclamping
+ok 71 - Semantic Passport keyboard movement uses coarse/fine steps, Home reset, and resize reclamping
+  ---
+  duration_ms: 2682.139458
+  type: 'test'
+  ...
+# Subtest: mobile scrolling and wide coarse pointers keep automatic placement and hide the move affordance
+ok 72 - mobile scrolling and wide coarse pointers keep automatic placement and hide the move affordance
+  ---
+  duration_ms: 1997.773959
+  type: 'test'
+  ...
+# Subtest: move affordance exposes localized accessible names and a visible keyboard focus ring
+ok 73 - move affordance exposes localized accessible names and a visible keyboard focus ring
+  ---
+  duration_ms: 2053.860333
+  type: 'test'
+  ...
+# Subtest: manual Passport placement composes with Radar, Legend, Dock, and clean SVG, PNG, and WebM export
+ok 74 - manual Passport placement composes with Radar, Legend, Dock, and clean SVG, PNG, and WebM export
+  ---
+  duration_ms: 2443.781167
+  type: 'test'
+  ...
+# Subtest: all typed renderers inherit one viewer-only Semantic Radar
+ok 75 - all typed renderers inherit one viewer-only Semantic Radar
+  ---
+  duration_ms: 444.2395
+  type: 'test'
+  ...
+# Subtest: Semantic Radar derives semantic node bounds and focuses stable IDs
+ok 76 - Semantic Radar derives semantic node bounds and focuses stable IDs
+  ---
+  duration_ms: 145.672583
+  type: 'test'
+  ...
+# Subtest: Semantic Radar tracks desktop camera and mobile contained scroll
+ok 77 - Semantic Radar tracks desktop camera and mobile contained scroll
+  ---
+  duration_ms: 86.367583
+  type: 'test'
+  ...
+# Subtest: Semantic Radar keeps redundant accessible navigation and clean exports
+ok 78 - Semantic Radar keeps redundant accessible navigation and clean exports
+  ---
+  duration_ms: 86.924875
+  type: 'test'
+  ...
+# Subtest: Semantic Radar stays above the measured MAP control strip
+ok 79 - Semantic Radar stays above the measured MAP control strip
+  ---
+  duration_ms: 1640.617125
+  type: 'test'
+  ...
+# Subtest: Semantic Radar avoids an expanded mobile Passport without hiding a collision
+ok 80 - Semantic Radar avoids an expanded mobile Passport without hiding a collision
+  ---
+  duration_ms: 1902.493084
+  type: 'test'
+  ...
+# Subtest: Semantic Radar reports a consistent unavailable state and recovers when space returns
+ok 81 - Semantic Radar reports a consistent unavailable state and recovers when space returns
+  ---
+  duration_ms: 2104.962416
+  type: 'test'
+  ...
+# Subtest: Semantic Radar automatically avoids a tall Semantic Passport
+ok 82 - Semantic Radar automatically avoids a tall Semantic Passport
+  ---
+  duration_ms: 1723.530875
+  type: 'test'
+  ...
+# Subtest: Semantic Radar titlebar drag persists while surface drag still pans the diagram
+ok 83 - Semantic Radar titlebar drag persists while surface drag still pans the diagram
+  ---
+  duration_ms: 1949.444417
+  type: 'test'
+  ...
+# Subtest: closing a pending Radar request prevents retry and reflow from reopening it
+ok 84 - closing a pending Radar request prevents retry and reflow from reopening it
+  ---
+  duration_ms: 2134.947208
+  type: 'test'
+  ...
+# Subtest: Radar reflects camera viewport, status and Focus/Story activity through normal callers
+ok 85 - Radar reflects camera viewport, status and Focus/Story activity through normal callers
+  ---
+  duration_ms: 2953.832416
+  type: 'test'
+  ...
+# Subtest: sequence headers reserve an icon/brand rail without shrinking or changing literal labels
+ok 86 - sequence headers reserve an icon/brand rail without shrinking or changing literal labels
+  ---
+  duration_ms: 4581.205042
+  type: 'test'
+  ...
+# Subtest: Camera preserves transactions, rendered state and real caller handoffs
+    # Subtest: five modes keep initial state, zoom limits and canonical geometry
+    ok 1 - five modes keep initial state, zoom limits and canonical geometry
+      ---
+      duration_ms: 2182.93775
+      type: 'test'
+      ...
+    # Subtest: pointer cancellation ends dragging and controls do not begin a pan
+    ok 2 - pointer cancellation ends dragging and controls do not begin a pan
+      ---
+      duration_ms: 666.822875
+      type: 'test'
+      ...
+    # Subtest: target selection, failure branches and instant options preserve their side effects
+    ok 3 - target selection, failure branches and instant options preserve their side effects
+      ---
+      duration_ms: 348.769
+      type: 'test'
+      ...
+    # Subtest: running transactions complete, replace, cancel and yield to manual navigation
+    ok 4 - running transactions complete, replace, cancel and yield to manual navigation
+      ---
+      duration_ms: 2316.109542
+      type: 'test'
+      ...
+    # Subtest: mobile branches, automatic scroll guard and scrollTo fallback stay distinct
+    ok 5 - mobile branches, automatic scroll guard and scrollTo fallback stay distinct
+      ---
+      duration_ms: 2318.770958
+      type: 'test'
+      ...
+    # Subtest: reduced motion and call-time hidden state keep immediate completion semantics
+    ok 6 - reduced motion and call-time hidden state keep immediate completion semantics
+      ---
+      duration_ms: 848.07825
+      type: 'test'
+      ...
+    # Subtest: actual Story, Route, Finder and Radar callers retain camera ownership
+    ok 7 - actual Story, Route, Finder and Radar callers retain camera ownership
+      ---
+      duration_ms: 3599.658083
+      type: 'test'
+      ...
+    # Subtest: export removes camera transforms without mutating the live camera
+    ok 8 - export removes camera transforms without mutating the live camera
+      ---
+      duration_ms: 510.90175
+      type: 'test'
+      ...
+    1..8
+ok 87 - Camera preserves transactions, rendered state and real caller handoffs
+  ---
+  duration_ms: 14224.751542
+  type: 'test'
+  ...
+# Subtest: the public CLI gives all typed renderers one final Viewer contract
+ok 88 - the public CLI gives all typed renderers one final Viewer contract
+  ---
+  duration_ms: 1006.424417
+  type: 'test'
+  ...
+# Subtest: Viewer chrome remains outside the canonical SVG export boundary
+ok 89 - Viewer chrome remains outside the canonical SVG export boundary
+  ---
+  duration_ms: 112.297208
+  type: 'test'
+  ...
+# Subtest: Dock Safe Rail keeps typed renderers clear across themes, Presentation, and low-height desktops
+ok 90 - Dock Safe Rail keeps typed renderers clear across themes, Presentation, and low-height desktops
+  ---
+  duration_ms: 4609.774375
+  type: 'test'
+  ...
+# Subtest: an artifact with no Legend still receives the desktop stage rail
+ok 91 - an artifact with no Legend still receives the desktop stage rail
+  ---
+  duration_ms: 1513.821875
+  type: 'test'
+  ...
+# Subtest: Dock Safe Rail resolves a forced Legend collision across the shared diagram viewer
+ok 92 - Dock Safe Rail resolves a forced Legend collision across the shared diagram viewer
+  ---
+  duration_ms: 4802.911875
+  type: 'test'
+  ...
+# Subtest: Maka remains collision-free at the reported Retina-equivalent viewport
+ok 93 - Maka remains collision-free at the reported Retina-equivalent viewport
+  ---
+  duration_ms: 1743.850167
+  type: 'test'
+  ...
+# Subtest: a real 5px Legend gap keeps the stage rail and Legend clear
+ok 94 - a real 5px Legend gap keeps the stage rail and Legend clear
+  ---
+  duration_ms: 1950.397292
+  type: 'test'
+  ...
+# Subtest: Presentation keeps its visible Dock clear of a colliding Legend
+ok 95 - Presentation keeps its visible Dock clear of a colliding Legend
+  ---
+  duration_ms: 1848.677959
+  type: 'test'
+  ...
+# Subtest: manual zoom and pan reschedules Legend and Dock collision measurement
+ok 96 - manual zoom and pan reschedules Legend and Dock collision measurement
+  ---
+  duration_ms: 1805.249792
+  type: 'test'
+  ...
+# Subtest: camera pan clips authored relationship paint at the protected stage boundary
+ok 97 - camera pan clips authored relationship paint at the protected stage boundary
+  ---
+  duration_ms: 1854.977875
+  type: 'test'
+  ...
+# Subtest: live camera transitions keep authored relationship paint outside the Dock on every frame
+ok 98 - live camera transitions keep authored relationship paint outside the Dock on every frame
+  ---
+  duration_ms: 3848.872083
+  type: 'test'
+  ...
+# Subtest: zoom keeps the desktop rail stable and reports protected stage geometry
+ok 99 - zoom keeps the desktop rail stable and reports protected stage geometry
+  ---
+  duration_ms: 1806.633459
+  type: 'test'
+  ...
+# Subtest: Reset followed immediately by zoom and pan retains a collision-free desktop rail
+ok 100 - Reset followed immediately by zoom and pan retains a collision-free desktop rail
+  ---
+  duration_ms: 1809.963584
+  type: 'test'
+  ...
+# Subtest: zoomed camera restores its bounded desktop rail after crossing the mobile breakpoint
+ok 101 - zoomed camera restores its bounded desktop rail after crossing the mobile breakpoint
+  ---
+  duration_ms: 2141.01125
+  type: 'test'
+  ...
+# Subtest: localized multiline Legends remain clear across required viewports, themes, and presets
+ok 102 - localized multiline Legends remain clear across required viewports, themes, and presets
+  ---
+  duration_ms: 21878.703208
+  type: 'test'
+  ...
+# Subtest: Semantic Lens and Radar protect the final Legend and Dock rectangles
+ok 103 - Semantic Lens and Radar protect the final Legend and Dock rectangles
+  ---
+  duration_ms: 2108.33325
+  type: 'test'
+  ...
+# Subtest: Radar, Passport, Legend, and Dock remain mutually clear on desktop and narrow viewports
+ok 104 - Radar, Passport, Legend, and Dock remain mutually clear on desktop and narrow viewports
+  ---
+  duration_ms: 2283.742542
+  type: 'test'
+  ...
+# Subtest: mobile, embed, and print keep zero reserve while hidden Legends retain the stage rail
+ok 105 - mobile, embed, and print keep zero reserve while hidden Legends retain the stage rail
+  ---
+  duration_ms: 2704.06675
+  type: 'test'
+  ...
+# Subtest: Chrome Layout preserves scheduling, mode restoration and Reader handoffs
+    # Subtest: automatic resize crosses Chrome and Reader thresholds without reserve accumulation
+    ok 1 - automatic resize crosses Chrome and Reader thresholds without reserve accumulation
+      ---
+      duration_ms: 2390.406875
+      type: 'test'
+      ...
+    # Subtest: automatic observer callbacks handle navigation size, visibility and content changes
+    ok 2 - automatic observer callbacks handle navigation size, visibility and content changes
+      ---
+      duration_ms: 1415.244667
+      type: 'test'
+      ...
+    # Subtest: embed and print restore a zoomed rail, while Presentation remains eligible
+    ok 3 - embed and print restore a zoomed rail, while Presentation remains eligible
+      ---
+      duration_ms: 3300.079583
+      type: 'test'
+      ...
+    # Subtest: pending Reader probes coalesce and retain the rail when the camera changes
+    ok 4 - pending Reader probes coalesce and retain the rail when the camera changes
+      ---
+      duration_ms: 1032.318667
+      type: 'test'
+      ...
+    # Subtest: font readiness and optional observers preserve their existing fallbacks
+    ok 5 - font readiness and optional observers preserve their existing fallbacks
+      ---
+      duration_ms: 1034.192917
+      type: 'test'
+      ...
+    1..5
+ok 106 - Chrome Layout preserves scheduling, mode restoration and Reader handoffs
+  ---
+  duration_ms: 10079.009416
+  type: 'test'
+  ...
+# Subtest: valid identifiers preserve Viewer selection, chapters, routes and relationship links
+    # Subtest: architecture
+        # Subtest: focus excludes unselected identifiers
+        ok 1 - focus excludes unselected identifiers
+          ---
+          duration_ms: 707.088833
+          type: 'test'
+          ...
+        # Subtest: Intent Trace includes only the authored neighborhood
+        ok 2 - Intent Trace includes only the authored neighborhood
+          ---
+          duration_ms: 152.169917
+          type: 'test'
+          ...
+        # Subtest: Camera does not infer a target from an empty selection
+        ok 3 - Camera does not infer a target from an empty selection
+          ---
+          duration_ms: 149.69575
+          type: 'test'
+          ...
+        # Subtest: chapters retain every authored stop and exact deltas
+        ok 4 - chapters retain every authored stop and exact deltas
+          ---
+          duration_ms: 212.974791
+          type: 'test'
+          ...
+        # Subtest: Route Probe follows the authored edge and exposes the target
+        ok 5 - Route Probe follows the authored edge and exposes the target
+          ---
+          duration_ms: 184.487917
+          type: 'test'
+          ...
+        # Subtest: a unique relationship ID restores from a share link
+        ok 6 - a unique relationship ID restores from a share link
+          ---
+          duration_ms: 120.260625
+          type: 'test'
+          ...
+        # Subtest: Semantic Lens includes the authored node and its relationships
+        ok 7 - Semantic Lens includes the authored node and its relationships
+          ---
+          duration_ms: 175.901333
+          type: 'test'
+          ...
+        1..7
+    ok 1 - architecture
+      ---
+      duration_ms: 1887.020875
+      type: 'test'
+      ...
+    # Subtest: workflow
+        # Subtest: focus excludes unselected identifiers
+        ok 1 - focus excludes unselected identifiers
+          ---
+          duration_ms: 189.56225
+          type: 'test'
+          ...
+        # Subtest: Intent Trace includes only the authored neighborhood
+        ok 2 - Intent Trace includes only the authored neighborhood
+          ---
+          duration_ms: 149.546292
+          type: 'test'
+          ...
+        # Subtest: Camera does not infer a target from an empty selection
+        ok 3 - Camera does not infer a target from an empty selection
+          ---
+          duration_ms: 151.716542
+          type: 'test'
+          ...
+        # Subtest: chapters retain every authored stop and exact deltas
+        ok 4 - chapters retain every authored stop and exact deltas
+          ---
+          duration_ms: 212.523542
+          type: 'test'
+          ...
+        # Subtest: Route Probe follows the authored edge and exposes the target
+        ok 5 - Route Probe follows the authored edge and exposes the target
+          ---
+          duration_ms: 182.276167
+          type: 'test'
+          ...
+        # Subtest: a unique relationship ID restores from a share link
+        ok 6 - a unique relationship ID restores from a share link
+          ---
+          duration_ms: 120.295542
+          type: 'test'
+          ...
+        # Subtest: Semantic Lens includes the authored node and its relationships
+        ok 7 - Semantic Lens includes the authored node and its relationships
+          ---
+          duration_ms: 178.1085
+          type: 'test'
+          ...
+        1..7
+    ok 2 - workflow
+      ---
+      duration_ms: 1434.305875
+      type: 'test'
+      ...
+    # Subtest: sequence
+        # Subtest: focus excludes unselected identifiers
+        ok 1 - focus excludes unselected identifiers
+          ---
+          duration_ms: 184.95
+          type: 'test'
+          ...
+        # Subtest: Intent Trace includes only the authored neighborhood
+        ok 2 - Intent Trace includes only the authored neighborhood
+          ---
+          duration_ms: 147.642625
+          type: 'test'
+          ...
+        # Subtest: Camera does not infer a target from an empty selection
+        ok 3 - Camera does not infer a target from an empty selection
+          ---
+          duration_ms: 151.911917
+          type: 'test'
+          ...
+        # Subtest: chapters retain every authored stop and exact deltas
+        ok 4 - chapters retain every authored stop and exact deltas
+          ---
+          duration_ms: 206.785083
+          type: 'test'
+          ...
+        # Subtest: Route Probe follows the authored edge and exposes the target
+        ok 5 - Route Probe follows the authored edge and exposes the target
+          ---
+          duration_ms: 173.760292
+          type: 'test'
+          ...
+        # Subtest: a unique relationship ID restores from a share link
+        ok 6 - a unique relationship ID restores from a share link
+          ---
+          duration_ms: 152.186916
+          type: 'test'
+          ...
+        # Subtest: Semantic Lens includes the authored node and its relationships
+        ok 7 - Semantic Lens includes the authored node and its relationships
+          ---
+          duration_ms: 177.620959
+          type: 'test'
+          ...
+        1..7
+    ok 3 - sequence
+      ---
+      duration_ms: 1367.060959
+      type: 'test'
+      ...
+    # Subtest: dataflow
+        # Subtest: focus excludes unselected identifiers
+        ok 1 - focus excludes unselected identifiers
+          ---
+          duration_ms: 185.189
+          type: 'test'
+          ...
+        # Subtest: Intent Trace includes only the authored neighborhood
+        ok 2 - Intent Trace includes only the authored neighborhood
+          ---
+          duration_ms: 153.916875
+          type: 'test'
+          ...
+        # Subtest: Camera does not infer a target from an empty selection
+        ok 3 - Camera does not infer a target from an empty selection
+          ---
+          duration_ms: 149.836917
+          type: 'test'
+          ...
+        # Subtest: chapters retain every authored stop and exact deltas
+        ok 4 - chapters retain every authored stop and exact deltas
+          ---
+          duration_ms: 208.757958
+          type: 'test'
+          ...
+        # Subtest: Route Probe follows the authored edge and exposes the target
+        ok 5 - Route Probe follows the authored edge and exposes the target
+          ---
+          duration_ms: 303.635833
+          type: 'test'
+          ...
+        # Subtest: a unique relationship ID restores from a share link
+        ok 6 - a unique relationship ID restores from a share link
+          ---
+          duration_ms: 153.096334
+          type: 'test'
+          ...
+        # Subtest: Semantic Lens includes the authored node and its relationships
+        ok 7 - Semantic Lens includes the authored node and its relationships
+          ---
+          duration_ms: 173.481375
+          type: 'test'
+          ...
+        1..7
+    ok 4 - dataflow
+      ---
+      duration_ms: 1512.214208
+      type: 'test'
+      ...
+    # Subtest: lifecycle
+        # Subtest: focus excludes unselected identifiers
+        ok 1 - focus excludes unselected identifiers
+          ---
+          duration_ms: 150.656709
+          type: 'test'
+          ...
+        # Subtest: Intent Trace includes only the authored neighborhood
+        ok 2 - Intent Trace includes only the authored neighborhood
+          ---
+          duration_ms: 120.840167
+          type: 'test'
+          ...
+        # Subtest: Camera does not infer a target from an empty selection
+        ok 3 - Camera does not infer a target from an empty selection
+          ---
+          duration_ms: 149.729666
+          type: 'test'
+          ...
+        # Subtest: chapters retain every authored stop and exact deltas
+        ok 4 - chapters retain every authored stop and exact deltas
+          ---
+          duration_ms: 211.017709
+          type: 'test'
+          ...
+        # Subtest: Route Probe follows the authored edge and exposes the target
+        ok 5 - Route Probe follows the authored edge and exposes the target
+          ---
+          duration_ms: 152.251416
+          type: 'test'
+          ...
+        # Subtest: a unique relationship ID restores from a share link
+        ok 6 - a unique relationship ID restores from a share link
+          ---
+          duration_ms: 121.596084
+          type: 'test'
+          ...
+        # Subtest: Semantic Lens includes the authored node and its relationships
+        ok 7 - Semantic Lens includes the authored node and its relationships
+          ---
+          duration_ms: 186.799459
+          type: 'test'
+          ...
+        1..7
+    ok 5 - lifecycle
+      ---
+      duration_ms: 1263.943417
+      type: 'test'
+      ...
+    1..5
+ok 107 - valid identifiers preserve Viewer selection, chapters, routes and relationship links
+  ---
+  duration_ms: 8352.957166
+  type: 'test'
+  ...
+1..107
+# tests 239
+# suites 0
+# pass 239
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 324878.218084

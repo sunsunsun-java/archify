@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Delivery and recovery lifecycle",
+    "output": "content-recovery.html",
+    "canvas_fit": "content",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Delivery phases"
+    },
+    {
+      "id": "event",
+      "label": "Recovery actions"
+    },
+    {
+      "id": "terminal",
+      "label": "Recorded outcomes"
+    }
+  ],
+  "states": [
+    {
+      "id": "phase-0",
+      "type": "start",
+      "label": "Receive",
+      "lane": "main",
+      "col": 0
+    },
+    {
+      "id": "phase-1",
+      "type": "active",
+      "label": "Plan",
+      "lane": "main",
+      "col": 1
+    },
+    {
+      "id": "phase-2",
+      "type": "active",
+      "label": "Execute",
+      "lane": "main",
+      "col": 2
+    },
+    {
+      "id": "phase-3",
+      "type": "active",
+      "label": "Validate",
+      "lane": "main",
+      "col": 3
+    },
+    {
+      "id": "phase-4",
+      "type": "active",
+      "label": "Deliver",
+      "lane": "main",
+      "col": 4
+    },
+    {
+      "id": "event-0",
+      "type": "waiting",
+      "label": "Retry",
+      "lane": "event",
+      "col": 0,
+      "yOffset": 0
+    },
+    {
+      "id": "event-1",
+      "type": "waiting",
+      "label": "Review",
+      "lane": "event",
+      "col": 1,
+      "yOffset": 0
+    },
+    {
+      "id": "event-2",
+      "type": "waiting",
+      "label": "Confirm",
+      "lane": "event",
+      "col": 2,
+      "yOffset": 0
+    },
+    {
+      "id": "outcome-0",
+      "type": "failure",
+      "label": "Failed",
+      "lane": "terminal",
+      "col": 0,
+      "yOffset": 400
+    },
+    {
+      "id": "outcome-1",
+      "type": "failure",
+      "label": "Rejected",
+      "lane": "terminal",
+      "col": 1,
+      "yOffset": 400
+    },
+    {
+      "id": "outcome-2",
+      "type": "success",
+      "label": "Complete",
+      "lane": "terminal",
+      "col": 2,
+      "yOffset": 400
+    }
+  ],
+  "transitions": [
+    {
+      "id": "advance-0",
+      "from": "phase-0",
+      "to": "phase-1"
+    },
+    {
+      "id": "advance-1",
+      "from": "phase-1",
+      "to": "phase-2"
+    },
+    {
+      "id": "advance-2",
+      "from": "phase-2",
+      "to": "phase-3"
+    },
+    {
+      "id": "advance-3",
+      "from": "phase-3",
+      "to": "phase-4"
+    },
+    {
+      "id": "recover-0",
+      "from": "phase-2",
+      "to": "event-0"
+    },
+    {
+      "id": "recover-1",
+      "from": "phase-3",
+      "to": "event-1"
+    },
+    {
+      "id": "recover-2",
+      "from": "phase-4",
+      "to": "event-2"
+    },
+    {
+      "id": "resolve-0",
+      "from": "event-0",
+      "to": "outcome-0",
+      "label": "retry exhausted",
+      "labelAt": [402, 600]
+    },
+    {
+      "id": "resolve-1",
+      "from": "event-1",
+      "to": "outcome-1",
+      "label": "review rejected",
+      "labelAt": [556, 600]
+    },
+    {
+      "id": "resolve-2",
+      "from": "event-2",
+      "to": "outcome-2",
+      "label": "receipt confirmed",
+      "labelAt": [710, 600]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: authored capacity includes the exact node stroke boundary, not just its geometry box
+ok 1 - authored capacity includes the exact node stroke boundary, not just its geometry box
+  ---
+  duration_ms: 185.110917
+  type: 'test'
+  ...
+# Subtest: architecture-outer-route: a fixed capacity failure offers a publicly validated repair
+ok 2 - architecture-outer-route: a fixed capacity failure offers a publicly validated repair
+  ---
+  duration_ms: 417.01675
+  type: 'test'
+  ...
+# Subtest: dataflow-high-row: a fixed capacity failure offers a publicly validated repair
+ok 3 - dataflow-high-row: a fixed capacity failure offers a publicly validated repair
+  ---
+  duration_ms: 415.970708
+  type: 'test'
+  ...
+# Subtest: sequence-segment-activation: a fixed capacity failure offers a publicly validated repair
+ok 4 - sequence-segment-activation: a fixed capacity failure offers a publicly validated repair
+  ---
+  duration_ms: 407.300708
+  type: 'test'
+  ...
+# Subtest: lifecycle-high-state: a fixed capacity failure offers a publicly validated repair
+ok 5 - lifecycle-high-state: a fixed capacity failure offers a publicly validated repair
+  ---
+  duration_ms: 408.278542
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1883.682209

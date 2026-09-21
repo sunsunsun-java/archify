@@ -1,0 +1,546 @@
+[
+  {
+    "type": "architecture",
+    "kind": "mobile",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "canonical": "0 0 801 1259",
+    "after": "0 0 801 1259",
+    "reached": [
+      {
+        "id": "service-0",
+        "selected": "service-0",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      },
+      {
+        "id": "service-23",
+        "selected": "service-23",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      }
+    ],
+    "overflow": false,
+    "camera": {
+      "scale": 1,
+      "x": 0,
+      "y": 0,
+      "mode": "overview"
+    },
+    "preset": "classic"
+  },
+  {
+    "type": "architecture",
+    "kind": "mobile",
+    "width": 844,
+    "height": 390,
+    "theme": "light",
+    "canonical": "0 0 801 1259",
+    "after": "0 0 801 1259",
+    "reached": [
+      {
+        "id": "service-0",
+        "selected": "service-0",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      },
+      {
+        "id": "service-23",
+        "selected": "service-23",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      }
+    ],
+    "overflow": false,
+    "camera": {
+      "scale": 1,
+      "x": 0,
+      "y": 0,
+      "mode": "overview"
+    },
+    "preset": "classic"
+  },
+  {
+    "type": "architecture",
+    "bytes": 366963,
+    "width": 2403,
+    "height": 3777,
+    "nonempty": true,
+    "varied": true,
+    "kind": "raster",
+    "format": "png",
+    "mimeType": "image/png"
+  },
+  {
+    "type": "architecture",
+    "bytes": 491510,
+    "width": 2403,
+    "height": 3777,
+    "nonempty": true,
+    "varied": true,
+    "kind": "raster",
+    "format": "jpeg",
+    "mimeType": "image/jpeg"
+  },
+  {
+    "type": "architecture",
+    "bytes": 149948,
+    "width": 2403,
+    "height": 3777,
+    "nonempty": true,
+    "varied": true,
+    "kind": "raster",
+    "format": "webp",
+    "mimeType": "image/webp"
+  },
+  {
+    "type": "architecture",
+    "kind": "budget",
+    "allocations": 0,
+    "alerts": [
+      "Export failed: PNG export needs 5000×100000 pixels, above the 16000000 pixel safety budget. Export SVG instead.",
+      "Export failed: JPEG export needs 5000×100000 pixels, above the 16000000 pixel safety budget. Export SVG instead.",
+      "Export failed: WEBP export needs 5000×100000 pixels, above the 16000000 pixel safety budget. Export SVG instead."
+    ],
+    "outcomes": [
+      {
+        "format": "png",
+        "fallback": "svg",
+        "scale": "none"
+      },
+      {
+        "format": "jpeg",
+        "fallback": "svg",
+        "scale": "none"
+      },
+      {
+        "format": "webp",
+        "fallback": "svg",
+        "scale": "none"
+      }
+    ],
+    "webm": "export/raster-budget-exceeded",
+    "stillGate": false
+  },
+  {
+    "type": "dataflow",
+    "kind": "mobile",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "canonical": "0 0 1085 1203",
+    "after": "0 0 1085 1203",
+    "reached": [
+      {
+        "id": "step-0",
+        "selected": "step-0",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      },
+      {
+        "id": "step-24",
+        "selected": "step-24",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      }
+    ],
+    "overflow": false,
+    "camera": {
+      "scale": 1,
+      "x": 0,
+      "y": 0,
+      "mode": "overview"
+    },
+    "preset": "classic"
+  },
+  {
+    "type": "dataflow",
+    "kind": "mobile",
+    "width": 844,
+    "height": 390,
+    "theme": "light",
+    "canonical": "0 0 1085 1203",
+    "after": "0 0 1085 1203",
+    "reached": [
+      {
+        "id": "step-0",
+        "selected": "step-0",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      },
+      {
+        "id": "step-24",
+        "selected": "step-24",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      }
+    ],
+    "overflow": false,
+    "camera": {
+      "scale": 1,
+      "x": 0,
+      "y": 0,
+      "mode": "overview"
+    },
+    "preset": "classic"
+  },
+  {
+    "type": "dataflow",
+    "bytes": 429662,
+    "width": 3255,
+    "height": 3609,
+    "nonempty": true,
+    "varied": true,
+    "kind": "raster",
+    "format": "png",
+    "mimeType": "image/png"
+  },
+  {
+    "type": "dataflow",
+    "bytes": 715487,
+    "width": 3255,
+    "height": 3609,
+    "nonempty": true,
+    "varied": true,
+    "kind": "raster",
+    "format": "jpeg",
+    "mimeType": "image/jpeg"
+  },
+  {
+    "type": "dataflow",
+    "bytes": 234924,
+    "width": 3255,
+    "height": 3609,
+    "nonempty": true,
+    "varied": true,
+    "kind": "raster",
+    "format": "webp",
+    "mimeType": "image/webp"
+  },
+  {
+    "type": "dataflow",
+    "kind": "budget",
+    "allocations": 0,
+    "alerts": [
+      "Export failed: PNG export needs 5000×100000 pixels, above the 16000000 pixel safety budget. Export SVG instead.",
+      "Export failed: JPEG export needs 5000×100000 pixels, above the 16000000 pixel safety budget. Export SVG instead.",
+      "Export failed: WEBP export needs 5000×100000 pixels, above the 16000000 pixel safety budget. Export SVG instead."
+    ],
+    "outcomes": [
+      {
+        "format": "png",
+        "fallback": "svg",
+        "scale": "none"
+      },
+      {
+        "format": "jpeg",
+        "fallback": "svg",
+        "scale": "none"
+      },
+      {
+        "format": "webp",
+        "fallback": "svg",
+        "scale": "none"
+      }
+    ],
+    "webm": "export/raster-budget-exceeded",
+    "stillGate": false
+  },
+  {
+    "type": "sequence",
+    "kind": "mobile",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "canonical": "0 0 1334 1315",
+    "after": "0 0 1334 1315",
+    "reached": [
+      {
+        "id": "p0",
+        "selected": "p0",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      },
+      {
+        "id": "p11",
+        "selected": "p11",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      }
+    ],
+    "overflow": false,
+    "camera": {
+      "scale": 1,
+      "x": 0,
+      "y": 0,
+      "mode": "overview"
+    },
+    "preset": "classic"
+  },
+  {
+    "type": "sequence",
+    "kind": "mobile",
+    "width": 844,
+    "height": 390,
+    "theme": "light",
+    "canonical": "0 0 1334 1315",
+    "after": "0 0 1334 1315",
+    "reached": [
+      {
+        "id": "p0",
+        "selected": "p0",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      },
+      {
+        "id": "p11",
+        "selected": "p11",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      }
+    ],
+    "overflow": false,
+    "camera": {
+      "scale": 1,
+      "x": 0,
+      "y": 0,
+      "mode": "overview"
+    },
+    "preset": "classic"
+  },
+  {
+    "type": "sequence",
+    "bytes": 406162,
+    "width": 4002,
+    "height": 3945,
+    "nonempty": true,
+    "varied": true,
+    "kind": "raster",
+    "format": "png",
+    "mimeType": "image/png"
+  },
+  {
+    "type": "sequence",
+    "bytes": 693049,
+    "width": 4002,
+    "height": 3945,
+    "nonempty": true,
+    "varied": true,
+    "kind": "raster",
+    "format": "jpeg",
+    "mimeType": "image/jpeg"
+  },
+  {
+    "type": "sequence",
+    "bytes": 177342,
+    "width": 4002,
+    "height": 3945,
+    "nonempty": true,
+    "varied": true,
+    "kind": "raster",
+    "format": "webp",
+    "mimeType": "image/webp"
+  },
+  {
+    "type": "sequence",
+    "kind": "budget",
+    "allocations": 0,
+    "alerts": [
+      "Export failed: PNG export needs 5000×100000 pixels, above the 16000000 pixel safety budget. Export SVG instead.",
+      "Export failed: JPEG export needs 5000×100000 pixels, above the 16000000 pixel safety budget. Export SVG instead.",
+      "Export failed: WEBP export needs 5000×100000 pixels, above the 16000000 pixel safety budget. Export SVG instead."
+    ],
+    "outcomes": [
+      {
+        "format": "png",
+        "fallback": "svg",
+        "scale": "none"
+      },
+      {
+        "format": "jpeg",
+        "fallback": "svg",
+        "scale": "none"
+      },
+      {
+        "format": "webp",
+        "fallback": "svg",
+        "scale": "none"
+      }
+    ],
+    "webm": "export/raster-budget-exceeded",
+    "stillGate": false
+  },
+  {
+    "type": "lifecycle",
+    "kind": "mobile",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "canonical": "0 0 980 1031",
+    "after": "0 0 980 1031",
+    "reached": [
+      {
+        "id": "phase-0",
+        "selected": "phase-0",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      },
+      {
+        "id": "outcome-2",
+        "selected": "outcome-2",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      }
+    ],
+    "overflow": false,
+    "camera": {
+      "scale": 1,
+      "x": 0,
+      "y": 0,
+      "mode": "overview"
+    },
+    "preset": "classic"
+  },
+  {
+    "type": "lifecycle",
+    "kind": "mobile",
+    "width": 844,
+    "height": 390,
+    "theme": "light",
+    "canonical": "0 0 980 1031",
+    "after": "0 0 980 1031",
+    "reached": [
+      {
+        "id": "phase-0",
+        "selected": "phase-0",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      },
+      {
+        "id": "outcome-2",
+        "selected": "outcome-2",
+        "finderClosed": true,
+        "passportVisible": true,
+        "passportInside": true,
+        "closeReachable": true,
+        "closed": true
+      }
+    ],
+    "overflow": false,
+    "camera": {
+      "scale": 1,
+      "x": 0,
+      "y": 0,
+      "mode": "overview"
+    },
+    "preset": "classic"
+  },
+  {
+    "type": "lifecycle",
+    "bytes": 295858,
+    "width": 2940,
+    "height": 3093,
+    "nonempty": true,
+    "varied": true,
+    "kind": "raster",
+    "format": "png",
+    "mimeType": "image/png"
+  },
+  {
+    "type": "lifecycle",
+    "bytes": 440854,
+    "width": 2940,
+    "height": 3093,
+    "nonempty": true,
+    "varied": true,
+    "kind": "raster",
+    "format": "jpeg",
+    "mimeType": "image/jpeg"
+  },
+  {
+    "type": "lifecycle",
+    "bytes": 125250,
+    "width": 2940,
+    "height": 3093,
+    "nonempty": true,
+    "varied": true,
+    "kind": "raster",
+    "format": "webp",
+    "mimeType": "image/webp"
+  },
+  {
+    "type": "lifecycle",
+    "kind": "budget",
+    "allocations": 0,
+    "alerts": [
+      "Export failed: PNG export needs 5000×100000 pixels, above the 16000000 pixel safety budget. Export SVG instead.",
+      "Export failed: JPEG export needs 5000×100000 pixels, above the 16000000 pixel safety budget. Export SVG instead.",
+      "Export failed: WEBP export needs 5000×100000 pixels, above the 16000000 pixel safety budget. Export SVG instead."
+    ],
+    "outcomes": [
+      {
+        "format": "png",
+        "fallback": "svg",
+        "scale": "none"
+      },
+      {
+        "format": "jpeg",
+        "fallback": "svg",
+        "scale": "none"
+      },
+      {
+        "format": "webp",
+        "fallback": "svg",
+        "scale": "none"
+      }
+    ],
+    "webm": "export/raster-budget-exceeded",
+    "stillGate": false
+  }
+]

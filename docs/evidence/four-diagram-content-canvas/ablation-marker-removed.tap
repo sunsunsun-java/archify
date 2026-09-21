@@ -1,0 +1,30 @@
+TAP version 13
+# Subtest: marker paint can cross the origin even when the route stroke remains positive
+not ok 1 - marker paint can cross the origin even when the route stroke remains positive
+  ---
+  duration_ms: 104.445375
+  type: 'test'
+  location: '/Users/sunhonghao/.codex/worktrees/b09f/archify/archify/test/content-canvas.test.mjs:357:1'
+  failureType: 'testCodeFailure'
+  error: 'Expected "actual" to be strictly unequal to: 0'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 0
+  operator: 'notStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/sunhonghao/.codex/worktrees/b09f/archify/archify/test/content-canvas.test.mjs:362:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 154.838791

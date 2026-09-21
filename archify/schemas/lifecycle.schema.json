@@ -46,6 +46,7 @@
         "visual_preset": {
           "$ref": "common.schema.json#/$defs/visualPreset"
         },
+        "canvas_fit": { "$ref": "common.schema.json#/$defs/canvasFit" },
         "quality_profile": {
           "$ref": "common.schema.json#/$defs/qualityProfile"
         },

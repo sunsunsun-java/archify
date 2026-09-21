@@ -1,0 +1,406 @@
+TAP version 13
+# Subtest: Architecture implicit canvas contains an unlabelled outer route without moving its authored points
+ok 1 - Architecture implicit canvas contains an unlabelled outer route without moving its authored points
+  ---
+  duration_ms: 105.677375
+  type: 'test'
+  ...
+# Subtest: Architecture content mode measures paint and reports a fixed-frame capacity error without replacing authored coordinates
+ok 2 - Architecture content mode measures paint and reports a fixed-frame capacity error without replacing authored coordinates
+  ---
+  duration_ms: 287.751667
+  type: 'test'
+  ...
+# Subtest: layout-json is machine-readable even when the source file cannot be read
+ok 3 - layout-json is machine-readable even when the source file cannot be read
+  ---
+  duration_ms: 134.926625
+  type: 'test'
+  ...
+# Subtest: content canvas respects a small sufficient explicit frame and rejects negative authored paint
+ok 4 - content canvas respects a small sufficient explicit frame and rejects negative authored paint
+  ---
+  duration_ms: 183.912208
+  type: 'test'
+  ...
+# Subtest: layout-json does not approve an intentional legend that render cannot place
+ok 5 - layout-json does not approve an intentional legend that render cannot place
+  ---
+  duration_ms: 182.349625
+  type: 'test'
+  ...
+# Subtest: Dataflow content canvas expands around authored rows and preserves the legacy row limit
+ok 6 - Dataflow content canvas expands around authored rows and preserves the legacy row limit
+  ---
+  duration_ms: 286.866375
+  type: 'test'
+  ...
+# Subtest: Sequence fixed content canvas preserves twelve columns and authored long message times
+ok 7 - Sequence fixed content canvas preserves twelve columns and authored long message times
+  ---
+  duration_ms: 194.510208
+  type: 'test'
+  ...
+# Subtest: Sequence spread content canvas recomputes thirty columns and converges without moving time
+ok 8 - Sequence spread content canvas recomputes thirty columns and converges without moving time
+  ---
+  duration_ms: 200.877959
+  type: 'test'
+  ...
+# Subtest: Lifecycle content canvas contains high authored states while keeping lower-band column limits
+ok 9 - Lifecycle content canvas contains high authored states while keeping lower-band column limits
+  ---
+  duration_ms: 285.271833
+  type: 'test'
+  ...
+# Subtest: a capacity diagnostic advertises only a size verified through unchanged renderer rules
+ok 10 - a capacity diagnostic advertises only a size verified through unchanged renderer rules
+  ---
+  duration_ms: 442.64775
+  type: 'test'
+  ...
+# Subtest: content legend width accounts for its rendered font rather than the old smaller measurement font
+ok 11 - content legend width accounts for its rendered font rather than the old smaller measurement font
+  ---
+  duration_ms: 102.6675
+  type: 'test'
+  ...
+# Subtest: capacity matrix: architecture-outer-route passes public artifact validation
+ok 12 - capacity matrix: architecture-outer-route passes public artifact validation
+  ---
+  duration_ms: 306.8255
+  type: 'test'
+  ...
+# Subtest: capacity matrix: architecture-thick-marker passes public artifact validation
+ok 13 - capacity matrix: architecture-thick-marker passes public artifact validation
+  ---
+  duration_ms: 281.989959
+  type: 'test'
+  ...
+# Subtest: capacity matrix: architecture-boundary-legend passes public artifact validation
+ok 14 - capacity matrix: architecture-boundary-legend passes public artifact validation
+  ---
+  duration_ms: 287.071417
+  type: 'test'
+  ...
+# Subtest: capacity matrix: architecture-long-legend-paint passes public artifact validation
+ok 15 - capacity matrix: architecture-long-legend-paint passes public artifact validation
+  ---
+  duration_ms: 286.402875
+  type: 'test'
+  ...
+# Subtest: capacity matrix: architecture-ascii-legend-paint passes public artifact validation
+ok 16 - capacity matrix: architecture-ascii-legend-paint passes public artifact validation
+  ---
+  duration_ms: 284.061917
+  type: 'test'
+  ...
+# Subtest: capacity matrix: dataflow-high-row passes public artifact validation
+ok 17 - capacity matrix: dataflow-high-row passes public artifact validation
+  ---
+  duration_ms: 278.20675
+  type: 'test'
+  ...
+# Subtest: capacity matrix: dataflow-wide-stage passes public artifact validation
+ok 18 - capacity matrix: dataflow-wide-stage passes public artifact validation
+  ---
+  duration_ms: 283.158833
+  type: 'test'
+  ...
+# Subtest: capacity matrix: dataflow-channel-legend passes public artifact validation
+ok 19 - capacity matrix: dataflow-channel-legend passes public artifact validation
+  ---
+  duration_ms: 283.3235
+  type: 'test'
+  ...
+# Subtest: capacity matrix: sequence-fixed-timeline passes public artifact validation
+ok 20 - capacity matrix: sequence-fixed-timeline passes public artifact validation
+  ---
+  duration_ms: 291.923
+  type: 'test'
+  ...
+# Subtest: capacity matrix: sequence-spread-fleet passes public artifact validation
+ok 21 - capacity matrix: sequence-spread-fleet passes public artifact validation
+  ---
+  duration_ms: 306.857416
+  type: 'test'
+  ...
+# Subtest: capacity matrix: sequence-segment-activation passes public artifact validation
+ok 22 - capacity matrix: sequence-segment-activation passes public artifact validation
+  ---
+  duration_ms: 280.305458
+  type: 'test'
+  ...
+# Subtest: capacity matrix: lifecycle-high-state passes public artifact validation
+ok 23 - capacity matrix: lifecycle-high-state passes public artifact validation
+  ---
+  duration_ms: 282.930167
+  type: 'test'
+  ...
+# Subtest: capacity matrix: lifecycle-rounded-channel passes public artifact validation
+ok 24 - capacity matrix: lifecycle-rounded-channel passes public artifact validation
+  ---
+  duration_ms: 276.914375
+  type: 'test'
+  ...
+# Subtest: capacity matrix: lifecycle-band-legend passes public artifact validation
+ok 25 - capacity matrix: lifecycle-band-legend passes public artifact validation
+  ---
+  duration_ms: 286.949167
+  type: 'test'
+  ...
+# Subtest: capacity matrix: lifecycle-bottom-channel passes public artifact validation
+ok 26 - capacity matrix: lifecycle-bottom-channel passes public artifact validation
+  ---
+  duration_ms: 282.744166
+  type: 'test'
+  ...
+# Subtest: legal control: web-app.architecture renders in legacy and content mode
+ok 27 - legal control: web-app.architecture renders in legacy and content mode
+  ---
+  duration_ms: 218.838375
+  type: 'test'
+  ...
+# Subtest: legal control: brand-aware-delivery.architecture renders in legacy and content mode
+ok 28 - legal control: brand-aware-delivery.architecture renders in legacy and content mode
+  ---
+  duration_ms: 217.532584
+  type: 'test'
+  ...
+# Subtest: legal control: production-deployment.architecture renders in legacy and content mode
+ok 29 - legal control: production-deployment.architecture renders in legacy and content mode
+  ---
+  duration_ms: 221.109958
+  type: 'test'
+  ...
+# Subtest: legal control: product-analytics.dataflow renders in legacy and content mode
+ok 30 - legal control: product-analytics.dataflow renders in legacy and content mode
+  ---
+  duration_ms: 214.3695
+  type: 'test'
+  ...
+# Subtest: legal control: event-stream.dataflow renders in legacy and content mode
+ok 31 - legal control: event-stream.dataflow renders in legacy and content mode
+  ---
+  duration_ms: 222.835833
+  type: 'test'
+  ...
+# Subtest: legal control: cache-miss-request.sequence renders in legacy and content mode
+ok 32 - legal control: cache-miss-request.sequence renders in legacy and content mode
+  ---
+  duration_ms: 214.27475
+  type: 'test'
+  ...
+# Subtest: legal control: async-job-roundtrip.sequence renders in legacy and content mode
+ok 33 - legal control: async-job-roundtrip.sequence renders in legacy and content mode
+  ---
+  duration_ms: 216.114958
+  type: 'test'
+  ...
+# Subtest: legal control: agent-run.lifecycle renders in legacy and content mode
+ok 34 - legal control: agent-run.lifecycle renders in legacy and content mode
+  ---
+  duration_ms: 212.315458
+  type: 'test'
+  ...
+# Subtest: legal control: deployment-release.lifecycle renders in legacy and content mode
+ok 35 - legal control: deployment-release.lifecycle renders in legacy and content mode
+  ---
+  duration_ms: 212.429917
+  type: 'test'
+  ...
+# Subtest: legal control: minimal.dataflow renders in legacy and content mode
+ok 36 - legal control: minimal.dataflow renders in legacy and content mode
+  ---
+  duration_ms: 200.00175
+  type: 'test'
+  ...
+# Subtest: legal control: minimal.sequence renders in legacy and content mode
+ok 37 - legal control: minimal.sequence renders in legacy and content mode
+  ---
+  duration_ms: 201.4055
+  type: 'test'
+  ...
+# Subtest: legal control: minimal.lifecycle renders in legacy and content mode
+ok 38 - legal control: minimal.lifecycle renders in legacy and content mode
+  ---
+  duration_ms: 206.525375
+  type: 'test'
+  ...
+# Subtest: architecture: sufficient authored frame below default stays authoritative under both profiles
+ok 39 - architecture: sufficient authored frame below default stays authoritative under both profiles
+  ---
+  duration_ms: 209.917292
+  type: 'test'
+  ...
+# Subtest: architecture: layout-json schema failure is JSON and dry-run publishes no HTML
+ok 40 - architecture: layout-json schema failure is JSON and dry-run publishes no HTML
+  ---
+  duration_ms: 279.027917
+  type: 'test'
+  ...
+# Subtest: dataflow: sufficient authored frame below default stays authoritative under both profiles
+ok 41 - dataflow: sufficient authored frame below default stays authoritative under both profiles
+  ---
+  duration_ms: 207.904667
+  type: 'test'
+  ...
+# Subtest: dataflow: layout-json schema failure is JSON and dry-run publishes no HTML
+ok 42 - dataflow: layout-json schema failure is JSON and dry-run publishes no HTML
+  ---
+  duration_ms: 291.332208
+  type: 'test'
+  ...
+# Subtest: sequence: sufficient authored frame below default stays authoritative under both profiles
+ok 43 - sequence: sufficient authored frame below default stays authoritative under both profiles
+  ---
+  duration_ms: 202.207042
+  type: 'test'
+  ...
+# Subtest: sequence: layout-json schema failure is JSON and dry-run publishes no HTML
+ok 44 - sequence: layout-json schema failure is JSON and dry-run publishes no HTML
+  ---
+  duration_ms: 292.113459
+  type: 'test'
+  ...
+# Subtest: lifecycle: sufficient authored frame below default stays authoritative under both profiles
+ok 45 - lifecycle: sufficient authored frame below default stays authoritative under both profiles
+  ---
+  duration_ms: 204.285959
+  type: 'test'
+  ...
+# Subtest: lifecycle: layout-json schema failure is JSON and dry-run publishes no HTML
+ok 46 - lifecycle: layout-json schema failure is JSON and dry-run publishes no HTML
+  ---
+  duration_ms: 286.456209
+  type: 'test'
+  ...
+# Subtest: architecture: five independent layout runs are deterministic and deliver preserves the rendered SVG
+ok 47 - architecture: five independent layout runs are deterministic and deliver preserves the rendered SVG
+  ---
+  duration_ms: 787.001167
+  type: 'test'
+  ...
+# Subtest: dataflow: five independent layout runs are deterministic and deliver preserves the rendered SVG
+ok 48 - dataflow: five independent layout runs are deterministic and deliver preserves the rendered SVG
+  ---
+  duration_ms: 786.543
+  type: 'test'
+  ...
+# Subtest: sequence: five independent layout runs are deterministic and deliver preserves the rendered SVG
+ok 49 - sequence: five independent layout runs are deterministic and deliver preserves the rendered SVG
+  ---
+  duration_ms: 758.775833
+  type: 'test'
+  ...
+# Subtest: lifecycle: five independent layout runs are deterministic and deliver preserves the rendered SVG
+ok 50 - lifecycle: five independent layout runs are deterministic and deliver preserves the rendered SVG
+  ---
+  duration_ms: 762.670333
+  type: 'test'
+  ...
+# Subtest: spread feedback is bounded and reports its iteration limit through the public CLI
+ok 51 - spread feedback is bounded and reports its iteration limit through the public CLI
+  ---
+  duration_ms: 180.0685
+  type: 'test'
+  ...
+# Subtest: capacity suggestions do not promise to repair an independent component collision
+ok 52 - capacity suggestions do not promise to repair an independent component collision
+  ---
+  duration_ms: 189.020292
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: architecture unknown reference
+ok 53 - content constraints remain enforced: architecture unknown reference
+  ---
+  duration_ms: 177.35225
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: architecture negative top
+ok 54 - content constraints remain enforced: architecture negative top
+  ---
+  duration_ms: 179.987417
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: architecture nonfinite thick paint
+ok 55 - content constraints remain enforced: architecture nonfinite thick paint
+  ---
+  duration_ms: 183.513042
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: architecture overlapping components
+ok 56 - content constraints remain enforced: architecture overlapping components
+  ---
+  duration_ms: 179.280625
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: dataflow sixth row
+ok 57 - content constraints remain enforced: dataflow sixth row
+  ---
+  duration_ms: 174.524833
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: dataflow sixth stage
+ok 58 - content constraints remain enforced: dataflow sixth stage
+  ---
+  duration_ms: 173.19625
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: dataflow overlapping nodes
+ok 59 - content constraints remain enforced: dataflow overlapping nodes
+  ---
+  duration_ms: 181.219541
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: sequence invalid activation reference
+ok 60 - content constraints remain enforced: sequence invalid activation reference
+  ---
+  duration_ms: 171.0945
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: sequence reversed activation time
+ok 61 - content constraints remain enforced: sequence reversed activation time
+  ---
+  duration_ms: 175.978458
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: sequence dense messages
+ok 62 - content constraints remain enforced: sequence dense messages
+  ---
+  duration_ms: 185.048666
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: sequence fixed long participant name
+ok 63 - content constraints remain enforced: sequence fixed long participant name
+  ---
+  duration_ms: 176.860083
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: lifecycle sixth main column
+ok 64 - content constraints remain enforced: lifecycle sixth main column
+  ---
+  duration_ms: 170.955708
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: lifecycle fourth event column
+ok 65 - content constraints remain enforced: lifecycle fourth event column
+  ---
+  duration_ms: 183.221416
+  type: 'test'
+  ...
+# Subtest: content constraints remain enforced: lifecycle negative channel
+ok 66 - content constraints remain enforced: lifecycle negative channel
+  ---
+  duration_ms: 178.192375
+  type: 'test'
+  ...
+1..66
+# tests 66
+# suites 0
+# pass 66
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 17255.626375

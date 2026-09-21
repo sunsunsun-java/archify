@@ -18,6 +18,7 @@ export const LARGE_WORLD_READABILITY_CONTRACT = Object.freeze({
     'text[data-node-label]',
     'text[data-boundary-label]',
     '[data-node-id] text[data-detail="context"]',
+    'svg[data-reader-fit="intrinsic-height"] [data-edge-id] g[data-detail="context"] > text',
   ]),
 });
 

@@ -24,6 +24,12 @@ The complete normative invariants live in the workflow renderer's
 
 ## Legend contract
 
+For new Architecture, Dataflow, Sequence and Lifecycle sources, select
+`meta.canvas_fit: "content"` and omit `meta.viewBox` unless a fixed size is
+required. Existing sources remain opt-in. See the [content-canvas contract](content-canvas.md)
+for paint bounds, fixed-capacity diagnostics, receipts and preserved slot limits.
+`validate --layout-json` is available for all five diagram types.
+
 Omit `meta.legend` for the truthful default: `auto` lists only semantic kinds
 present in typed IR. Use `mode: "all"` for a renderer reference or
 `mode: "hidden"` to remove the full legend. Under `entries`, only keys listed
@@ -40,6 +46,8 @@ implicit auto legend that cannot fit its explicit viewBox; this never changes
 its typed topology. Adding `meta.legend` makes the presentation intentional and
 strict: if its resolved labels cannot fit the authored viewBox, shorten or hide
 them, or widen the viewBox using the emitted diagnostic.
+Content mode never silently hides an implicit auto legend: it expands an
+implicit canvas or rejects an insufficient authored frame.
 
 ## Language consistency
 
@@ -135,8 +143,8 @@ semantic authoring choice, not a spacing repair. In workflow v2, let the compile
 allocate its measured mask before applying a diagnosed `labelAt`,
 `labelDx`/`labelDy`, or `labelSegment`. Apply one diagnosed geometry control at
 a time unless several edges share a constrained channel. In that case, plan the smallest coupled change from measured geometry and
-validate it together. Architecture/workflow provide layout evidence through
-`validate <type> <candidate.json> --layout-json`; for other types, use validation
+validate it together. All five diagram types provide layout evidence through
+`validate <type> <candidate.json> --layout-json`; combine it with validation
 diagnostics and the rendered SVG geometry.
 Before adding manual routes, check whether unnecessary agent-added controls
 disable automatic port spread; preserve user-required route intent. Use the

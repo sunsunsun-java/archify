@@ -645,7 +645,15 @@
         var stable = Archify.readerLayout && Archify.readerLayout.whenStable
           ? Archify.readerLayout.whenStable().catch(function () {})
           : Promise.resolve();
-        return stable.then(function () { requestAnimationFrame(automaticEntry); });
+        // Dock reservation can change the small/large classification after
+        // the first reader pass. Entry must observe the settled usable stage.
+        return stable.then(function () {
+          return Archify.viewerChromeLayout && Archify.viewerChromeLayout.whenStable
+            ? Archify.viewerChromeLayout.whenStable().catch(function () {}) : null;
+        }).then(function () {
+          return Archify.readerLayout && Archify.readerLayout.whenStable
+            ? Archify.readerLayout.whenStable().catch(function () {}) : null;
+        }).then(function () { requestAnimationFrame(automaticEntry); });
       });
 
       return {

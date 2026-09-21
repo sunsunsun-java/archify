@@ -40,6 +40,10 @@
         return element.getBoundingClientRect().height + number(style.marginTop) + number(style.marginBottom);
       }
       function minimumReadableScale() {
+        if (measuredHeightFit) {
+          var contentMinimum = minimumSourceFont();
+          return contentMinimum > 0 ? Math.min(1, MIN_PROJECTED_NODE_TEXT_PX / contentMinimum) : 1;
+        }
         var sourceMinimum = null;
         Array.from(svg.querySelectorAll(
           'text[data-node-label], text[data-boundary-label], text[data-detail="context"]'
@@ -130,6 +134,23 @@
         var shellStyle = window.getComputedStyle(shell);
         var diagramStyle = window.getComputedStyle(diagram);
         var stageTop = diagram.getBoundingClientRect().top;
+        // Intrinsic-height readers may need a narrow shell at the readable
+        // floor. Reserve its real wrapped header height before classifying:
+        // measuring only the prospective wide shell can incorrectly call a
+        // tall diagram small, then overflow when that header wraps again.
+        // The probe depends on canonical width, not the current profile, so
+        // switching large/small cannot oscillate its height budget.
+        if (measuredHeightFit) {
+          var originalShellWidth = shell.style.width;
+          var readableShellWidth = Math.min(
+            window.innerWidth - number(bodyStyle.paddingLeft) - number(bodyStyle.paddingRight),
+            viewBox.width * minimumReadableScale() + chromeMetrics().diagramX
+          );
+          try {
+            shell.style.width = Math.ceil(readableShellWidth) + 'px';
+            stageTop = Math.max(stageTop, diagram.getBoundingClientRect().top);
+          } finally { shell.style.width = originalShellWidth; }
+        }
         var belowStageRequiredHeight = outerHeight(cards) + number(shellStyle.paddingBottom) + number(bodyStyle.paddingBottom);
         var availableStageHeight = Math.floor(
           window.innerHeight - stageTop - belowStageRequiredHeight -

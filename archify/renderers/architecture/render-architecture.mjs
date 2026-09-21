@@ -5,6 +5,7 @@ import { animateAttr, focusEdgeAttrs, focusNodeAttrs, focusNodeTitle, loadDiagra
 import { componentBox, boundaryBox, connectionPath } from '../shared/layout-report.mjs';
 import { throwDiagnosticProblems } from '../shared/diagnostics.mjs';
 import { legendFootprint, relationshipLegendObstacles, resolveLegend, renderLegend as renderResolvedLegend } from '../shared/legend.mjs';
+import { paintRect, paintPath, paintBounds, assertCanvasContains, validateContentCanvas, legendPaint } from '../shared/canvas-paint.mjs';
 import { availableNodeTextWidth, fittedNodeFontSize, minimumNodeTextWidth } from '../shared/text-fit.mjs';
 import { brandLabelFitWidth, brandMetadataFor, brandTopRailProblem, renderBrandMark } from '../shared/brand-marks.mjs';
 import { minimumReadableSourceTextPx } from '../shared/desktop-readability.mjs';
@@ -53,6 +54,7 @@ const { diagram: arch, template, outPath, sourceEvidence } = await loadDiagramWi
 });
 
 const grid = gridLayout(arch);
+const contentCanvas = arch.meta?.canvas_fit === 'content';
 
 const layout = {
   defaultW: 120,
@@ -163,31 +165,39 @@ function connectionLabelRects() {
 }
 
 function autoViewBoxFor(candidateBoundaries, extraRects = []) {
+  const routeRects = connectionRoutePaint;
+  const contentRects = contentCanvas ? architecturePaint(candidateBoundaries) : [];
   const maxX = Math.max(
     0,
     ...[...components.values()].map((component) => component.x + component.width),
     ...candidateBoundaries.map((boundary) => boundary.x + boundary.width),
     ...extraRects.map((rect) => rect.x + rect.width),
+    ...routeRects.map((rect) => rect.x + rect.width),
+    ...contentRects.map((rect) => rect.x + rect.width),
   );
   const maxY = Math.max(
     0,
     ...[...components.values()].map((component) => component.y + component.height),
     ...candidateBoundaries.map((boundary) => boundary.y + boundary.height),
     ...extraRects.map((rect) => rect.y + rect.height),
+    ...routeRects.map((rect) => rect.y + rect.height),
+    ...contentRects.map((rect) => rect.y + rect.height),
   );
   let width = Math.ceil(maxX + layout.margin);
   let footprint = legendFootprint(architectureLegendEntries, {
     width: Math.max(1, width - layout.margin * 2),
+    paintAware: contentCanvas,
   });
   if (footprint.minWidth > width - layout.margin * 2) {
     width = Math.ceil(footprint.minWidth + layout.margin * 2);
     footprint = legendFootprint(architectureLegendEntries, {
       width: width - layout.margin * 2,
+      paintAware: contentCanvas,
     });
   }
   return [
-    width,
-    Math.ceil(maxY + layout.margin + layout.legendH + footprint.extraHeight),
+    Math.max(contentCanvas ? 320 : 0, width),
+    Math.max(contentCanvas ? 240 : 0, Math.ceil(maxY + layout.margin + layout.legendH + footprint.extraHeight)),
   ];
 }
 
@@ -302,6 +312,25 @@ const { pathFor, connectionSides, connectionEndpointSide } = createRouter(compon
 // The auto canvas has to cover these rects; an authored viewBox is never
 // resized to fit them — there the containment rule reports the clipping.
 const connectionLabels = connectionLabelRects();
+// Unlabelled outer routes are content too. Their authored points must remain
+// inside the implicit canvas, independently of the node and label envelopes.
+const connectionRoutePaint = asArray(arch.connections)
+  .flatMap((connection, index) => components.has(connection.from) && components.has(connection.to)
+    ? [paintPath(pathFor(connection).points, `/connections/${index}`,
+      connection.width || (connection.variant === 'emphasis' ? 1.8 : 1.5))]
+    : []);
+
+function architecturePaint(candidateBoundaries) {
+  return [
+    ...[...components.values()].map((component, index) => paintRect(component, `/components/${index}`, 1.5)),
+    ...candidateBoundaries.flatMap((boundary, index) => [
+      paintRect(boundary, `/boundaries/${index}`, 1),
+      ...(boundary.title ? [paintRect(boundary.title, `/boundaries/${index}/label`)] : []),
+    ]),
+    ...connectionRoutePaint,
+    ...connectionLabels.map((label) => paintRect(label, `/connections/${label.relationIndex}/label`)),
+  ];
+}
 
 const rawBoundaries = asArray(arch.boundaries).map(boundaryRect).filter(Boolean);
 function resolveBoundaryTitles() {
@@ -339,9 +368,9 @@ function resolveBoundaryTitles() {
   };
 }
 
-const resolvedBoundaryTitles = resolveBoundaryTitles();
-const boundaries = resolvedBoundaryTitles.boundaries;
-const compositionFrames = boundaries.map((boundary, index) => ({
+let resolvedBoundaryTitles = resolveBoundaryTitles();
+let boundaries = resolvedBoundaryTitles.boundaries;
+let compositionFrames = boundaries.map((boundary, index) => ({
   ...boundary,
   id: boundary.id || index,
   kind: boundary.kind || 'boundary',
@@ -360,8 +389,26 @@ function componentContext(component) {
 // Connection labels are diagram content, so an auto canvas that stopped at the
 // component/boundary bbox would clip them; the label rects join the fit here
 // and in the title convergence above, which sizes fonts for this same width.
-const viewBox = arch.meta?.viewBox || autoViewBoxFor(boundaries, connectionLabels);
+let viewBox = arch.meta?.viewBox || autoViewBoxFor(boundaries, connectionLabels);
 const legendY = () => viewBox[1] - 16;
+let canvasReceipt;
+
+function finalizeCanvas() {
+  resolvedBoundaryTitles = resolveBoundaryTitles();
+  boundaries = resolvedBoundaryTitles.boundaries;
+  compositionFrames = boundaries.map((boundary, index) => ({ ...boundary, id: boundary.id || index,
+    kind: boundary.kind || 'boundary', radius: boundary.kind === 'security-group' ? 8 : 12 }));
+  viewBox = arch.meta?.viewBox || autoViewBoxFor(boundaries, connectionLabels);
+  const rects = architecturePaint(boundaries);
+  assertCanvasContains({ diagramType: 'architecture', viewBox,
+    bounds: paintBounds(rects, 'architecture') });
+  rects.push(...legendPaint(architectureLegendEntries, architectureLegendLayout()));
+  const bounds = paintBounds(rects, 'architecture');
+  assertCanvasContains({ diagramType: 'architecture', viewBox, bounds });
+  canvasReceipt = { mode: 'content', source: arch.meta?.viewBox ? 'authored' : 'implicit',
+    paintBounds: bounds, canonicalFrame: [0, 0, ...viewBox] };
+  return canvasReceipt;
+}
 
 // ---- Validation: mechanical correctness, never layout taste -----------------
 function validateArchitecture() {
@@ -651,6 +698,7 @@ function buildLayoutReport() {
     diagram_type: 'architecture',
     layout: grid ? { mode: 'grid', ...grid } : { mode: 'free' },
     viewBox,
+    ...(canvasReceipt ? { canvas: canvasReceipt } : {}),
     components: [...components.values()].map(componentBox),
     boundaries: boundaries.map(boundaryBox),
     connections: asArray(arch.connections)
@@ -719,29 +767,34 @@ function renderComponent(c) {
         </g>`;
 }
 
-function renderLegend() {
-  const entries = architectureLegendEntries;
+function architectureLegendLayout() {
   const relationshipObstacles = relationshipLegendObstacles(arch.connections, {
-    pointsFor: (connection) => pathFor(connection).points,
-    labelRectFor: connectionLabelBox,
+    pointsFor: (connection) => components.has(connection.from) && components.has(connection.to) ? pathFor(connection).points : [],
+    labelRectFor: (connection) => components.has(connection.from) && components.has(connection.to) ? connectionLabelBox(connection) : null,
   });
-  const contentBottom = Math.max(
+  const contentBottom = contentCanvas ? paintBounds(architecturePaint(boundaries), 'architecture').bottom : Math.max(
     0,
     ...[...components.values()].map((component) => component.y + component.height),
     ...boundaries.map((boundary) => boundary.y + boundary.height),
   );
-  return renderResolvedLegend({
-    entries,
-    locale: arch.meta.locale,
-    layout: {
+  return {
       x: layout.margin,
       baselineY: legendY(),
       width: viewBox[0] - layout.margin * 2,
       minTitleY: contentBottom + 8,
       obstacles: relationshipObstacles,
-      unfit: arch.meta?.legend === undefined ? 'hide' : 'error',
+      unfit: !contentCanvas && arch.meta?.legend === undefined ? 'hide' : 'error',
       diagramType: 'architecture',
-    },
+      paintAware: contentCanvas,
+      locale: arch.meta.locale,
+  };
+}
+
+function renderLegend() {
+  return renderResolvedLegend({
+    entries: architectureLegendEntries,
+    locale: arch.meta.locale,
+    layout: architectureLegendLayout(),
     renderSwatch: (entry) => `<rect x="${entry.x}" y="${entry.baseline - 9}" width="16" height="10" rx="2.5" class="${componentFill[entry.kind] || 'c-external'}" stroke-width="1"/>`,
   });
 }
@@ -774,7 +827,8 @@ ${renderLegend()}
       </svg>`;
 }
 
-validateArchitecture();
+if (contentCanvas) validateContentCanvas({ diagram: arch, resolve: finalizeCanvas, validate: validateArchitecture });
+else validateArchitecture();
 if (layoutJsonMode) {
   console.log(JSON.stringify(buildLayoutReport(), null, 2));
   process.exit(0);

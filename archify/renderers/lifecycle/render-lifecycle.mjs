@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { esc, renderDefinitions, renderSemanticSigil, textUnits } from '../shared/utils.mjs';
 import { animateAttr, focusEdgeAttrs, focusNodeAttrs, focusNodeTitle, loadDiagramWithBrandMarks, writeDiagram, svgAccessibleText, svgRootAttrs } from '../shared/cli.mjs';
 import { throwDiagnosticProblems } from '../shared/diagnostics.mjs';
+import { paintRect, paintPath, paintBounds, assertCanvasContains, fitContentCanvas, legendPaint, validateContentCanvas } from '../shared/canvas-paint.mjs';
 import { resolveLegend, renderLegend as renderResolvedLegend } from '../shared/legend.mjs';
 import { availableNodeTextWidth, fittedNodeFontSize, minimumNodeTextWidth } from '../shared/text-fit.mjs';
 import { brandLabelFitWidth, brandMarkFor, brandMetadataFor, brandTopRailProblem, renderBrandMark } from '../shared/brand-marks.mjs';
@@ -42,13 +43,17 @@ const stateTextFit = {
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const layoutJsonMode = process.argv.includes('--layout-json');
 const { diagram: lifecycle, template, outPath, sourceEvidence } = await loadDiagramWithBrandMarks({
   rendererDir: __dirname,
   diagramType: 'lifecycle',
-  defaultExample: 'agent-run.lifecycle.json'
+  defaultExample: 'agent-run.lifecycle.json',
+  argv: process.argv.filter((arg) => arg !== '--layout-json'),
 });
 
-const viewBox = lifecycle.meta?.viewBox || [980, 660];
+const contentCanvas = lifecycle.meta?.canvas_fit === 'content';
+let viewBox = lifecycle.meta?.viewBox || [980, 660];
+let contentFit;
 const layout = {
   phaseY: 126,
   eventY: 278,
@@ -504,13 +509,60 @@ const LEGEND_CATALOG = [
   'external',
 ].map((kind) => ({ kind, label: i18nText(lifecycle.meta.locale, `legend.lifecycle.${kind}`) }));
 
-function renderLegend() {
+function resolvedLegendEntries() {
   const presentKinds = new Set([...states.values()].map((state) => state.type));
-  const entries = resolveLegend(lifecycle.meta?.legend, LEGEND_CATALOG, presentKinds);
+  return resolveLegend(lifecycle.meta?.legend, LEGEND_CATALOG, presentKinds);
+}
+
+function lifecycleContentPaint() {
+  const mainCols = [...states.values()].filter((state) => bandFor(state.lane) === 'phase').map((state) => state.col);
+  const lanes = asArray(lifecycle.lanes);
+  const titleSubjects = ['main', null, 'terminal'].map((id) => {
+    const indices = lanes.flatMap((lane, index) => (id ? lane.id === id : !['main', 'terminal'].includes(lane.id)) ? [index] : []);
+    return indices.length === 1 ? `/lanes/${indices[0]}/label` : '/lanes';
+  });
+  return [
+    ...[...states.values()].map((state, index) => paintRect(state, `/states/${index}`, 1.5)),
+    ...[...states.values()].flatMap((state, index) => state.step ? [paintRect({
+      x: state.x + (brandMarkFor(state) ? 23 : 10), y: state.y + 6,
+      width: textUnits(state.step) * 7 * 0.7, height: 11 }, `/states/${index}/step`)] : []),
+    ...bandTitles().map((title, index) => paintRect({ x: 72, y: [100, 252, 424][index] - 12,
+      width: textUnits(`0${index + 1} / ${title}`) * 10 * 0.7, height: 16 }, titleSubjects[index])),
+    ...(mainCols.length ? [paintPath([[154, layout.phaseY + 31], [layout.phaseXs[Math.max(...mainCols)] + 38, layout.phaseY + 31]], '/states', 2.2)] : []),
+    ...asArray(lifecycle.transitions).flatMap((transition, index) => {
+      if (!states.has(transition.from) || !states.has(transition.to)) return [];
+      const points = pathFor(transition).points;
+      const rects = [paintPath(points, `/transitions/${index}`, transition.width || (transition.variant === 'emphasis' ? 2 : 1.1))];
+      if (transition.label) {
+        const [lx, ly] = labelPoint(transition, points);
+        const width = Math.max(32, Math.max(textUnits(transition.label), textUnits(transition.note || '')) * 4.9 + 12);
+        rects.push(paintRect({ x: lx - width / 2, y: ly - 11, width, height: transition.note ? 27 : 16 }, `/transitions/${index}/label`));
+      }
+      return rects;
+    }),
+  ];
+}
+
+function finalizeCanvas() {
+  contentFit = fitContentCanvas({ rects: lifecycleContentPaint(), diagramType: 'lifecycle',
+    locale: lifecycle.meta.locale,
+    authoredViewBox: lifecycle.meta?.viewBox, minimumViewBox: [980, 660], entries: resolvedLegendEntries(), bottomReserve: 122 });
+  viewBox = contentFit.viewBox;
+  const bounds = paintBounds([...lifecycleContentPaint(),
+    ...[112, 264, 436].map((y) => paintPath([[72, y], [viewBox[0] - 72, y]], '/lanes', 0.8, false)),
+    ...legendPaint(resolvedLegendEntries(), contentFit.legendLayout),
+  ], 'lifecycle');
+  assertCanvasContains({ diagramType: 'lifecycle', viewBox, bounds });
+  contentFit.receipt.paintBounds = bounds;
+  return contentFit.receipt;
+}
+
+function renderLegend() {
+  const entries = resolvedLegendEntries();
   return renderResolvedLegend({
     entries,
     locale: lifecycle.meta.locale,
-    layout: {
+    layout: contentFit?.legendLayout || {
       x: 40,
       baselineY: legendY(),
       width: viewBox[0] - 80,
@@ -559,7 +611,17 @@ ${renderLegend()}
       </svg>`;
 }
 
-validateLifecycle();
+if (contentCanvas) validateContentCanvas({ diagram: lifecycle, resolve: finalizeCanvas, validate: validateLifecycle });
+else validateLifecycle();
+if (layoutJsonMode) {
+  renderLegend();
+  process.stdout.write(`${JSON.stringify({ ok: true, diagram_type: 'lifecycle', viewBox,
+    ...(contentFit ? { canvas: contentFit.receipt } : {}), states: [...states.values()],
+    transitions: asArray(lifecycle.transitions).map((transition) => ({ ...transition, ...pathFor(transition) })),
+    bandTitles: bandTitles(),
+  })}\n`);
+  process.exit(0);
+}
 writeDiagram({
   outPath,
   template,

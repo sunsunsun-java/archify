@@ -19,6 +19,10 @@
     "qualityProfile": {
       "enum": ["standard", "showcase"]
     },
+    "canvasFit": {
+      "description": "Fit a finite canvas to complete painted content; an authored viewBox remains a fixed capacity.",
+      "const": "content"
+    },
     "portableOutputPath": {
       "description": "A portable POSIX-relative HTML output path. It must be safe to interpret identically on every supported host filesystem.",
       "type": "string",

@@ -1,0 +1,2223 @@
+[
+  {
+    "type": "architecture",
+    "command": "render",
+    "status": 0
+  },
+  {
+    "type": "architecture",
+    "command": "validate",
+    "status": 0,
+    "receipt": {
+      "ok": true,
+      "diagram_type": "architecture",
+      "layout": {
+        "mode": "free"
+      },
+      "viewBox": [
+        801,
+        1259
+      ],
+      "canvas": {
+        "mode": "content",
+        "source": "implicit",
+        "paintBounds": {
+          "left": 39.5,
+          "top": 79.25,
+          "right": 760.75,
+          "bottom": 1248.5,
+          "width": 721.25,
+          "height": 1169.25,
+          "contributors": {
+            "left": "/meta/legend/entries/backend",
+            "top": "/components/0",
+            "right": "/components/2",
+            "bottom": "/meta/legend/entries/backend"
+          }
+        },
+        "canonicalFrame": [
+          0,
+          0,
+          801,
+          1259
+        ]
+      },
+      "components": [
+        {
+          "id": "service-0",
+          "type": "backend",
+          "label": "Ingress 1",
+          "x": 80,
+          "y": 80,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            80,
+            80
+          ]
+        },
+        {
+          "id": "service-1",
+          "type": "backend",
+          "label": "Processor 1",
+          "x": 360,
+          "y": 80,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            360,
+            80
+          ]
+        },
+        {
+          "id": "service-2",
+          "type": "database",
+          "label": "Store 1",
+          "x": 640,
+          "y": 80,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            640,
+            80
+          ]
+        },
+        {
+          "id": "service-3",
+          "type": "backend",
+          "label": "Ingress 2",
+          "x": 80,
+          "y": 230,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            80,
+            230
+          ]
+        },
+        {
+          "id": "service-4",
+          "type": "backend",
+          "label": "Processor 2",
+          "x": 360,
+          "y": 230,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            360,
+            230
+          ]
+        },
+        {
+          "id": "service-5",
+          "type": "database",
+          "label": "Store 2",
+          "x": 640,
+          "y": 230,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            640,
+            230
+          ]
+        },
+        {
+          "id": "service-6",
+          "type": "backend",
+          "label": "Ingress 3",
+          "x": 80,
+          "y": 380,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            80,
+            380
+          ]
+        },
+        {
+          "id": "service-7",
+          "type": "backend",
+          "label": "Processor 3",
+          "x": 360,
+          "y": 380,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            360,
+            380
+          ]
+        },
+        {
+          "id": "service-8",
+          "type": "database",
+          "label": "Store 3",
+          "x": 640,
+          "y": 380,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            640,
+            380
+          ]
+        },
+        {
+          "id": "service-9",
+          "type": "backend",
+          "label": "Ingress 4",
+          "x": 80,
+          "y": 530,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            80,
+            530
+          ]
+        },
+        {
+          "id": "service-10",
+          "type": "backend",
+          "label": "Processor 4",
+          "x": 360,
+          "y": 530,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            360,
+            530
+          ]
+        },
+        {
+          "id": "service-11",
+          "type": "database",
+          "label": "Store 4",
+          "x": 640,
+          "y": 530,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            640,
+            530
+          ]
+        },
+        {
+          "id": "service-12",
+          "type": "backend",
+          "label": "Ingress 5",
+          "x": 80,
+          "y": 680,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            80,
+            680
+          ]
+        },
+        {
+          "id": "service-13",
+          "type": "backend",
+          "label": "Processor 5",
+          "x": 360,
+          "y": 680,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            360,
+            680
+          ]
+        },
+        {
+          "id": "service-14",
+          "type": "database",
+          "label": "Store 5",
+          "x": 640,
+          "y": 680,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            640,
+            680
+          ]
+        },
+        {
+          "id": "service-15",
+          "type": "backend",
+          "label": "Ingress 6",
+          "x": 80,
+          "y": 830,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            80,
+            830
+          ]
+        },
+        {
+          "id": "service-16",
+          "type": "backend",
+          "label": "Processor 6",
+          "x": 360,
+          "y": 830,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            360,
+            830
+          ]
+        },
+        {
+          "id": "service-17",
+          "type": "database",
+          "label": "Store 6",
+          "x": 640,
+          "y": 830,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            640,
+            830
+          ]
+        },
+        {
+          "id": "service-18",
+          "type": "backend",
+          "label": "Ingress 7",
+          "x": 80,
+          "y": 980,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            80,
+            980
+          ]
+        },
+        {
+          "id": "service-19",
+          "type": "backend",
+          "label": "Processor 7",
+          "x": 360,
+          "y": 980,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            360,
+            980
+          ]
+        },
+        {
+          "id": "service-20",
+          "type": "database",
+          "label": "Store 7",
+          "x": 640,
+          "y": 980,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            640,
+            980
+          ]
+        },
+        {
+          "id": "service-21",
+          "type": "backend",
+          "label": "Ingress 8",
+          "x": 80,
+          "y": 1130,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            80,
+            1130
+          ]
+        },
+        {
+          "id": "service-22",
+          "type": "backend",
+          "label": "Processor 8",
+          "x": 360,
+          "y": 1130,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            360,
+            1130
+          ]
+        },
+        {
+          "id": "service-23",
+          "type": "database",
+          "label": "Store 8",
+          "x": 640,
+          "y": 1130,
+          "width": 120,
+          "height": 60,
+          "pos": [
+            640,
+            1130
+          ]
+        }
+      ],
+      "boundaries": [],
+      "connections": [
+        {
+          "from": "service-0",
+          "to": "service-3",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              140,
+              140
+            ],
+            [
+              140,
+              230
+            ]
+          ]
+        },
+        {
+          "from": "service-1",
+          "to": "service-4",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              420,
+              140
+            ],
+            [
+              420,
+              230
+            ]
+          ]
+        },
+        {
+          "from": "service-2",
+          "to": "service-5",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              700,
+              140
+            ],
+            [
+              700,
+              230
+            ]
+          ]
+        },
+        {
+          "from": "service-3",
+          "to": "service-6",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              140,
+              290
+            ],
+            [
+              140,
+              380
+            ]
+          ]
+        },
+        {
+          "from": "service-4",
+          "to": "service-7",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              420,
+              290
+            ],
+            [
+              420,
+              380
+            ]
+          ]
+        },
+        {
+          "from": "service-5",
+          "to": "service-8",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              700,
+              290
+            ],
+            [
+              700,
+              380
+            ]
+          ]
+        },
+        {
+          "from": "service-6",
+          "to": "service-9",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              140,
+              440
+            ],
+            [
+              140,
+              530
+            ]
+          ]
+        },
+        {
+          "from": "service-7",
+          "to": "service-10",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              420,
+              440
+            ],
+            [
+              420,
+              530
+            ]
+          ]
+        },
+        {
+          "from": "service-8",
+          "to": "service-11",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              700,
+              440
+            ],
+            [
+              700,
+              530
+            ]
+          ]
+        },
+        {
+          "from": "service-9",
+          "to": "service-12",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              140,
+              590
+            ],
+            [
+              140,
+              680
+            ]
+          ]
+        },
+        {
+          "from": "service-10",
+          "to": "service-13",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              420,
+              590
+            ],
+            [
+              420,
+              680
+            ]
+          ]
+        },
+        {
+          "from": "service-11",
+          "to": "service-14",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              700,
+              590
+            ],
+            [
+              700,
+              680
+            ]
+          ]
+        },
+        {
+          "from": "service-12",
+          "to": "service-15",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              140,
+              740
+            ],
+            [
+              140,
+              830
+            ]
+          ]
+        },
+        {
+          "from": "service-13",
+          "to": "service-16",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              420,
+              740
+            ],
+            [
+              420,
+              830
+            ]
+          ]
+        },
+        {
+          "from": "service-14",
+          "to": "service-17",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              700,
+              740
+            ],
+            [
+              700,
+              830
+            ]
+          ]
+        },
+        {
+          "from": "service-15",
+          "to": "service-18",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              140,
+              890
+            ],
+            [
+              140,
+              980
+            ]
+          ]
+        },
+        {
+          "from": "service-16",
+          "to": "service-19",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              420,
+              890
+            ],
+            [
+              420,
+              980
+            ]
+          ]
+        },
+        {
+          "from": "service-17",
+          "to": "service-20",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              700,
+              890
+            ],
+            [
+              700,
+              980
+            ]
+          ]
+        },
+        {
+          "from": "service-18",
+          "to": "service-21",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              140,
+              1040
+            ],
+            [
+              140,
+              1130
+            ]
+          ]
+        },
+        {
+          "from": "service-19",
+          "to": "service-22",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              420,
+              1040
+            ],
+            [
+              420,
+              1130
+            ]
+          ]
+        },
+        {
+          "from": "service-20",
+          "to": "service-23",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              700,
+              1040
+            ],
+            [
+              700,
+              1130
+            ]
+          ]
+        },
+        {
+          "from": "service-0",
+          "to": "service-1",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              200,
+              110
+            ],
+            [
+              360,
+              110
+            ]
+          ]
+        },
+        {
+          "from": "service-1",
+          "to": "service-2",
+          "label": null,
+          "variant": "default",
+          "route": "auto",
+          "points": [
+            [
+              480,
+              110
+            ],
+            [
+              640,
+              110
+            ]
+          ]
+        }
+      ],
+      "labels": []
+    }
+  },
+  {
+    "type": "architecture",
+    "command": "deliver",
+    "status": 0
+  },
+  {
+    "type": "dataflow",
+    "command": "render",
+    "status": 0
+  },
+  {
+    "type": "dataflow",
+    "command": "validate",
+    "status": 0,
+    "receipt": {
+      "ok": true,
+      "diagram_type": "dataflow",
+      "viewBox": [
+        1085,
+        1203
+      ],
+      "canvas": {
+        "mode": "content",
+        "source": "implicit",
+        "paintBounds": {
+          "left": 15.5,
+          "top": 45.5,
+          "right": 1044.5,
+          "bottom": 1172.5,
+          "width": 1029,
+          "height": 1127,
+          "contributors": {
+            "left": "/stages/0",
+            "top": "/stages/0",
+            "right": "/stages/4",
+            "bottom": "/meta/legend/entries/database"
+          }
+        },
+        "canonicalFrame": [
+          0,
+          0,
+          1085,
+          1203
+        ]
+      },
+      "nodes": [
+        {
+          "id": "step-0",
+          "type": "backend",
+          "label": "Collect 1",
+          "stage": 0,
+          "row": 0,
+          "yOffset": 0,
+          "width": 112,
+          "height": 58,
+          "cx": 100,
+          "cy": 157,
+          "x": 44,
+          "y": 128
+        },
+        {
+          "id": "step-1",
+          "type": "backend",
+          "label": "Parse 1",
+          "stage": 1,
+          "row": 0,
+          "yOffset": 0,
+          "width": 112,
+          "height": 58,
+          "cx": 315,
+          "cy": 157,
+          "x": 259,
+          "y": 128
+        },
+        {
+          "id": "step-2",
+          "type": "backend",
+          "label": "Validate 1",
+          "stage": 2,
+          "row": 0,
+          "yOffset": 0,
+          "width": 112,
+          "height": 58,
+          "cx": 530,
+          "cy": 157,
+          "x": 474,
+          "y": 128
+        },
+        {
+          "id": "step-3",
+          "type": "backend",
+          "label": "Enrich 1",
+          "stage": 3,
+          "row": 0,
+          "yOffset": 0,
+          "width": 112,
+          "height": 58,
+          "cx": 745,
+          "cy": 157,
+          "x": 689,
+          "y": 128
+        },
+        {
+          "id": "step-4",
+          "type": "database",
+          "label": "Store 1",
+          "stage": 4,
+          "row": 0,
+          "yOffset": 0,
+          "width": 112,
+          "height": 58,
+          "cx": 960,
+          "cy": 157,
+          "x": 904,
+          "y": 128
+        },
+        {
+          "id": "step-5",
+          "type": "backend",
+          "label": "Collect 2",
+          "stage": 0,
+          "row": 1,
+          "yOffset": 120,
+          "width": 112,
+          "height": 58,
+          "cx": 100,
+          "cy": 391,
+          "x": 44,
+          "y": 362
+        },
+        {
+          "id": "step-6",
+          "type": "backend",
+          "label": "Parse 2",
+          "stage": 1,
+          "row": 1,
+          "yOffset": 120,
+          "width": 112,
+          "height": 58,
+          "cx": 315,
+          "cy": 391,
+          "x": 259,
+          "y": 362
+        },
+        {
+          "id": "step-7",
+          "type": "backend",
+          "label": "Validate 2",
+          "stage": 2,
+          "row": 1,
+          "yOffset": 120,
+          "width": 112,
+          "height": 58,
+          "cx": 530,
+          "cy": 391,
+          "x": 474,
+          "y": 362
+        },
+        {
+          "id": "step-8",
+          "type": "backend",
+          "label": "Enrich 2",
+          "stage": 3,
+          "row": 1,
+          "yOffset": 120,
+          "width": 112,
+          "height": 58,
+          "cx": 745,
+          "cy": 391,
+          "x": 689,
+          "y": 362
+        },
+        {
+          "id": "step-9",
+          "type": "database",
+          "label": "Store 2",
+          "stage": 4,
+          "row": 1,
+          "yOffset": 120,
+          "width": 112,
+          "height": 58,
+          "cx": 960,
+          "cy": 391,
+          "x": 904,
+          "y": 362
+        },
+        {
+          "id": "step-10",
+          "type": "backend",
+          "label": "Collect 3",
+          "stage": 0,
+          "row": 2,
+          "yOffset": 240,
+          "width": 112,
+          "height": 58,
+          "cx": 100,
+          "cy": 625,
+          "x": 44,
+          "y": 596
+        },
+        {
+          "id": "step-11",
+          "type": "backend",
+          "label": "Parse 3",
+          "stage": 1,
+          "row": 2,
+          "yOffset": 240,
+          "width": 112,
+          "height": 58,
+          "cx": 315,
+          "cy": 625,
+          "x": 259,
+          "y": 596
+        },
+        {
+          "id": "step-12",
+          "type": "backend",
+          "label": "Validate 3",
+          "stage": 2,
+          "row": 2,
+          "yOffset": 240,
+          "width": 112,
+          "height": 58,
+          "cx": 530,
+          "cy": 625,
+          "x": 474,
+          "y": 596
+        },
+        {
+          "id": "step-13",
+          "type": "backend",
+          "label": "Enrich 3",
+          "stage": 3,
+          "row": 2,
+          "yOffset": 240,
+          "width": 112,
+          "height": 58,
+          "cx": 745,
+          "cy": 625,
+          "x": 689,
+          "y": 596
+        },
+        {
+          "id": "step-14",
+          "type": "database",
+          "label": "Store 3",
+          "stage": 4,
+          "row": 2,
+          "yOffset": 240,
+          "width": 112,
+          "height": 58,
+          "cx": 960,
+          "cy": 625,
+          "x": 904,
+          "y": 596
+        },
+        {
+          "id": "step-15",
+          "type": "backend",
+          "label": "Collect 4",
+          "stage": 0,
+          "row": 3,
+          "yOffset": 360,
+          "width": 112,
+          "height": 58,
+          "cx": 100,
+          "cy": 859,
+          "x": 44,
+          "y": 830
+        },
+        {
+          "id": "step-16",
+          "type": "backend",
+          "label": "Parse 4",
+          "stage": 1,
+          "row": 3,
+          "yOffset": 360,
+          "width": 112,
+          "height": 58,
+          "cx": 315,
+          "cy": 859,
+          "x": 259,
+          "y": 830
+        },
+        {
+          "id": "step-17",
+          "type": "backend",
+          "label": "Validate 4",
+          "stage": 2,
+          "row": 3,
+          "yOffset": 360,
+          "width": 112,
+          "height": 58,
+          "cx": 530,
+          "cy": 859,
+          "x": 474,
+          "y": 830
+        },
+        {
+          "id": "step-18",
+          "type": "backend",
+          "label": "Enrich 4",
+          "stage": 3,
+          "row": 3,
+          "yOffset": 360,
+          "width": 112,
+          "height": 58,
+          "cx": 745,
+          "cy": 859,
+          "x": 689,
+          "y": 830
+        },
+        {
+          "id": "step-19",
+          "type": "database",
+          "label": "Store 4",
+          "stage": 4,
+          "row": 3,
+          "yOffset": 360,
+          "width": 112,
+          "height": 58,
+          "cx": 960,
+          "cy": 859,
+          "x": 904,
+          "y": 830
+        },
+        {
+          "id": "step-20",
+          "type": "backend",
+          "label": "Collect 5",
+          "stage": 0,
+          "row": 4,
+          "yOffset": 480,
+          "width": 112,
+          "height": 58,
+          "cx": 100,
+          "cy": 1093,
+          "x": 44,
+          "y": 1064
+        },
+        {
+          "id": "step-21",
+          "type": "backend",
+          "label": "Parse 5",
+          "stage": 1,
+          "row": 4,
+          "yOffset": 480,
+          "width": 112,
+          "height": 58,
+          "cx": 315,
+          "cy": 1093,
+          "x": 259,
+          "y": 1064
+        },
+        {
+          "id": "step-22",
+          "type": "backend",
+          "label": "Validate 5",
+          "stage": 2,
+          "row": 4,
+          "yOffset": 480,
+          "width": 112,
+          "height": 58,
+          "cx": 530,
+          "cy": 1093,
+          "x": 474,
+          "y": 1064
+        },
+        {
+          "id": "step-23",
+          "type": "backend",
+          "label": "Enrich 5",
+          "stage": 3,
+          "row": 4,
+          "yOffset": 480,
+          "width": 112,
+          "height": 58,
+          "cx": 745,
+          "cy": 1093,
+          "x": 689,
+          "y": 1064
+        },
+        {
+          "id": "step-24",
+          "type": "database",
+          "label": "Store 5",
+          "stage": 4,
+          "row": 4,
+          "yOffset": 480,
+          "width": 112,
+          "height": 58,
+          "cx": 960,
+          "cy": 1093,
+          "x": 904,
+          "y": 1064
+        }
+      ],
+      "stages": [
+        {
+          "id": 0,
+          "label": "Collect",
+          "kind": "stage",
+          "x": 16,
+          "y": 46,
+          "width": 168,
+          "height": 1077,
+          "radius": 10
+        },
+        {
+          "id": 1,
+          "label": "Parse",
+          "kind": "stage",
+          "x": 231,
+          "y": 46,
+          "width": 168,
+          "height": 1077,
+          "radius": 10
+        },
+        {
+          "id": 2,
+          "label": "Validate",
+          "kind": "stage",
+          "x": 446,
+          "y": 46,
+          "width": 168,
+          "height": 1077,
+          "radius": 10
+        },
+        {
+          "id": 3,
+          "label": "Enrich",
+          "kind": "stage",
+          "x": 661,
+          "y": 46,
+          "width": 168,
+          "height": 1077,
+          "radius": 10
+        },
+        {
+          "id": 4,
+          "label": "Store",
+          "kind": "stage",
+          "x": 876,
+          "y": 46,
+          "width": 168,
+          "height": 1077,
+          "radius": 10
+        }
+      ],
+      "flows": [
+        {
+          "id": "transfer-0",
+          "from": "step-0",
+          "to": "step-1",
+          "label": "record",
+          "points": [
+            [
+              156,
+              157
+            ],
+            [
+              259,
+              157
+            ]
+          ]
+        },
+        {
+          "id": "transfer-1",
+          "from": "step-1",
+          "to": "step-2",
+          "label": "record",
+          "points": [
+            [
+              371,
+              157
+            ],
+            [
+              474,
+              157
+            ]
+          ]
+        },
+        {
+          "id": "transfer-2",
+          "from": "step-2",
+          "to": "step-3",
+          "label": "record",
+          "points": [
+            [
+              586,
+              157
+            ],
+            [
+              689,
+              157
+            ]
+          ]
+        },
+        {
+          "id": "transfer-3",
+          "from": "step-3",
+          "to": "step-4",
+          "label": "record",
+          "points": [
+            [
+              801,
+              157
+            ],
+            [
+              904,
+              157
+            ]
+          ]
+        },
+        {
+          "id": "transfer-5",
+          "from": "step-5",
+          "to": "step-6",
+          "label": "record",
+          "points": [
+            [
+              156,
+              391
+            ],
+            [
+              259,
+              391
+            ]
+          ]
+        },
+        {
+          "id": "transfer-6",
+          "from": "step-6",
+          "to": "step-7",
+          "label": "record",
+          "points": [
+            [
+              371,
+              391
+            ],
+            [
+              474,
+              391
+            ]
+          ]
+        },
+        {
+          "id": "transfer-7",
+          "from": "step-7",
+          "to": "step-8",
+          "label": "record",
+          "points": [
+            [
+              586,
+              391
+            ],
+            [
+              689,
+              391
+            ]
+          ]
+        },
+        {
+          "id": "transfer-8",
+          "from": "step-8",
+          "to": "step-9",
+          "label": "record",
+          "points": [
+            [
+              801,
+              391
+            ],
+            [
+              904,
+              391
+            ]
+          ]
+        },
+        {
+          "id": "transfer-10",
+          "from": "step-10",
+          "to": "step-11",
+          "label": "record",
+          "points": [
+            [
+              156,
+              625
+            ],
+            [
+              259,
+              625
+            ]
+          ]
+        },
+        {
+          "id": "transfer-11",
+          "from": "step-11",
+          "to": "step-12",
+          "label": "record",
+          "points": [
+            [
+              371,
+              625
+            ],
+            [
+              474,
+              625
+            ]
+          ]
+        },
+        {
+          "id": "transfer-12",
+          "from": "step-12",
+          "to": "step-13",
+          "label": "record",
+          "points": [
+            [
+              586,
+              625
+            ],
+            [
+              689,
+              625
+            ]
+          ]
+        },
+        {
+          "id": "transfer-13",
+          "from": "step-13",
+          "to": "step-14",
+          "label": "record",
+          "points": [
+            [
+              801,
+              625
+            ],
+            [
+              904,
+              625
+            ]
+          ]
+        },
+        {
+          "id": "transfer-15",
+          "from": "step-15",
+          "to": "step-16",
+          "label": "record",
+          "points": [
+            [
+              156,
+              859
+            ],
+            [
+              259,
+              859
+            ]
+          ]
+        },
+        {
+          "id": "transfer-16",
+          "from": "step-16",
+          "to": "step-17",
+          "label": "record",
+          "points": [
+            [
+              371,
+              859
+            ],
+            [
+              474,
+              859
+            ]
+          ]
+        },
+        {
+          "id": "transfer-17",
+          "from": "step-17",
+          "to": "step-18",
+          "label": "record",
+          "points": [
+            [
+              586,
+              859
+            ],
+            [
+              689,
+              859
+            ]
+          ]
+        },
+        {
+          "id": "transfer-18",
+          "from": "step-18",
+          "to": "step-19",
+          "label": "record",
+          "points": [
+            [
+              801,
+              859
+            ],
+            [
+              904,
+              859
+            ]
+          ]
+        },
+        {
+          "id": "transfer-20",
+          "from": "step-20",
+          "to": "step-21",
+          "label": "record",
+          "points": [
+            [
+              156,
+              1093
+            ],
+            [
+              259,
+              1093
+            ]
+          ]
+        },
+        {
+          "id": "transfer-21",
+          "from": "step-21",
+          "to": "step-22",
+          "label": "record",
+          "points": [
+            [
+              371,
+              1093
+            ],
+            [
+              474,
+              1093
+            ]
+          ]
+        },
+        {
+          "id": "transfer-22",
+          "from": "step-22",
+          "to": "step-23",
+          "label": "record",
+          "points": [
+            [
+              586,
+              1093
+            ],
+            [
+              689,
+              1093
+            ]
+          ]
+        },
+        {
+          "id": "transfer-23",
+          "from": "step-23",
+          "to": "step-24",
+          "label": "record",
+          "points": [
+            [
+              801,
+              1093
+            ],
+            [
+              904,
+              1093
+            ]
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "type": "dataflow",
+    "command": "deliver",
+    "status": 0
+  },
+  {
+    "type": "sequence",
+    "command": "render",
+    "status": 0
+  },
+  {
+    "type": "sequence",
+    "command": "validate",
+    "status": 0,
+    "receipt": {
+      "ok": true,
+      "diagram_type": "sequence",
+      "viewBox": [
+        1334,
+        1315
+      ],
+      "canvas": {
+        "mode": "content",
+        "source": "implicit",
+        "paintBounds": {
+          "left": 18.25,
+          "top": 71.25,
+          "right": 1293.75,
+          "bottom": 1266.5,
+          "width": 1275.5,
+          "height": 1195.25,
+          "contributors": {
+            "left": "/participants/0",
+            "top": "/participants/0",
+            "right": "/participants/11",
+            "bottom": "/meta/legend/entries/default"
+          }
+        },
+        "canonicalFrame": [
+          0,
+          0,
+          1334,
+          1315
+        ],
+        "iterations": 1
+      },
+      "participants": [
+        {
+          "id": "p0",
+          "type": "backend",
+          "label": "Service 0",
+          "index": 0,
+          "cx": 62,
+          "x": 19,
+          "y": 72,
+          "width": 86,
+          "height": 60,
+          "cy": 102
+        },
+        {
+          "id": "p1",
+          "type": "backend",
+          "label": "Service 1",
+          "index": 1,
+          "cx": 170,
+          "x": 127,
+          "y": 72,
+          "width": 86,
+          "height": 60,
+          "cy": 102
+        },
+        {
+          "id": "p2",
+          "type": "backend",
+          "label": "Service 2",
+          "index": 2,
+          "cx": 278,
+          "x": 235,
+          "y": 72,
+          "width": 86,
+          "height": 60,
+          "cy": 102
+        },
+        {
+          "id": "p3",
+          "type": "backend",
+          "label": "Service 3",
+          "index": 3,
+          "cx": 386,
+          "x": 343,
+          "y": 72,
+          "width": 86,
+          "height": 60,
+          "cy": 102
+        },
+        {
+          "id": "p4",
+          "type": "backend",
+          "label": "Service 4",
+          "index": 4,
+          "cx": 494,
+          "x": 451,
+          "y": 72,
+          "width": 86,
+          "height": 60,
+          "cy": 102
+        },
+        {
+          "id": "p5",
+          "type": "backend",
+          "label": "Service 5",
+          "index": 5,
+          "cx": 602,
+          "x": 559,
+          "y": 72,
+          "width": 86,
+          "height": 60,
+          "cy": 102
+        },
+        {
+          "id": "p6",
+          "type": "backend",
+          "label": "Service 6",
+          "index": 6,
+          "cx": 710,
+          "x": 667,
+          "y": 72,
+          "width": 86,
+          "height": 60,
+          "cy": 102
+        },
+        {
+          "id": "p7",
+          "type": "backend",
+          "label": "Service 7",
+          "index": 7,
+          "cx": 818,
+          "x": 775,
+          "y": 72,
+          "width": 86,
+          "height": 60,
+          "cy": 102
+        },
+        {
+          "id": "p8",
+          "type": "backend",
+          "label": "Service 8",
+          "index": 8,
+          "cx": 926,
+          "x": 883,
+          "y": 72,
+          "width": 86,
+          "height": 60,
+          "cy": 102
+        },
+        {
+          "id": "p9",
+          "type": "backend",
+          "label": "Service 9",
+          "index": 9,
+          "cx": 1034,
+          "x": 991,
+          "y": 72,
+          "width": 86,
+          "height": 60,
+          "cy": 102
+        },
+        {
+          "id": "p10",
+          "type": "backend",
+          "label": "Service 10",
+          "index": 10,
+          "cx": 1142,
+          "x": 1099,
+          "y": 72,
+          "width": 86,
+          "height": 60,
+          "cy": 102
+        },
+        {
+          "id": "p11",
+          "type": "backend",
+          "label": "Service 11",
+          "index": 11,
+          "cx": 1250,
+          "x": 1207,
+          "y": 72,
+          "width": 86,
+          "height": 60,
+          "cy": 102
+        }
+      ],
+      "messages": [
+        {
+          "id": "m0",
+          "from": "p0",
+          "to": "p1",
+          "label": "ack",
+          "y": 200,
+          "start": 69,
+          "end": 163,
+          "center": 116
+        },
+        {
+          "id": "m1",
+          "from": "p1",
+          "to": "p2",
+          "label": "ack",
+          "y": 300,
+          "start": 177,
+          "end": 271,
+          "center": 224
+        },
+        {
+          "id": "m2",
+          "from": "p2",
+          "to": "p3",
+          "label": "ack",
+          "y": 400,
+          "start": 285,
+          "end": 379,
+          "center": 332
+        },
+        {
+          "id": "m3",
+          "from": "p3",
+          "to": "p4",
+          "label": "ack",
+          "y": 500,
+          "start": 393,
+          "end": 487,
+          "center": 440
+        },
+        {
+          "id": "m4",
+          "from": "p4",
+          "to": "p5",
+          "label": "ack",
+          "y": 600,
+          "start": 501,
+          "end": 595,
+          "center": 548
+        },
+        {
+          "id": "m5",
+          "from": "p5",
+          "to": "p6",
+          "label": "ack",
+          "y": 700,
+          "start": 609,
+          "end": 703,
+          "center": 656
+        },
+        {
+          "id": "m6",
+          "from": "p6",
+          "to": "p7",
+          "label": "ack",
+          "y": 800,
+          "start": 717,
+          "end": 811,
+          "center": 764
+        },
+        {
+          "id": "m7",
+          "from": "p7",
+          "to": "p8",
+          "label": "ack",
+          "y": 900,
+          "start": 825,
+          "end": 919,
+          "center": 872
+        },
+        {
+          "id": "m8",
+          "from": "p8",
+          "to": "p9",
+          "label": "ack",
+          "y": 1000,
+          "start": 933,
+          "end": 1027,
+          "center": 980
+        },
+        {
+          "id": "m9",
+          "from": "p9",
+          "to": "p10",
+          "label": "ack",
+          "y": 1100,
+          "start": 1041,
+          "end": 1135,
+          "center": 1088
+        },
+        {
+          "id": "m10",
+          "from": "p10",
+          "to": "p11",
+          "label": "ack",
+          "y": 1200,
+          "start": 1149,
+          "end": 1243,
+          "center": 1196
+        }
+      ],
+      "segments": [],
+      "activations": [],
+      "lifelineBottom": 1227
+    }
+  },
+  {
+    "type": "sequence",
+    "command": "deliver",
+    "status": 0
+  },
+  {
+    "type": "lifecycle",
+    "command": "render",
+    "status": 0
+  },
+  {
+    "type": "lifecycle",
+    "command": "validate",
+    "status": 0,
+    "receipt": {
+      "ok": true,
+      "diagram_type": "lifecycle",
+      "viewBox": [
+        980,
+        1031
+      ],
+      "canvas": {
+        "mode": "content",
+        "source": "implicit",
+        "paintBounds": {
+          "left": 34.25,
+          "top": 88,
+          "right": 909.6,
+          "bottom": 1000.5,
+          "width": 875.35,
+          "height": 912.5,
+          "contributors": {
+            "left": "/states/0",
+            "top": "/lanes/0/label",
+            "right": "/lanes",
+            "bottom": "/meta/legend/entries/start"
+          }
+        },
+        "canonicalFrame": [
+          0,
+          0,
+          980,
+          1031
+        ]
+      },
+      "states": [
+        {
+          "id": "phase-0",
+          "type": "start",
+          "label": "Receive",
+          "lane": "main",
+          "col": 0,
+          "width": 118,
+          "height": 62,
+          "x": 35,
+          "y": 126,
+          "cx": 94,
+          "cy": 157
+        },
+        {
+          "id": "phase-1",
+          "type": "active",
+          "label": "Plan",
+          "lane": "main",
+          "col": 1,
+          "width": 118,
+          "height": 62,
+          "x": 189,
+          "y": 126,
+          "cx": 248,
+          "cy": 157
+        },
+        {
+          "id": "phase-2",
+          "type": "active",
+          "label": "Execute",
+          "lane": "main",
+          "col": 2,
+          "width": 118,
+          "height": 62,
+          "x": 343,
+          "y": 126,
+          "cx": 402,
+          "cy": 157
+        },
+        {
+          "id": "phase-3",
+          "type": "active",
+          "label": "Validate",
+          "lane": "main",
+          "col": 3,
+          "width": 118,
+          "height": 62,
+          "x": 497,
+          "y": 126,
+          "cx": 556,
+          "cy": 157
+        },
+        {
+          "id": "phase-4",
+          "type": "active",
+          "label": "Deliver",
+          "lane": "main",
+          "col": 4,
+          "width": 118,
+          "height": 62,
+          "x": 651,
+          "y": 126,
+          "cx": 710,
+          "cy": 157
+        },
+        {
+          "id": "event-0",
+          "type": "waiting",
+          "label": "Retry",
+          "lane": "event",
+          "col": 0,
+          "yOffset": 0,
+          "width": 126,
+          "height": 58,
+          "x": 339,
+          "y": 278,
+          "cx": 402,
+          "cy": 307
+        },
+        {
+          "id": "event-1",
+          "type": "waiting",
+          "label": "Review",
+          "lane": "event",
+          "col": 1,
+          "yOffset": 0,
+          "width": 126,
+          "height": 58,
+          "x": 493,
+          "y": 278,
+          "cx": 556,
+          "cy": 307
+        },
+        {
+          "id": "event-2",
+          "type": "waiting",
+          "label": "Confirm",
+          "lane": "event",
+          "col": 2,
+          "yOffset": 0,
+          "width": 126,
+          "height": 58,
+          "x": 647,
+          "y": 278,
+          "cx": 710,
+          "cy": 307
+        },
+        {
+          "id": "outcome-0",
+          "type": "failure",
+          "label": "Failed",
+          "lane": "terminal",
+          "col": 0,
+          "yOffset": 400,
+          "width": 118,
+          "height": 58,
+          "x": 343,
+          "y": 850,
+          "cx": 402,
+          "cy": 879
+        },
+        {
+          "id": "outcome-1",
+          "type": "failure",
+          "label": "Rejected",
+          "lane": "terminal",
+          "col": 1,
+          "yOffset": 400,
+          "width": 118,
+          "height": 58,
+          "x": 497,
+          "y": 850,
+          "cx": 556,
+          "cy": 879
+        },
+        {
+          "id": "outcome-2",
+          "type": "success",
+          "label": "Complete",
+          "lane": "terminal",
+          "col": 2,
+          "yOffset": 400,
+          "width": 118,
+          "height": 58,
+          "x": 651,
+          "y": 850,
+          "cx": 710,
+          "cy": 879
+        }
+      ],
+      "transitions": [
+        {
+          "id": "advance-0",
+          "from": "phase-0",
+          "to": "phase-1",
+          "d": "M 153 157 L 189 157",
+          "points": [
+            [
+              153,
+              157
+            ],
+            [
+              189,
+              157
+            ]
+          ]
+        },
+        {
+          "id": "advance-1",
+          "from": "phase-1",
+          "to": "phase-2",
+          "d": "M 307 157 L 343 157",
+          "points": [
+            [
+              307,
+              157
+            ],
+            [
+              343,
+              157
+            ]
+          ]
+        },
+        {
+          "id": "advance-2",
+          "from": "phase-2",
+          "to": "phase-3",
+          "d": "M 461 157 L 497 157",
+          "points": [
+            [
+              461,
+              157
+            ],
+            [
+              497,
+              157
+            ]
+          ]
+        },
+        {
+          "id": "advance-3",
+          "from": "phase-3",
+          "to": "phase-4",
+          "d": "M 615 157 L 651 157",
+          "points": [
+            [
+              615,
+              157
+            ],
+            [
+              651,
+              157
+            ]
+          ]
+        },
+        {
+          "id": "recover-0",
+          "from": "phase-2",
+          "to": "event-0",
+          "d": "M 402 188 L 402 278",
+          "points": [
+            [
+              402,
+              188
+            ],
+            [
+              402,
+              278
+            ]
+          ]
+        },
+        {
+          "id": "recover-1",
+          "from": "phase-3",
+          "to": "event-1",
+          "d": "M 556 188 L 556 278",
+          "points": [
+            [
+              556,
+              188
+            ],
+            [
+              556,
+              278
+            ]
+          ]
+        },
+        {
+          "id": "recover-2",
+          "from": "phase-4",
+          "to": "event-2",
+          "d": "M 710 188 L 710 278",
+          "points": [
+            [
+              710,
+              188
+            ],
+            [
+              710,
+              278
+            ]
+          ]
+        },
+        {
+          "id": "resolve-0",
+          "from": "event-0",
+          "to": "outcome-0",
+          "label": "retry exhausted",
+          "labelAt": [
+            402,
+            600
+          ],
+          "d": "M 402 336 L 402 850",
+          "points": [
+            [
+              402,
+              336
+            ],
+            [
+              402,
+              850
+            ]
+          ]
+        },
+        {
+          "id": "resolve-1",
+          "from": "event-1",
+          "to": "outcome-1",
+          "label": "review rejected",
+          "labelAt": [
+            556,
+            600
+          ],
+          "d": "M 556 336 L 556 850",
+          "points": [
+            [
+              556,
+              336
+            ],
+            [
+              556,
+              850
+            ]
+          ]
+        },
+        {
+          "id": "resolve-2",
+          "from": "event-2",
+          "to": "outcome-2",
+          "label": "receipt confirmed",
+          "labelAt": [
+            710,
+            600
+          ],
+          "d": "M 710 336 L 710 850",
+          "points": [
+            [
+              710,
+              336
+            ],
+            [
+              710,
+              850
+            ]
+          ]
+        }
+      ],
+      "bandTitles": [
+        "Delivery phases",
+        "Recovery actions",
+        "Recorded outcomes"
+      ]
+    }
+  },
+  {
+    "type": "lifecycle",
+    "command": "deliver",
+    "status": 0
+  }
+]

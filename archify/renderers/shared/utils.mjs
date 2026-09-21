@@ -8,20 +8,26 @@ import {
 
 export { esc };
 
+// Renderer definitions and content-canvas paint measurement share this shape.
+export const ARROW_MARKER = Object.freeze({ width: 10, height: 7, refX: 9, refY: 3.5,
+  points: Object.freeze([Object.freeze([0, 0]), Object.freeze([10, 3.5]), Object.freeze([0, 7])]) });
+
 export function renderDefinitions() {
+  const markerAttrs = `markerWidth="${ARROW_MARKER.width}" markerHeight="${ARROW_MARKER.height}" refX="${ARROW_MARKER.refX}" refY="${ARROW_MARKER.refY}" orient="auto"`;
+  const markerPoints = ARROW_MARKER.points.map((point) => point.join(' ')).join(', ');
   return `        <!-- Definitions -->
         <defs>
-          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" class="m-default" />
+          <marker id="arrowhead" ${markerAttrs}>
+            <polygon points="${markerPoints}" class="m-default" />
           </marker>
-          <marker id="arrowhead-emphasis" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" class="m-emphasis" />
+          <marker id="arrowhead-emphasis" ${markerAttrs}>
+            <polygon points="${markerPoints}" class="m-emphasis" />
           </marker>
-          <marker id="arrowhead-security" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" class="m-security" />
+          <marker id="arrowhead-security" ${markerAttrs}>
+            <polygon points="${markerPoints}" class="m-security" />
           </marker>
-          <marker id="arrowhead-dashed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" class="m-dashed" />
+          <marker id="arrowhead-dashed" ${markerAttrs}>
+            <polygon points="${markerPoints}" class="m-dashed" />
           </marker>
           <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
             <path d="M 40 0 L 0 0 0 40" class="c-grid" stroke-width="0.5"/>

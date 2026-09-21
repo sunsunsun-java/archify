@@ -1,0 +1,1359 @@
+{
+  "baseline": "/tmp/archify-content-baseline.I9ZvLx",
+  "candidate": "/Users/sunhonghao/.codex/worktrees/b09f/archify",
+  "node": "v22.23.1",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cpu": "Apple M4 Max",
+  "warmups": 3,
+  "pairs": 10,
+  "capacity": [
+    {
+      "name": "architecture-outer-route",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "bed1e8a00a49c4a2edc737f31f3961212c8c5e7eca3f9c7669a2da341d107af1",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 480 208"
+        },
+        {
+          "sha256": "5bb0fe3f79a273fd8f2150efa20e4895ec6609c9e3ac8638dead422b808bea72",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 481 1071"
+        }
+      ]
+    },
+    {
+      "name": "architecture-thick-marker",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "e54a0c621f1a287c2397337d60daacc098c2d14cec85259e985416dfb7897d4a",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 480 448"
+        },
+        {
+          "sha256": "fd74de2f42a064b51e8edee7044e8374f3363b1a36131337ec73d4bb3b3f1781",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 1180 488"
+        }
+      ]
+    },
+    {
+      "name": "architecture-marker-only-capacity",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "706a50de75dafe04da33aae69751231f34fcf730fb8b0248fcdbca5b1fbe1b9e",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 480 328"
+        },
+        {
+          "sha256": "edb8da9bf0d93de12f23a439ea95452212d714e6dcb8609c570ada814e474f8b",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 481 403"
+        }
+      ]
+    },
+    {
+      "name": "architecture-boundary-legend",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "4be333177d51510ff530cb10c8582fd823927870a61f33194523eb93977d6857",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 670 290"
+        },
+        {
+          "sha256": "96e58970ee9fae77ecbfce866865262bbbcc097d62b7f96f00c1c4117fca5047",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 671 313"
+        }
+      ]
+    },
+    {
+      "name": "architecture-long-legend-paint",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "2ded679184f2aaac690e63b722b4e9300c19b45d535bfb0abc19ee367d4faf78",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 619 208"
+        },
+        {
+          "sha256": "031497d2c1ffc26190db9721f0a3cfd7b4630716749bdac07e1737fb28eb23db",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 823 240"
+        }
+      ]
+    },
+    {
+      "name": "architecture-ascii-legend-paint",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "c9e15e61c4b544cb8b8bf97345319cbf679b3c8d634c97c2666c198a7917b6c1",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 500 208"
+        },
+        {
+          "sha256": "77cb32981748761b2038e73933a4abc4f8f3ee4248175282ae302a24d868ed70",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 655 240"
+        }
+      ]
+    },
+    {
+      "name": "dataflow-high-row",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "c9f649b7775c7126de66cdbed6395142a8703b39e37ac0a6b3e8c99b16eabc3b",
+          "status": 1,
+          "stderr": "Data-flow layout validation failed:\n- Node \"archive\" exceeds the readable diagram area — keep y between 104 and 646 (adjust row/yOffset or increase meta.viewBox[1]).\n[layout/constraint] Node \"archive\" exceeds the readable diagram area — keep y between 104 and 646 (adjust row/yOffset or increase meta.viewBox[1]).\n",
+          "frame": null
+        },
+        {
+          "sha256": "00f96fbf134cd888eae9658f5fc82b89350580d50e45974acf53a61401802a4c",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 940 1223"
+        }
+      ]
+    },
+    {
+      "name": "dataflow-wide-stage",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "7cbdce504bfa5609fbae5a4fbe486c8330ddf8a2c3b8c054876f2af4504c66b7",
+          "status": 1,
+          "stderr": "Data-flow layout validation failed:\n- Node \"distribute\" exceeds the horizontal bounds of the viewBox — reduce node.width or increase meta.viewBox[0].\n- Stages exceed viewBox width — set meta.viewBox[0] to at least 1068.\n[layout/constraint] Node \"distribute\" exceeds the horizontal bounds of the viewBox — reduce node.width or increase meta.viewBox[0].\n[layout/constraint] Stages exceed viewBox width — set meta.viewBox[0] to at least 1068.\n",
+          "frame": null
+        },
+        {
+          "sha256": "6a55d30dc3114134e1dcd06a938cbcb70d71516367d6b513a69098db8615d240",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 1140 720"
+        }
+      ]
+    },
+    {
+      "name": "dataflow-channel-legend",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "df43d5c434b808e849495d63df3923d1d76c20e36fb8a21e003400a54bc680ac",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 940 720"
+        },
+        {
+          "sha256": "8b7c58bc9d2a2dd5df630721c217561c50b4a2c9ffef24a12f0c0d8bbfe89d7c",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 940 1133"
+        }
+      ]
+    },
+    {
+      "name": "sequence-fixed-timeline",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "6179f39188c6e153f63561e7b74b39f57f3ab44aec31dfa5be56acc65d500c44",
+          "status": 1,
+          "stderr": "Sequence layout validation failed:\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Participants exceed viewBox width — set meta.viewBox[0] to at least 1333 or remove a participant.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Participants exceed viewBox width — set meta.viewBox[0] to at least 1333 or remove a participant.\n",
+          "frame": null
+        },
+        {
+          "sha256": "224534163fd790084e4f1fb04f36796e6219beb2f516908ea66d2056fe446ff7",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 1334 1315"
+        }
+      ]
+    },
+    {
+      "name": "sequence-spread-fleet",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "a336c1b11c5a9f671ec46b257e636b3584536019d228a3f615d3a296650de544",
+          "status": 1,
+          "stderr": "Sequence layout validation failed:\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Participants exceed viewBox width — set meta.viewBox[0] to at least 3320 or remove a participant.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Participants exceed viewBox width — set meta.viewBox[0] to at least 3320 or remove a participant.\n",
+          "frame": null
+        },
+        {
+          "sha256": "bb21dac408cc1b6a9eb6e1bc07f03430a2840a90e5048fb92762ba3dac44bdd7",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 3320 1659"
+        }
+      ]
+    },
+    {
+      "name": "sequence-segment-activation",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "2036b91fc831f0822cacb4e8db752c713ef3a0a1226bb65d0c319ca299a308f1",
+          "status": 1,
+          "stderr": "Sequence layout validation failed:\n- Segment \"Background execution and completion retention\" extends outside the canvas — keep its y range between 72 and 715.\n[layout/constraint] Segment \"Background execution and completion retention\" extends outside the canvas — keep its y range between 72 and 715.\n",
+          "frame": null
+        },
+        {
+          "sha256": "3ffdfe9f9e355b11fb71f242d7d05160417ed48985780b2eb0d1af2a298b8895",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 920 1711"
+        }
+      ]
+    },
+    {
+      "name": "lifecycle-high-state",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "358e03e57ae4d4bb9519bf5cb083e723113dc686f9d0873899669749a783582d",
+          "status": 1,
+          "stderr": "Lifecycle layout validation failed:\n- State \"done\" exceeds the vertical lifecycle area — keep y between 64 and 538 (adjust yOffset or increase meta.viewBox[1]).\n[layout/constraint] State \"done\" exceeds the vertical lifecycle area — keep y between 64 and 538 (adjust yOffset or increase meta.viewBox[1]).\n",
+          "frame": null
+        },
+        {
+          "sha256": "20bfa4bf3f7fbc505fa111982a08ad442a8cf29df4ddda824d2ec78a7fe72e72",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 980 1281"
+        }
+      ]
+    },
+    {
+      "name": "lifecycle-rounded-channel",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "fad99509a5c29714e6b9b1828199cc566036e460b97c452cf2d5bc32915a951c",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 980 660"
+        },
+        {
+          "sha256": "035bdd60cddf69a2632487a2da23bdb3a93a5955ac7adfae06f1c1ee17088d97",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 1343 660"
+        }
+      ]
+    },
+    {
+      "name": "lifecycle-band-legend",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "866842f8622893f13f91f9986e74705f661fa60182220845475a154027d4d847",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 980 660"
+        },
+        {
+          "sha256": "942cad4622408e0e12d392a32cb769ba921cac871907fbe8ab3797a5fa945bbe",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 980 660"
+        }
+      ]
+    },
+    {
+      "name": "lifecycle-bottom-channel",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "d86c7576509a302450a7cf0428fee3440531e32d93b3e33917ba8a801fd3dbb7",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 980 660"
+        },
+        {
+          "sha256": "1ce78c36fd7a5798cf5aff700efead0a06f62f136388f2219e3be8394b199799",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 980 1325"
+        }
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "name": "web-app.architecture",
+      "command": "render",
+      "inputSha256": "35961a2c5922652782ca47b512aadf2f5b8ae826242057de7e5f18a9c42b6ca4",
+      "samples": {
+        "A": [
+          109.27008299999989,
+          110.8233339999997,
+          111.59770800000024,
+          115.9228750000002,
+          113.11108400000012,
+          111.65458299999955,
+          113.75470800000039,
+          112.61949999999979,
+          111.45824999999968,
+          112.12204199999996
+        ],
+        "B": [
+          118.13858299999993,
+          112.0912500000004,
+          112.02591699999994,
+          113.54320800000005,
+          111.82487499999934,
+          114.88241700000071,
+          114.15529200000037,
+          116.64199999999983,
+          114.61849999999959,
+          113.24112499999956
+        ]
+      },
+      "A": {
+        "median": 111.65458299999955,
+        "p95": 115.9228750000002
+      },
+      "B": {
+        "median": 113.54320800000005,
+        "p95": 118.13858299999993
+      },
+      "limits": {
+        "median": 122.82004129999952,
+        "p95": 133.31130625000023
+      },
+      "passed": true
+    },
+    {
+      "name": "web-app.architecture",
+      "command": "validate",
+      "inputSha256": "35961a2c5922652782ca47b512aadf2f5b8ae826242057de7e5f18a9c42b6ca4",
+      "samples": {
+        "A": [
+          154.72570799999994,
+          155.6609580000004,
+          157.25612499999988,
+          154.62104100000033,
+          154.1722919999993,
+          151.99862500000017,
+          153.47891700000037,
+          153.33199999999852,
+          154.20374999999876,
+          157.1548330000005
+        ],
+        "B": [
+          157.76479199999994,
+          155.82749999999942,
+          156.5270840000003,
+          157.22120899999936,
+          156.59529199999997,
+          154.84337500000038,
+          156.36824999999953,
+          154.86487500000112,
+          158.60633300000154,
+          156.3159169999999
+        ]
+      },
+      "A": {
+        "median": 154.20374999999876,
+        "p95": 157.25612499999988
+      },
+      "B": {
+        "median": 156.36824999999953,
+        "p95": 158.60633300000154
+      },
+      "limits": {
+        "median": 169.62412499999866,
+        "p95": 180.84454374999984
+      },
+      "passed": true
+    },
+    {
+      "name": "brand-aware-delivery.architecture",
+      "command": "render",
+      "inputSha256": "893fc20c8fcae1694f9f44067d94a035f785f8f608f5c453787fb3d9c1468445",
+      "samples": {
+        "A": [
+          110.00312499999927,
+          110.7503340000003,
+          110.73912500000006,
+          113.04608299999927,
+          111.25545899999997,
+          112.57304199999999,
+          111.65108400000099,
+          111.36816699999872,
+          111.79291600000033,
+          111.02141699999993
+        ],
+        "B": [
+          113.90258300000096,
+          114.6007499999996,
+          111.24358299999949,
+          110.65545799999927,
+          112.65820800000074,
+          121.40829200000007,
+          109.71266699999978,
+          110.64145799999824,
+          111.55595799999901,
+          113.63891700000022
+        ]
+      },
+      "A": {
+        "median": 111.25545899999997,
+        "p95": 113.04608299999927
+      },
+      "B": {
+        "median": 111.55595799999901,
+        "p95": 121.40829200000007
+      },
+      "limits": {
+        "median": 122.38100489999998,
+        "p95": 130.00299544999916
+      },
+      "passed": true
+    },
+    {
+      "name": "brand-aware-delivery.architecture",
+      "command": "validate",
+      "inputSha256": "893fc20c8fcae1694f9f44067d94a035f785f8f608f5c453787fb3d9c1468445",
+      "samples": {
+        "A": [
+          153.26674999999886,
+          154.17924999999923,
+          156.39220800000112,
+          156.05491600000096,
+          155.0529170000009,
+          153.5980839999993,
+          151.39749999999913,
+          152.98125000000073,
+          154.95054199999868,
+          155.70341700000063
+        ],
+        "B": [
+          153.9459999999999,
+          158.77904200000012,
+          158.42766699999993,
+          159.2196669999994,
+          152.96166699999958,
+          155.21087499999885,
+          154.9222919999993,
+          155.58862500000032,
+          152.92391700000007,
+          151.9337919999998
+        ]
+      },
+      "A": {
+        "median": 154.17924999999923,
+        "p95": 156.39220800000112
+      },
+      "B": {
+        "median": 154.9222919999993,
+        "p95": 159.2196669999994
+      },
+      "limits": {
+        "median": 169.59717499999917,
+        "p95": 179.85103920000128
+      },
+      "passed": true
+    },
+    {
+      "name": "production-deployment.architecture",
+      "command": "render",
+      "inputSha256": "90b7bbbcb6561395d1c19bc64c522efe6aa38cae5b2bcd91c01ed90a97077861",
+      "samples": {
+        "A": [
+          114.1753749999989,
+          117.96379099999831,
+          113.07595799999763,
+          114.06383300000016,
+          111.74720899999738,
+          110.57183399999849,
+          115.21220900000117,
+          112.63345800000025,
+          114.35299999999916,
+          115.14795800000138
+        ],
+        "B": [
+          115.9498330000024,
+          115.7275410000002,
+          114.85629199999676,
+          118.10241700000188,
+          114.68799999999828,
+          113.98429100000067,
+          105.89045900000201,
+          115.66662499999802,
+          113.14904100000058,
+          116.29862499999945
+        ]
+      },
+      "A": {
+        "median": 114.06383300000016,
+        "p95": 117.96379099999831
+      },
+      "B": {
+        "median": 114.85629199999676,
+        "p95": 118.10241700000188
+      },
+      "limits": {
+        "median": 125.47021630000019,
+        "p95": 135.65835964999803
+      },
+      "passed": true
+    },
+    {
+      "name": "production-deployment.architecture",
+      "command": "validate",
+      "inputSha256": "90b7bbbcb6561395d1c19bc64c522efe6aa38cae5b2bcd91c01ed90a97077861",
+      "samples": {
+        "A": [
+          164.39629100000093,
+          161.23995899999863,
+          158.89383299999827,
+          161.87024999999994,
+          161.72399999999834,
+          158.0223339999975,
+          160.33079200000066,
+          161.697959000001,
+          159.45816600000035,
+          161.64112499999828
+        ],
+        "B": [
+          161.4650419999998,
+          162.7820410000022,
+          165.0109999999986,
+          165.0613749999975,
+          164.4623329999995,
+          162.37241699999868,
+          162.66804099999717,
+          162.21595800000068,
+          163.1743749999987,
+          162.52250000000276
+        ]
+      },
+      "A": {
+        "median": 161.23995899999863,
+        "p95": 164.39629100000093
+      },
+      "B": {
+        "median": 162.66804099999717,
+        "p95": 165.0613749999975
+      },
+      "limits": {
+        "median": 177.3639548999985,
+        "p95": 189.05573465000106
+      },
+      "passed": true
+    },
+    {
+      "name": "product-analytics.dataflow",
+      "command": "render",
+      "inputSha256": "9f4acaed41a5ddda3c7fae913d7edf8041e5ba1834269b4afab6d7f96a4d3e68",
+      "samples": {
+        "A": [
+          111.19237499999872,
+          112.5236670000013,
+          109.8022920000003,
+          111.29141700000037,
+          112.21870800000033,
+          112.00300000000061,
+          111.54229199999827,
+          108.95329199999833,
+          111.27779200000077,
+          110.5288330000003
+        ],
+        "B": [
+          114.19495900000038,
+          111.51279100000102,
+          113.06000000000131,
+          112.33866599999965,
+          114.23958299999867,
+          114.05083300000115,
+          109.69329199999993,
+          109.64654200000223,
+          114.24262499999895,
+          110.74850000000151
+        ]
+      },
+      "A": {
+        "median": 111.27779200000077,
+        "p95": 112.5236670000013
+      },
+      "B": {
+        "median": 112.33866599999965,
+        "p95": 114.24262499999895
+      },
+      "limits": {
+        "median": 122.40557120000086,
+        "p95": 129.40221705000147
+      },
+      "passed": true
+    },
+    {
+      "name": "product-analytics.dataflow",
+      "command": "validate",
+      "inputSha256": "9f4acaed41a5ddda3c7fae913d7edf8041e5ba1834269b4afab6d7f96a4d3e68",
+      "samples": {
+        "A": [
+          155.29616600000008,
+          155.68029100000058,
+          156.2514999999985,
+          155.65062500000204,
+          158.5271670000002,
+          158.1566669999993,
+          154.4343340000014,
+          160.00762499999837,
+          155.78995900000155,
+          157.13320900000326
+        ],
+        "B": [
+          154.66245799999888,
+          151.81762499999968,
+          159.39354199999798,
+          155.70712500000081,
+          155.57145799999853,
+          153.35462499999994,
+          155.9080419999991,
+          157.38266600000134,
+          155.94066600000224,
+          154.9444999999978
+        ]
+      },
+      "A": {
+        "median": 155.78995900000155,
+        "p95": 160.00762499999837
+      },
+      "B": {
+        "median": 155.57145799999853,
+        "p95": 159.39354199999798
+      },
+      "limits": {
+        "median": 171.3689549000017,
+        "p95": 184.0087687499981
+      },
+      "passed": true
+    },
+    {
+      "name": "event-stream.dataflow",
+      "command": "render",
+      "inputSha256": "320d8ec6bc79fbdb946ed6bcb5f9cd08d65d8fa3c670d9133d0d71e1310799a1",
+      "samples": {
+        "A": [
+          110.66237499999988,
+          116.14174999999886,
+          111.75920899999983,
+          112.48191600000064,
+          111.7487919999985,
+          114.09983400000056,
+          113.73604200000409,
+          114.05908399999316,
+          111.89504199999647,
+          113.35245799999393
+        ],
+        "B": [
+          110.98133299999972,
+          111.73804100000052,
+          116.54020799999853,
+          113.97283299999981,
+          110.2222499999989,
+          114.5315830000036,
+          115.49504199999501,
+          115.18720899999607,
+          113.70708400000149,
+          113.55941700000403
+        ]
+      },
+      "A": {
+        "median": 112.48191600000064,
+        "p95": 116.14174999999886
+      },
+      "B": {
+        "median": 113.70708400000149,
+        "p95": 116.54020799999853
+      },
+      "limits": {
+        "median": 123.73010760000071,
+        "p95": 133.56301249999868
+      },
+      "passed": true
+    },
+    {
+      "name": "event-stream.dataflow",
+      "command": "validate",
+      "inputSha256": "320d8ec6bc79fbdb946ed6bcb5f9cd08d65d8fa3c670d9133d0d71e1310799a1",
+      "samples": {
+        "A": [
+          159.7734999999957,
+          157.80433400000038,
+          156.27795799999876,
+          157.3828330000033,
+          157.434874999999,
+          156.35354100000404,
+          154.9499999999971,
+          158.50312499999563,
+          155.39904200000456,
+          159.05483399999503
+        ],
+        "B": [
+          154.8989999999976,
+          160.99295800000255,
+          159.66845900000044,
+          157.630084000004,
+          158.42091699999582,
+          156.90149999999994,
+          161.23374999999942,
+          159.41112499999872,
+          158.4574999999968,
+          155.85862500000076
+        ]
+      },
+      "A": {
+        "median": 157.3828330000033,
+        "p95": 159.7734999999957
+      },
+      "B": {
+        "median": 158.42091699999582,
+        "p95": 161.23374999999942
+      },
+      "limits": {
+        "median": 173.12111630000365,
+        "p95": 183.73952499999504
+      },
+      "passed": true
+    },
+    {
+      "name": "cache-miss-request.sequence",
+      "command": "render",
+      "inputSha256": "e63a8f50c48cd9baf753d99bb61bebb2af632873b72c949dcd70dda0e95f0d8b",
+      "samples": {
+        "A": [
+          110.80566699999326,
+          110.35287499999686,
+          109.60050000000047,
+          108.98133399999642,
+          109.99291699999594,
+          111.11370799999713,
+          108.67008299999725,
+          111.66537499999686,
+          110.48699999999371,
+          108.44566699999996
+        ],
+        "B": [
+          110.19512499999837,
+          106.59641700000066,
+          112.25745800000004,
+          109.6939579999962,
+          111.69233399999939,
+          111.29362499999843,
+          110.72770799999853,
+          111.33991600000445,
+          108.77174999999988,
+          109.90816700000141
+        ]
+      },
+      "A": {
+        "median": 109.99291699999594,
+        "p95": 111.66537499999686
+      },
+      "B": {
+        "median": 110.19512499999837,
+        "p95": 112.25745800000004
+      },
+      "limits": {
+        "median": 120.99220869999554,
+        "p95": 128.41518124999638
+      },
+      "passed": true
+    },
+    {
+      "name": "cache-miss-request.sequence",
+      "command": "validate",
+      "inputSha256": "e63a8f50c48cd9baf753d99bb61bebb2af632873b72c949dcd70dda0e95f0d8b",
+      "samples": {
+        "A": [
+          152.37241599999834,
+          152.93954200000007,
+          151.71370799999568,
+          154.50074999999924,
+          151.67870799999946,
+          153.1532090000037,
+          152.64450000000215,
+          154.53775000000314,
+          150.6457089999967,
+          150.59520799999882
+        ],
+        "B": [
+          153.35250000000087,
+          152.13795899999968,
+          152.42487499999697,
+          151.65695899999992,
+          154.1336669999946,
+          157.82741700000042,
+          153.65279200000077,
+          152.8170839999948,
+          153.18525000000227,
+          152.16100000000006
+        ]
+      },
+      "A": {
+        "median": 152.37241599999834,
+        "p95": 154.53775000000314
+      },
+      "B": {
+        "median": 152.8170839999948,
+        "p95": 157.82741700000042
+      },
+      "limits": {
+        "median": 167.60965759999817,
+        "p95": 177.7184125000036
+      },
+      "passed": true
+    },
+    {
+      "name": "async-job-roundtrip.sequence",
+      "command": "render",
+      "inputSha256": "a7c76186337f17dba1b85cd2f04d5af9d88abda74155d8b8b11c9284a235dbc7",
+      "samples": {
+        "A": [
+          110.07479199999943,
+          110.25262500000099,
+          110.84533300000476,
+          111.403833999997,
+          110.56766700000298,
+          109.71225000000413,
+          110.97995800000353,
+          109.52924999999959,
+          109.22099999999773,
+          112.30520799999795
+        ],
+        "B": [
+          110.3903749999954,
+          108.96645799999533,
+          108.69829100000061,
+          110.24133299999812,
+          111.31925000000047,
+          108.35029200000281,
+          112.3037919999988,
+          108.53254100000049,
+          112.00300000000425,
+          113.88191700000607
+        ]
+      },
+      "A": {
+        "median": 110.25262500000099,
+        "p95": 112.30520799999795
+      },
+      "B": {
+        "median": 110.24133299999812,
+        "p95": 113.88191700000607
+      },
+      "limits": {
+        "median": 121.2778875000011,
+        "p95": 129.15098919999764
+      },
+      "passed": true
+    },
+    {
+      "name": "async-job-roundtrip.sequence",
+      "command": "validate",
+      "inputSha256": "a7c76186337f17dba1b85cd2f04d5af9d88abda74155d8b8b11c9284a235dbc7",
+      "samples": {
+        "A": [
+          153.73070899999584,
+          150.75587499999529,
+          156.0413750000007,
+          153.05712499999936,
+          153.1278749999983,
+          153.72445799999696,
+          151.17345800000476,
+          153.89483299999847,
+          152.22495799999888,
+          153.84562500000175
+        ],
+        "B": [
+          155.03670899999997,
+          155.43904199999815,
+          155.42683400000533,
+          155.6140000000014,
+          156.5665829999998,
+          151.2299159999966,
+          153.01733300000342,
+          152.76945899999555,
+          153.06749999999738,
+          156.45516599999974
+        ]
+      },
+      "A": {
+        "median": 153.1278749999983,
+        "p95": 156.0413750000007
+      },
+      "B": {
+        "median": 155.03670899999997,
+        "p95": 156.5665829999998
+      },
+      "limits": {
+        "median": 168.44066249999815,
+        "p95": 179.44758125000078
+      },
+      "passed": true
+    },
+    {
+      "name": "agent-run.lifecycle",
+      "command": "render",
+      "inputSha256": "22ba5f3f8947348cef926bd3ade1f3a3a0def0536bc9db785cb3f7e236b054bf",
+      "samples": {
+        "A": [
+          108.44320900000457,
+          110.5437080000047,
+          110.19612500000221,
+          109.4308330000058,
+          107.09308400000009,
+          110.97108400000434,
+          109.63883300000452,
+          106.81049999999959,
+          109.09012499999517,
+          108.72470799999428
+        ],
+        "B": [
+          107.4775840000002,
+          109.27862499999901,
+          109.23099999999977,
+          110.91475000000355,
+          108.50795799999469,
+          110.02766699999484,
+          111.1754590000055,
+          108.72366699999839,
+          109.7529579999973,
+          111.04995799999597
+        ]
+      },
+      "A": {
+        "median": 109.09012499999517,
+        "p95": 110.97108400000434
+      },
+      "B": {
+        "median": 109.27862499999901,
+        "p95": 111.1754590000055
+      },
+      "limits": {
+        "median": 119.99913749999469,
+        "p95": 127.61674660000499
+      },
+      "passed": true
+    },
+    {
+      "name": "agent-run.lifecycle",
+      "command": "validate",
+      "inputSha256": "22ba5f3f8947348cef926bd3ade1f3a3a0def0536bc9db785cb3f7e236b054bf",
+      "samples": {
+        "A": [
+          151.85983299999498,
+          152.01779199999874,
+          153.4496250000011,
+          148.80733299999702,
+          152.36708300000464,
+          156.15733400000317,
+          151.39333400000032,
+          152.49304100000154,
+          149.80399999999645,
+          154.33812500000204
+        ],
+        "B": [
+          151.1550000000061,
+          151.5655409999963,
+          154.27524999999878,
+          152.893250000001,
+          152.36879100000078,
+          152.03670799999963,
+          152.4484999999986,
+          153.93879200000083,
+          154.92895800000406,
+          151.4467500000028
+        ]
+      },
+      "A": {
+        "median": 152.01779199999874,
+        "p95": 156.15733400000317
+      },
+      "B": {
+        "median": 152.36879100000078,
+        "p95": 154.92895800000406
+      },
+      "limits": {
+        "median": 167.21957119999863,
+        "p95": 179.58093410000365
+      },
+      "passed": true
+    },
+    {
+      "name": "deployment-release.lifecycle",
+      "command": "render",
+      "inputSha256": "9b6838c482e28197954a3a549e7bf3f7747f6429d46d3e8982fd0c8874b64805",
+      "samples": {
+        "A": [
+          107.69537499999569,
+          108.6168339999931,
+          108.9183750000011,
+          114.35991699999431,
+          109.55108399999881,
+          109.24408299999777,
+          109.81049999999959,
+          109.63458399999945,
+          107.77962500000285,
+          109.62495800000033
+        ],
+        "B": [
+          107.71591600000102,
+          109.77758300000278,
+          108.96583400000236,
+          108.56312500000058,
+          109.33970899999986,
+          109.99687499999709,
+          109.71975000000384,
+          109.14983300000313,
+          110.56516700000066,
+          110.00079199999891
+        ]
+      },
+      "A": {
+        "median": 109.24408299999777,
+        "p95": 114.35991699999431
+      },
+      "B": {
+        "median": 109.33970899999986,
+        "p95": 110.56516700000066
+      },
+      "limits": {
+        "median": 120.16849129999756,
+        "p95": 131.51390454999344
+      },
+      "passed": true
+    },
+    {
+      "name": "deployment-release.lifecycle",
+      "command": "validate",
+      "inputSha256": "9b6838c482e28197954a3a549e7bf3f7747f6429d46d3e8982fd0c8874b64805",
+      "samples": {
+        "A": [
+          148.88129099999787,
+          148.8943339999969,
+          150.60154200000397,
+          148.0726250000007,
+          149.09587499999907,
+          146.04533400000219,
+          148.20745799999713,
+          148.87183299999742,
+          149.5202089999948,
+          156.0162910000072
+        ],
+        "B": [
+          149.9230000000025,
+          150.2127079999991,
+          152.47741600000154,
+          148.21791700000176,
+          147.47112500000367,
+          150.13175000000047,
+          151.5011250000025,
+          149.1444580000025,
+          152.29958400000032,
+          151.24120799999946
+        ]
+      },
+      "A": {
+        "median": 148.88129099999787,
+        "p95": 156.0162910000072
+      },
+      "B": {
+        "median": 150.13175000000047,
+        "p95": 152.47741600000154
+      },
+      "limits": {
+        "median": 163.76942009999766,
+        "p95": 179.41873465000825
+      },
+      "passed": true
+    },
+    {
+      "name": "minimal.dataflow",
+      "command": "render",
+      "inputSha256": "7d2b93ec1e6f0e6b4e1f283eb3f0b1000987191afc37b2ee9680717950d4cc71",
+      "samples": {
+        "A": [
+          104.81166599999415,
+          105.07295800000429,
+          106.6244999999908,
+          104.21404099999927,
+          106.29554199999257,
+          106.00104200000351,
+          108.29733299999498,
+          107.59470899999724,
+          107.36191600000893,
+          105.38749999999709
+        ],
+        "B": [
+          107.28662500000792,
+          105.16733399999794,
+          105.50020800001221,
+          105.86037500000384,
+          107.9569160000101,
+          106.09700000000885,
+          106.7397079999937,
+          105.03787499999453,
+          106.07774999999674,
+          105.43279200000688
+        ]
+      },
+      "A": {
+        "median": 106.00104200000351,
+        "p95": 108.29733299999498
+      },
+      "B": {
+        "median": 105.86037500000384,
+        "p95": 107.9569160000101
+      },
+      "limits": {
+        "median": 116.60114620000387,
+        "p95": 124.54193294999422
+      },
+      "passed": true
+    },
+    {
+      "name": "minimal.dataflow",
+      "command": "validate",
+      "inputSha256": "7d2b93ec1e6f0e6b4e1f283eb3f0b1000987191afc37b2ee9680717950d4cc71",
+      "samples": {
+        "A": [
+          144.00162499998987,
+          144.55366600000707,
+          142.8622500000056,
+          144.8939170000085,
+          146.36716599999636,
+          146.11666600000171,
+          144.94483300000138,
+          144.07733300000837,
+          144.8955419999984,
+          145.1388750000042
+        ],
+        "B": [
+          146.770583000005,
+          143.44591700000456,
+          147.1498750000028,
+          143.83087499999965,
+          153.15583399999014,
+          146.2666670000035,
+          146.55029100000684,
+          150.97583399999712,
+          146.42270799999824,
+          146.53170799999498
+        ]
+      },
+      "A": {
+        "median": 144.8939170000085,
+        "p95": 146.36716599999636
+      },
+      "B": {
+        "median": 146.53170799999498,
+        "p95": 153.15583399999014
+      },
+      "limits": {
+        "median": 159.38330870000937,
+        "p95": 168.3222408999958
+      },
+      "passed": true
+    },
+    {
+      "name": "minimal.sequence",
+      "command": "render",
+      "inputSha256": "8c5cce6e45e0ad49c1973abfc3f6f66489408f52db6f31b39d7a8b972d054cbf",
+      "samples": {
+        "A": [
+          107.3495830000029,
+          105.09883299999638,
+          104.75791699999536,
+          105.17008300000452,
+          104.82866699999431,
+          105.22020899999188,
+          105.04254199999559,
+          108.35783399999491,
+          104.68116699998791,
+          105.27070900000399
+        ],
+        "B": [
+          105.87404199999582,
+          104.62029199999233,
+          107.85637500000303,
+          107.56075000000419,
+          104.981832999998,
+          107.924417000002,
+          105.51958300000115,
+          106.044458999997,
+          105.04316699999617,
+          105.36187500000233
+        ]
+      },
+      "A": {
+        "median": 105.09883299999638,
+        "p95": 108.35783399999491
+      },
+      "B": {
+        "median": 105.51958300000115,
+        "p95": 107.924417000002
+      },
+      "limits": {
+        "median": 115.60871629999602,
+        "p95": 124.61150909999414
+      },
+      "passed": true
+    },
+    {
+      "name": "minimal.sequence",
+      "command": "validate",
+      "inputSha256": "8c5cce6e45e0ad49c1973abfc3f6f66489408f52db6f31b39d7a8b972d054cbf",
+      "samples": {
+        "A": [
+          144.3085829999909,
+          144.968915999998,
+          144.471292000002,
+          144.05812499999593,
+          143.24358300000313,
+          142.85774999999558,
+          142.56620800000383,
+          145.13904199999524,
+          142.9709170000133,
+          142.54929199999606
+        ],
+        "B": [
+          149.27008300001035,
+          143.5678340000013,
+          145.76304099999834,
+          143.8273329999938,
+          145.0789999999979,
+          147.9114169999957,
+          142.41049999999814,
+          145.2486659999995,
+          143.55591700000514,
+          145.47708300000522
+        ]
+      },
+      "A": {
+        "median": 143.24358300000313,
+        "p95": 145.13904199999524
+      },
+      "B": {
+        "median": 145.0789999999979,
+        "p95": 149.27008300001035
+      },
+      "limits": {
+        "median": 157.56794130000344,
+        "p95": 166.90989829999452
+      },
+      "passed": true
+    },
+    {
+      "name": "minimal.lifecycle",
+      "command": "render",
+      "inputSha256": "991b3efc6d08ea8e8253c80aadf45948a0a7618cf02df8badbef955275e384bc",
+      "samples": {
+        "A": [
+          106.15304099999776,
+          106.05804099999659,
+          105.36062500000116,
+          105.43033299999661,
+          105.15237500000512,
+          108.55458300000464,
+          103.53366700001061,
+          105.47762499999953,
+          105.43608400000085,
+          105.48512499999197
+        ],
+        "B": [
+          106.43566699999792,
+          107.13345799999661,
+          103.26650000001246,
+          107.7388329999958,
+          106.58795799998916,
+          105.59691700000258,
+          106.61266599998635,
+          107.24199999999837,
+          106.2161669999914,
+          106.9043340000062
+        ]
+      },
+      "A": {
+        "median": 105.43608400000085,
+        "p95": 108.55458300000464
+      },
+      "B": {
+        "median": 106.58795799998916,
+        "p95": 107.7388329999958
+      },
+      "limits": {
+        "median": 115.97969240000094,
+        "p95": 124.83777045000532
+      },
+      "passed": true
+    },
+    {
+      "name": "minimal.lifecycle",
+      "command": "validate",
+      "inputSha256": "991b3efc6d08ea8e8253c80aadf45948a0a7618cf02df8badbef955275e384bc",
+      "samples": {
+        "A": [
+          146.38458299999184,
+          144.7882910000044,
+          145.82633300000452,
+          143.09666700000525,
+          148.00695799999812,
+          143.62374999999884,
+          144.27258299999812,
+          144.0015829999902,
+          143.08591699998942,
+          145.44870799999626
+        ],
+        "B": [
+          145.8141670000041,
+          145.76916700000584,
+          149.2352499999979,
+          145.45524999999907,
+          146.88824999998906,
+          145.52187499999127,
+          142.17508299999463,
+          147.8895419999899,
+          149.1063329999888,
+          149.54862500001036
+        ]
+      },
+      "A": {
+        "median": 144.27258299999812,
+        "p95": 148.00695799999812
+      },
+      "B": {
+        "median": 145.8141670000041,
+        "p95": 149.54862500001036
+      },
+      "limits": {
+        "median": 158.69984129999796,
+        "p95": 170.20800169999782
+      },
+      "passed": true
+    }
+  ],
+  "agentEndToEnd": "unmeasured"
+}

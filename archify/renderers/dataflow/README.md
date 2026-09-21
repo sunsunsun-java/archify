@@ -56,6 +56,12 @@ without a database node keeps it visual-only.
 
 ## Layout budget
 
+For new sources, use `meta.canvas_fit: "content"` and omit `meta.viewBox` unless
+the user requires fixed dimensions. The [content-canvas contract](../../references/content-canvas.md)
+defines full paint measurement and `validate --layout-json`; existing sources
+without the field keep the budget below. Content mode does not add stages or rows.
+See [the connected content example](../../examples/content-pipelines.dataflow.json).
+
 | Constant | Value |
 |----------|-------|
 | viewBox | default `[940, 720]`; schema minimum `[360, 360]` |

@@ -1,0 +1,345 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Regional processing services",
+    "output": "content-services.html",
+    "canvas_fit": "content",
+    "quality_profile": "standard"
+  },
+  "components": [
+    {
+      "id": "service-0",
+      "type": "backend",
+      "label": "Ingress 1",
+      "pos": [
+        80,
+        80
+      ]
+    },
+    {
+      "id": "service-1",
+      "type": "backend",
+      "label": "Processor 1",
+      "pos": [
+        360,
+        80
+      ]
+    },
+    {
+      "id": "service-2",
+      "type": "database",
+      "label": "Store 1",
+      "pos": [
+        640,
+        80
+      ]
+    },
+    {
+      "id": "service-3",
+      "type": "backend",
+      "label": "Ingress 2",
+      "pos": [
+        80,
+        230
+      ]
+    },
+    {
+      "id": "service-4",
+      "type": "backend",
+      "label": "Processor 2",
+      "pos": [
+        360,
+        230
+      ]
+    },
+    {
+      "id": "service-5",
+      "type": "database",
+      "label": "Store 2",
+      "pos": [
+        640,
+        230
+      ]
+    },
+    {
+      "id": "service-6",
+      "type": "backend",
+      "label": "Ingress 3",
+      "pos": [
+        80,
+        380
+      ]
+    },
+    {
+      "id": "service-7",
+      "type": "backend",
+      "label": "Processor 3",
+      "pos": [
+        360,
+        380
+      ]
+    },
+    {
+      "id": "service-8",
+      "type": "database",
+      "label": "Store 3",
+      "pos": [
+        640,
+        380
+      ]
+    },
+    {
+      "id": "service-9",
+      "type": "backend",
+      "label": "Ingress 4",
+      "pos": [
+        80,
+        530
+      ]
+    },
+    {
+      "id": "service-10",
+      "type": "backend",
+      "label": "Processor 4",
+      "pos": [
+        360,
+        530
+      ]
+    },
+    {
+      "id": "service-11",
+      "type": "database",
+      "label": "Store 4",
+      "pos": [
+        640,
+        530
+      ]
+    },
+    {
+      "id": "service-12",
+      "type": "backend",
+      "label": "Ingress 5",
+      "pos": [
+        80,
+        680
+      ]
+    },
+    {
+      "id": "service-13",
+      "type": "backend",
+      "label": "Processor 5",
+      "pos": [
+        360,
+        680
+      ]
+    },
+    {
+      "id": "service-14",
+      "type": "database",
+      "label": "Store 5",
+      "pos": [
+        640,
+        680
+      ]
+    },
+    {
+      "id": "service-15",
+      "type": "backend",
+      "label": "Ingress 6",
+      "pos": [
+        80,
+        830
+      ]
+    },
+    {
+      "id": "service-16",
+      "type": "backend",
+      "label": "Processor 6",
+      "pos": [
+        360,
+        830
+      ]
+    },
+    {
+      "id": "service-17",
+      "type": "database",
+      "label": "Store 6",
+      "pos": [
+        640,
+        830
+      ]
+    },
+    {
+      "id": "service-18",
+      "type": "backend",
+      "label": "Ingress 7",
+      "pos": [
+        80,
+        980
+      ]
+    },
+    {
+      "id": "service-19",
+      "type": "backend",
+      "label": "Processor 7",
+      "pos": [
+        360,
+        980
+      ]
+    },
+    {
+      "id": "service-20",
+      "type": "database",
+      "label": "Store 7",
+      "pos": [
+        640,
+        980
+      ]
+    },
+    {
+      "id": "service-21",
+      "type": "backend",
+      "label": "Ingress 8",
+      "pos": [
+        80,
+        1130
+      ]
+    },
+    {
+      "id": "service-22",
+      "type": "backend",
+      "label": "Processor 8",
+      "pos": [
+        360,
+        1130
+      ]
+    },
+    {
+      "id": "service-23",
+      "type": "database",
+      "label": "Store 8",
+      "pos": [
+        640,
+        1130
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "replicate-0",
+      "from": "service-0",
+      "to": "service-3"
+    },
+    {
+      "id": "replicate-1",
+      "from": "service-1",
+      "to": "service-4"
+    },
+    {
+      "id": "replicate-2",
+      "from": "service-2",
+      "to": "service-5"
+    },
+    {
+      "id": "replicate-3",
+      "from": "service-3",
+      "to": "service-6"
+    },
+    {
+      "id": "replicate-4",
+      "from": "service-4",
+      "to": "service-7"
+    },
+    {
+      "id": "replicate-5",
+      "from": "service-5",
+      "to": "service-8"
+    },
+    {
+      "id": "replicate-6",
+      "from": "service-6",
+      "to": "service-9"
+    },
+    {
+      "id": "replicate-7",
+      "from": "service-7",
+      "to": "service-10"
+    },
+    {
+      "id": "replicate-8",
+      "from": "service-8",
+      "to": "service-11"
+    },
+    {
+      "id": "replicate-9",
+      "from": "service-9",
+      "to": "service-12"
+    },
+    {
+      "id": "replicate-10",
+      "from": "service-10",
+      "to": "service-13"
+    },
+    {
+      "id": "replicate-11",
+      "from": "service-11",
+      "to": "service-14"
+    },
+    {
+      "id": "replicate-12",
+      "from": "service-12",
+      "to": "service-15"
+    },
+    {
+      "id": "replicate-13",
+      "from": "service-13",
+      "to": "service-16"
+    },
+    {
+      "id": "replicate-14",
+      "from": "service-14",
+      "to": "service-17"
+    },
+    {
+      "id": "replicate-15",
+      "from": "service-15",
+      "to": "service-18"
+    },
+    {
+      "id": "replicate-16",
+      "from": "service-16",
+      "to": "service-19"
+    },
+    {
+      "id": "replicate-17",
+      "from": "service-17",
+      "to": "service-20"
+    },
+    {
+      "id": "replicate-18",
+      "from": "service-18",
+      "to": "service-21"
+    },
+    {
+      "id": "replicate-19",
+      "from": "service-19",
+      "to": "service-22"
+    },
+    {
+      "id": "replicate-20",
+      "from": "service-20",
+      "to": "service-23"
+    },
+    {
+      "id": "dispatch",
+      "from": "service-0",
+      "to": "service-1"
+    },
+    {
+      "id": "persist",
+      "from": "service-1",
+      "to": "service-2"
+    }
+  ]
+}

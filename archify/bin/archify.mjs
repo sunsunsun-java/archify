@@ -6443,8 +6443,8 @@ async function commandValidate(args) {
     subject: { option: unknown[0] },
     supportedFixes: ['remove the unknown option and retry'],
   });
-  const json = args.includes('--json');
   const layoutJson = args.includes('--layout-json');
+  const json = args.includes('--json') || layoutJson;
   const rest = args.filter((arg) => !knownOptions.has(arg));
   const [type, input] = rest;
   if (!type || !input || rest.length !== 2) rejectCliArgument(usage(), {
@@ -6452,14 +6452,6 @@ async function commandValidate(args) {
     supportedFixes: ['use: archify validate <type> <input.json> [options]'],
   });
   const renderer = rendererPath(type);
-
-  if (layoutJson && !['architecture', 'workflow'].includes(type)) {
-    rejectCliArgument('--layout-json is currently supported for architecture and workflow diagrams only.', {
-      code: 'cli/unsupported-option',
-      subject: { option: '--layout-json', type },
-      supportedFixes: ['remove --layout-json or use an architecture or workflow diagram'],
-    });
-  }
 
   const inputPath = path.resolve(input);
   try {

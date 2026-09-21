@@ -952,6 +952,17 @@ For required browser, output and package evidence, follow
 
 ## Camera and large-world state
 
+Content-adaptive Architecture, Dataflow, Sequence and Lifecycle reuse the
+intrinsic-height reader hint already used by measured Workflow stacks. The
+Reader probes the header at the canonical readable-width floor before its
+prospective large-world measurement. This reserves real title wrapping space
+without changing the 6px threshold or depending on the current profile, avoiding
+a small/large feedback loop. The temporary shell width is restored immediately.
+Intrinsic-height message labels share the source-font reading budget with node
+labels. Initial automatic camera entry waits for the dock reservation and then
+the reader to settle; a provisional small profile must not consume the entry
+lease before the actual available stage has been measured.
+
 `Archify.view` keeps the existing public surface: `zoomIn`, `zoomOut`, `reset`,
 `reveal`, `centerAt`, `logicalViewport`, `sync`, and `state`. Scale remains a
 dimensionless multiplier where 1 is full Fit-all. The large-world work adds no

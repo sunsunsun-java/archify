@@ -2,7 +2,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { esc, renderDefinitions, renderSemanticSigil, textUnits } from '../shared/utils.mjs';
 import { animateAttr, focusEdgeAttrs, focusNodeAttrs, focusNodeTitle, loadDiagramWithBrandMarks, writeDiagram, svgAccessibleText, svgRootAttrs } from '../shared/cli.mjs';
-import { throwDiagnosticProblems } from '../shared/diagnostics.mjs';
+import { throwDiagnosticError, throwDiagnosticProblems } from '../shared/diagnostics.mjs';
+import { paintRect, paintPath, paintBounds, assertCanvasContains, fitContentCanvas, legendPaint, validateContentCanvas } from '../shared/canvas-paint.mjs';
 import { resolveLegend, renderLegend as renderResolvedLegend } from '../shared/legend.mjs';
 import { componentFill, arrowClassMap, rectsOverlap, cleanFlowProblems, cleanCrossingProblems, cleanAmbiguousCorridorProblems, cleanBorderRunProblems, cleanRouteRhythmProblems, cleanLabelRouteClearanceProblems, cleanLabelCanvasContainmentProblems, routePointsValue, asArray, isFinitePoint } from '../shared/geometry.mjs';
 import { availableNodeTextWidth, fittedNodeFontSize, minimumNodeTextWidth } from '../shared/text-fit.mjs';
@@ -15,13 +16,17 @@ const participantTextFit = {
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const layoutJsonMode = process.argv.includes('--layout-json');
 const { diagram: sequence, template, outPath, sourceEvidence } = await loadDiagramWithBrandMarks({
   rendererDir: __dirname,
   diagramType: 'sequence',
-  defaultExample: 'cache-miss-request.sequence.json'
+  defaultExample: 'cache-miss-request.sequence.json',
+  argv: process.argv.filter((arg) => arg !== '--layout-json'),
 });
 
-const viewBox = sequence.meta?.viewBox || [920, 760];
+const contentCanvas = sequence.meta?.canvas_fit === 'content';
+let viewBox = sequence.meta?.viewBox || [920, 760];
+let contentFit;
 // The timeline scales with viewBox height: a taller viewBox gains message room,
 // a shorter one shrinks the readable band (validated below) instead of clipping.
 // `column_fit: "spread"` widens the lanes with the viewBox instead of keeping
@@ -58,9 +63,11 @@ const layout = {
   labelH: readableMessages ? 18 : 16
 };
 
-const participantBoxWidthNote = columnFit === 'spread'
-  ? `participant boxes are ${participantW}px for this viewBox width and ${participantCount} participants`
-  : `participant boxes are a fixed ${participantW}px unless meta.column_fit is "spread"`;
+function participantBoxWidthNote() {
+  return columnFit === 'spread'
+    ? `participant boxes are ${layout.participantW}px for this viewBox width and ${participantCount} participants`
+    : `participant boxes are a fixed ${layout.participantW}px unless meta.column_fit is "spread"`;
+}
 
 const arrowClass = {
   ...arrowClassMap,
@@ -134,7 +141,7 @@ function segmentLabelBox(segment) {
   return label;
 }
 
-const compositionFrames = asArray(sequence.segments).map((segment, index) => ({
+let compositionFrames = asArray(sequence.segments).map((segment, index) => ({
   id: index,
   label: segment.label,
   kind: 'segment',
@@ -174,7 +181,7 @@ function validateSequence() {
       const availableTextW = availableNodeTextWidth(layout.participantW);
       const minimumW = minimumNodeTextWidth(participant.sublabel, participantTextFit.sublabelMinimum);
       if (minimumW > availableTextW) {
-        problems.push(`Sublabel "${participant.sublabel}" needs ~${Math.ceil(minimumW)}px at the ${participantTextFit.sublabelMinimum}px legible minimum, but participant "${participant.id}" provides ${availableTextW}px — shorten the sublabel (${participantBoxWidthNote}).`);
+        problems.push(`Sublabel "${participant.sublabel}" needs ~${Math.ceil(minimumW)}px at the ${participantTextFit.sublabelMinimum}px legible minimum, but participant "${participant.id}" provides ${availableTextW}px — shorten the sublabel (${participantBoxWidthNote()}).`);
       }
     }
   }
@@ -419,13 +426,84 @@ const LEGEND_CATALOG = [
   label: i18nText(sequence.meta.locale, `legend.sequence.${entry.kind}`),
 }));
 
-function renderLegend() {
+function resolvedLegendEntries() {
   const presentKinds = new Set(asArray(sequence.messages).map((message) => message.variant || 'default'));
-  const entries = resolveLegend(sequence.meta?.legend, LEGEND_CATALOG, presentKinds);
+  return resolveLegend(sequence.meta?.legend, LEGEND_CATALOG, presentKinds);
+}
+
+function sequenceContentPaint() {
+  return [
+    ...[...participants.values()].map((participant) => paintRect(participant, `/participants/${participant.index}`, 1.5)),
+    ...asArray(sequence.messages).flatMap((message, index) => {
+      const geometry = messageGeometry(message);
+      if (!geometry) return [];
+      return [paintPath([[geometry.start, message.y], [geometry.end, message.y]], `/messages/${index}`, message.variant === 'emphasis' ? 1.8 : 1.4),
+        paintRect(messageLabelBox(message), `/messages/${index}/label`),
+        ...(message.note ? [paintRect({ x: Math.min(geometry.start, geometry.end) + 12, y: message.y + 10,
+          width: textUnits(message.note) * 7 * 0.7, height: 11 }, `/messages/${index}/note`)] : [])];
+    }),
+    ...asArray(sequence.segments).flatMap((segment, index) => [
+      // The horizontal span follows the final frame; only authored time and
+      // the title are independent inputs to the canvas decision.
+      paintRect({ x: 48, y: segment.from, width: 0, height: segment.to - segment.from }, `/segments/${index}`, 1),
+      paintRect(segmentLabelBox(segment), `/segments/${index}/label`),
+    ]),
+    ...asArray(sequence.activations).filter((activation) => participants.has(activation.participant))
+      .map((activation, index) => paintRect({ x: participants.get(activation.participant).cx - 5,
+        y: activation.from, width: 10, height: activation.to - activation.from }, `/activations/${index}`, 1)),
+  ];
+}
+
+function finalizeCanvas() {
+  let iterations = 0;
+  for (; iterations < 32; iterations += 1) {
+    const requiredParticipantWidth = Math.ceil(Math.max(...[...participants.values()].map((p) => p.x + p.width)) + 40);
+    contentFit = fitContentCanvas({ rects: sequenceContentPaint(), diagramType: 'sequence',
+      locale: sequence.meta.locale,
+      authoredViewBox: sequence.meta?.viewBox, minimumViewBox: [Math.max(920, requiredParticipantWidth), 760],
+      entries: resolvedLegendEntries(), rightPadding: columnFit === 'spread' ? 0 : 40,
+      bottomReserve: 110, legendBaselineInset: 54 });
+    const previousWidth = viewBox[0];
+    viewBox = contentFit.viewBox;
+    if (columnFit !== 'spread' || sequence.meta?.viewBox || viewBox[0] === previousWidth) break;
+    layout.participantW = Math.max(86, Math.min(190, Math.round((viewBox[0] - sideMargin * 2) / participantCount) - 24));
+    layout.leftX = sideMargin + layout.participantW / 2;
+    layout.colGap = participantCount > 1
+      ? Math.max(108, (viewBox[0] - 40 - sideMargin - layout.participantW) / (participantCount - 1)) : 108;
+    for (const participant of participants.values()) {
+      participant.cx = participantX(participant.index);
+      participant.x = participant.cx - layout.participantW / 2;
+      participant.width = layout.participantW;
+    }
+  }
+  if (iterations === 32) {
+    const message = 'Sequence content canvas did not converge within 32 layout iterations.';
+    throwDiagnosticError(message, [{ code: 'canvas/non-convergent', severity: 'error', message,
+      subject: { diagramType: 'sequence', path: '/meta/column_fit' }, evidence: { iterations, viewBox }, supportedFixes: [] }]);
+  }
+  contentFit.receipt.iterations = iterations + 1;
+  layout.legendY = viewBox[1] - 54;
+  // Keep derived lifelines out of the measured legend, while retaining the
+  // existing 18px message-end clearance. No authored time is changed.
+  layout.lifelineBottom = viewBox[1] - contentFit.reserve + 22;
+  compositionFrames = compositionFrames.map((frame) => ({ ...frame, width: viewBox[0] - 96 }));
+  const bounds = paintBounds([...sequenceContentPaint(),
+    ...compositionFrames.map((frame, index) => paintRect(frame, `/segments/${index}`, 1)),
+    ...[...participants.values()].map((participant) => paintPath([[participant.cx, layout.lifelineTop],
+      [participant.cx, layout.lifelineBottom]], `/participants/${participant.index}/lifeline`, 0.8, false)),
+    ...legendPaint(resolvedLegendEntries(), contentFit.legendLayout),
+  ], 'sequence');
+  assertCanvasContains({ diagramType: 'sequence', viewBox, bounds });
+  contentFit.receipt.paintBounds = bounds;
+  return contentFit.receipt;
+}
+
+function renderLegend() {
+  const entries = resolvedLegendEntries();
   return renderResolvedLegend({
     entries,
     locale: sequence.meta.locale,
-    layout: {
+    layout: contentFit?.legendLayout || {
       x: 40,
       baselineY: layout.legendY,
       width: viewBox[0] - 80,
@@ -469,7 +547,17 @@ ${renderLegend()}
       </svg>`;
 }
 
-validateSequence();
+if (contentCanvas) validateContentCanvas({ diagram: sequence, resolve: finalizeCanvas, validate: validateSequence });
+else validateSequence();
+if (layoutJsonMode) {
+  renderLegend();
+  process.stdout.write(`${JSON.stringify({ ok: true, diagram_type: 'sequence', viewBox,
+    ...(contentFit ? { canvas: contentFit.receipt } : {}), participants: [...participants.values()],
+    messages: asArray(sequence.messages).map((message) => ({ ...message, ...messageGeometry(message) })),
+    segments: compositionFrames, activations: asArray(sequence.activations), lifelineBottom: layout.lifelineBottom,
+  })}\n`);
+  process.exit(0);
+}
 writeDiagram({
   outPath,
   template,

@@ -1,0 +1,453 @@
+{
+  "baseline": "/tmp/archify-content-baseline.I9ZvLx",
+  "candidate": "/Users/sunhonghao/.codex/worktrees/b09f/archify",
+  "node": "v22.23.1",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cpu": "Apple M4 Max",
+  "warmups": 3,
+  "pairs": 30,
+  "capacity": [
+    {
+      "name": "architecture-outer-route",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "bed1e8a00a49c4a2edc737f31f3961212c8c5e7eca3f9c7669a2da341d107af1",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 480 208"
+        },
+        {
+          "sha256": "5bb0fe3f79a273fd8f2150efa20e4895ec6609c9e3ac8638dead422b808bea72",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 481 1071"
+        }
+      ]
+    },
+    {
+      "name": "architecture-thick-marker",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "e54a0c621f1a287c2397337d60daacc098c2d14cec85259e985416dfb7897d4a",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 480 448"
+        },
+        {
+          "sha256": "fd74de2f42a064b51e8edee7044e8374f3363b1a36131337ec73d4bb3b3f1781",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 1180 488"
+        }
+      ]
+    },
+    {
+      "name": "architecture-boundary-legend",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "4be333177d51510ff530cb10c8582fd823927870a61f33194523eb93977d6857",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 670 290"
+        },
+        {
+          "sha256": "96e58970ee9fae77ecbfce866865262bbbcc097d62b7f96f00c1c4117fca5047",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 671 313"
+        }
+      ]
+    },
+    {
+      "name": "architecture-long-legend-paint",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "2ded679184f2aaac690e63b722b4e9300c19b45d535bfb0abc19ee367d4faf78",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 619 208"
+        },
+        {
+          "sha256": "031497d2c1ffc26190db9721f0a3cfd7b4630716749bdac07e1737fb28eb23db",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 823 240"
+        }
+      ]
+    },
+    {
+      "name": "architecture-ascii-legend-paint",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "e9ba19441dce42e0854191aebefca942a7ec5944a0433a653e6ea5d6db45bd05",
+          "status": 1,
+          "stderr": "architecture schema validation failed:\n  /meta/legend/entries/backend/label (id/label: \"Backend authentication, authorization, queueing, recovery and audit event handling\") must NOT have more than 80 characters {\"limit\":80}\n[schema/maxLength] /meta/legend/entries/backend/label (id/label: \"Backend authentication, authorization, queueing, recovery and audit event handling\") must NOT have more than 80 characters {\"limit\":80} Fix: provide at most 80 character(s).\n",
+          "frame": null
+        },
+        {
+          "sha256": "d3abdf6f75aa0f295ca99c38f63ca8436c173bfc99411e48ad81d8c4a606e78e",
+          "status": 1,
+          "stderr": "architecture schema validation failed:\n  /meta/legend/entries/backend/label (id/label: \"Backend authentication, authorization, queueing, recovery and audit event handling\") must NOT have more than 80 characters {\"limit\":80}\n[schema/maxLength] /meta/legend/entries/backend/label (id/label: \"Backend authentication, authorization, queueing, recovery and audit event handling\") must NOT have more than 80 characters {\"limit\":80} Fix: provide at most 80 character(s).\n",
+          "frame": null
+        }
+      ]
+    },
+    {
+      "name": "dataflow-high-row",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "c9f649b7775c7126de66cdbed6395142a8703b39e37ac0a6b3e8c99b16eabc3b",
+          "status": 1,
+          "stderr": "Data-flow layout validation failed:\n- Node \"archive\" exceeds the readable diagram area — keep y between 104 and 646 (adjust row/yOffset or increase meta.viewBox[1]).\n[layout/constraint] Node \"archive\" exceeds the readable diagram area — keep y between 104 and 646 (adjust row/yOffset or increase meta.viewBox[1]).\n",
+          "frame": null
+        },
+        {
+          "sha256": "00f96fbf134cd888eae9658f5fc82b89350580d50e45974acf53a61401802a4c",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 940 1223"
+        }
+      ]
+    },
+    {
+      "name": "dataflow-wide-stage",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "7cbdce504bfa5609fbae5a4fbe486c8330ddf8a2c3b8c054876f2af4504c66b7",
+          "status": 1,
+          "stderr": "Data-flow layout validation failed:\n- Node \"distribute\" exceeds the horizontal bounds of the viewBox — reduce node.width or increase meta.viewBox[0].\n- Stages exceed viewBox width — set meta.viewBox[0] to at least 1068.\n[layout/constraint] Node \"distribute\" exceeds the horizontal bounds of the viewBox — reduce node.width or increase meta.viewBox[0].\n[layout/constraint] Stages exceed viewBox width — set meta.viewBox[0] to at least 1068.\n",
+          "frame": null
+        },
+        {
+          "sha256": "6a55d30dc3114134e1dcd06a938cbcb70d71516367d6b513a69098db8615d240",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 1140 720"
+        }
+      ]
+    },
+    {
+      "name": "dataflow-channel-legend",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "df43d5c434b808e849495d63df3923d1d76c20e36fb8a21e003400a54bc680ac",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 940 720"
+        },
+        {
+          "sha256": "8b7c58bc9d2a2dd5df630721c217561c50b4a2c9ffef24a12f0c0d8bbfe89d7c",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 940 1133"
+        }
+      ]
+    },
+    {
+      "name": "sequence-fixed-timeline",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "6179f39188c6e153f63561e7b74b39f57f3ab44aec31dfa5be56acc65d500c44",
+          "status": 1,
+          "stderr": "Sequence layout validation failed:\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Participants exceed viewBox width — set meta.viewBox[0] to at least 1333 or remove a participant.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Participants exceed viewBox width — set meta.viewBox[0] to at least 1333 or remove a participant.\n",
+          "frame": null
+        },
+        {
+          "sha256": "224534163fd790084e4f1fb04f36796e6219beb2f516908ea66d2056fe446ff7",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 1334 1315"
+        }
+      ]
+    },
+    {
+      "name": "sequence-spread-fleet",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "a336c1b11c5a9f671ec46b257e636b3584536019d228a3f615d3a296650de544",
+          "status": 1,
+          "stderr": "Sequence layout validation failed:\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Participants exceed viewBox width — set meta.viewBox[0] to at least 3320 or remove a participant.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Participants exceed viewBox width — set meta.viewBox[0] to at least 3320 or remove a participant.\n",
+          "frame": null
+        },
+        {
+          "sha256": "bb21dac408cc1b6a9eb6e1bc07f03430a2840a90e5048fb92762ba3dac44bdd7",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 3320 1659"
+        }
+      ]
+    },
+    {
+      "name": "sequence-segment-activation",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "2036b91fc831f0822cacb4e8db752c713ef3a0a1226bb65d0c319ca299a308f1",
+          "status": 1,
+          "stderr": "Sequence layout validation failed:\n- Segment \"Background execution and completion retention\" extends outside the canvas — keep its y range between 72 and 715.\n[layout/constraint] Segment \"Background execution and completion retention\" extends outside the canvas — keep its y range between 72 and 715.\n",
+          "frame": null
+        },
+        {
+          "sha256": "3ffdfe9f9e355b11fb71f242d7d05160417ed48985780b2eb0d1af2a298b8895",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 920 1711"
+        }
+      ]
+    },
+    {
+      "name": "lifecycle-high-state",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "358e03e57ae4d4bb9519bf5cb083e723113dc686f9d0873899669749a783582d",
+          "status": 1,
+          "stderr": "Lifecycle layout validation failed:\n- State \"done\" exceeds the vertical lifecycle area — keep y between 64 and 538 (adjust yOffset or increase meta.viewBox[1]).\n[layout/constraint] State \"done\" exceeds the vertical lifecycle area — keep y between 64 and 538 (adjust yOffset or increase meta.viewBox[1]).\n",
+          "frame": null
+        },
+        {
+          "sha256": "20bfa4bf3f7fbc505fa111982a08ad442a8cf29df4ddda824d2ec78a7fe72e72",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 980 1281"
+        }
+      ]
+    },
+    {
+      "name": "lifecycle-rounded-channel",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "fad99509a5c29714e6b9b1828199cc566036e460b97c452cf2d5bc32915a951c",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 980 660"
+        },
+        {
+          "sha256": "035bdd60cddf69a2632487a2da23bdb3a93a5955ac7adfae06f1c1ee17088d97",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 1343 660"
+        }
+      ]
+    },
+    {
+      "name": "lifecycle-band-legend",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "866842f8622893f13f91f9986e74705f661fa60182220845475a154027d4d847",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 980 660"
+        },
+        {
+          "sha256": "942cad4622408e0e12d392a32cb769ba921cac871907fbe8ab3797a5fa945bbe",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 980 660"
+        }
+      ]
+    },
+    {
+      "name": "lifecycle-bottom-channel",
+      "modeDifference": "B adds only meta.canvas_fit=content",
+      "observations": [
+        {
+          "sha256": "d86c7576509a302450a7cf0428fee3440531e32d93b3e33917ba8a801fd3dbb7",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 980 660"
+        },
+        {
+          "sha256": "1ce78c36fd7a5798cf5aff700efead0a06f62f136388f2219e3be8394b199799",
+          "status": 0,
+          "stderr": "",
+          "frame": "0 0 980 1325"
+        }
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "name": "event-stream.dataflow",
+      "command": "render",
+      "inputSha256": "320d8ec6bc79fbdb946ed6bcb5f9cd08d65d8fa3c670d9133d0d71e1310799a1",
+      "samples": {
+        "A": [
+          112.08183300000019,
+          112.09470800000008,
+          113.38279199999943,
+          112.49212499999976,
+          111.92020800000046,
+          111.52366700000039,
+          113.9353340000007,
+          112.94458299999951,
+          111.88245800000004,
+          114.70291699999962,
+          111.2889580000001,
+          116.03625000000011,
+          112.92954099999952,
+          107.89474999999948,
+          112.21570800000063,
+          111.35045899999932,
+          109.79700000000048,
+          113.4735410000003,
+          113.55304199999955,
+          114.11620799999946,
+          111.27704100000119,
+          112.36158400000022,
+          112.63033299999915,
+          112.4955000000009,
+          113.21891599999981,
+          113.27533399999993,
+          113.68666699999994,
+          114.45266699999956,
+          111.92708400000083,
+          110.30262499999844
+        ],
+        "B": [
+          113.1025410000002,
+          112.2082089999999,
+          112.89274999999998,
+          112.92433299999993,
+          114.06450000000041,
+          113.0667910000002,
+          114.25208400000065,
+          113.33770800000002,
+          113.16179100000045,
+          113.59508399999959,
+          113.59462499999972,
+          116.00220900000022,
+          115.19816699999956,
+          111.00254099999984,
+          111.83383399999911,
+          113.62404200000037,
+          115.46179099999972,
+          112.02520800000002,
+          112.14279200000055,
+          113.95329200000015,
+          115.85137500000019,
+          113.98612499999945,
+          115.41375000000153,
+          115.71670799999993,
+          113.33187499999985,
+          113.5478750000002,
+          113.77541599999859,
+          114.16025000000081,
+          113.61358400000063,
+          119.34733400000005
+        ]
+      },
+      "A": {
+        "median": 112.49212499999976,
+        "p95": 114.70291699999962
+      },
+      "B": {
+        "median": 113.59508399999959,
+        "p95": 116.00220900000022
+      },
+      "limits": {
+        "median": 123.74133749999974,
+        "p95": 131.90835454999956
+      },
+      "passed": true
+    },
+    {
+      "name": "event-stream.dataflow",
+      "command": "validate",
+      "inputSha256": "320d8ec6bc79fbdb946ed6bcb5f9cd08d65d8fa3c670d9133d0d71e1310799a1",
+      "samples": {
+        "A": [
+          158.23125000000073,
+          160.4421250000014,
+          154.3892080000005,
+          154.7764160000006,
+          157.73675000000003,
+          154.88791599999968,
+          159.37816600000042,
+          157.3112089999995,
+          160.82574999999997,
+          158.80370800000128,
+          156.99170799999956,
+          155.37195799999972,
+          155.8117919999986,
+          157.0294159999994,
+          156.8114999999998,
+          158.02391700000044,
+          158.08558400000038,
+          158.44641599999886,
+          154.8700830000016,
+          155.5527919999986,
+          157.16795800000182,
+          158.2229580000021,
+          159.03958300000158,
+          159.20416599999953,
+          157.19945799999914,
+          158.21033299999908,
+          157.32325000000128,
+          158.13037500000064,
+          155.8462499999987,
+          155.9175409999989
+        ],
+        "B": [
+          159.41612499999974,
+          157.4892920000002,
+          158.40562499999942,
+          160.29858299999978,
+          158.55666700000074,
+          159.2156670000004,
+          157.5140420000007,
+          156.76666699999987,
+          161.55204199999935,
+          155.40287499999977,
+          159.72529199999917,
+          158.19270900000083,
+          155.31674999999996,
+          154.5110420000001,
+          160.31954199999927,
+          157.47420899999997,
+          157.4827499999992,
+          162.25704199999745,
+          157.06775000000198,
+          157.0890419999996,
+          157.65683300000092,
+          157.7272499999999,
+          156.82058300000062,
+          158.70483299999978,
+          158.42562499999985,
+          157.9701669999995,
+          159.14466700000048,
+          157.0816249999989,
+          156.72254099999918,
+          159.22333399999843
+        ]
+      },
+      "A": {
+        "median": 157.3112089999995,
+        "p95": 160.4421250000014
+      },
+      "B": {
+        "median": 157.7272499999999,
+        "p95": 161.55204199999935
+      },
+      "limits": {
+        "median": 173.04232989999946,
+        "p95": 184.5084437500016
+      },
+      "passed": true
+    }
+  ],
+  "agentEndToEnd": "unmeasured"
+}

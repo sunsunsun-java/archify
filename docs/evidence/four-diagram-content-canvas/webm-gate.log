@@ -1,0 +1,78 @@
+
+> archify@2.17.0-dev.1 test:webm
+> node test/webm-artifact.smoke.mjs && node --test test/site-language-integration.mjs
+
+ok legend runtime: labels, counts, keyboard, export, print, embed, hidden, and dual themes
+ok Semantic Passport: close control, focus return, inside preservation, and outside dismissal
+ok Architecture Delta navigator + export: exact identity, complete explorers, static SVG, and 113784-byte Share Card
+ok architecture-wide Share Card: 102100 bytes, 1200x630, 1033 sampled colors
+ok sequence-tall Share Card: 106690 bytes, 1200x630, 878 sampled colors
+ok architecture-wide Copy Share Card: 102100 bytes, image/png, truthful receipt
+ok architecture-route Route Card: 94236 bytes, 4 nodes, 3 exact hops
+ok workflow-route Route Card: 127981 bytes, 5 nodes, 4 exact hops
+ok sequence-route Route Card: 110843 bytes, 3 nodes, 2 exact hops
+ok dataflow-route Route Card: 119135 bytes, 5 nodes, 4 exact hops
+ok lifecycle-route Route Card: 84686 bytes, 3 nodes, 2 exact hops
+ok parallel-route Route Card: 93850 bytes, 2 nodes, 1 exact hops
+ok special-10-hop-route Route Card: 62058 bytes, 11 nodes, 10 exact hops
+ok architecture-route Route visual matrix: Classic/Flow/Blueprint/Editorial x dark/light
+ok sequence-route Route visual matrix: Classic/Flow/Blueprint/Editorial x dark/light
+ok architecture-reach Reach Card: 95462 bytes, 9 nodes, 8 authored links
+ok workflow-reach Reach Card: 131343 bytes, 11 nodes, 10 authored links
+ok sequence-reach Reach Card: 114175 bytes, 7 nodes, 12 authored links
+ok dataflow-reach Reach Card: 122399 bytes, 9 nodes, 9 authored links
+ok lifecycle-reach Reach Card: 84982 bytes, 4 nodes, 4 authored links
+ok architecture-route reduced motion: dynamic reduced-motion paused Journey without changing Route Card source
+ok WebM artifact: 100257 bytes, 9 sampled frames, 9 unique
+TAP version 13
+# Subtest: site language runtime normalizes one entry parameter into one durable preference
+ok 1 - site language runtime normalizes one entry parameter into one durable preference
+  ---
+  duration_ms: 3.577542
+  type: 'test'
+  ...
+# Subtest: custom site builders emit every shared site asset and preserve entry, navigation, selection, and refresh state
+ok 2 - custom site builders emit every shared site asset and preserve entry, navigation, selection, and refresh state
+  ---
+  duration_ms: 1335.969625
+  type: 'test'
+  ...
+# Subtest: all site pages consume one language runtime and one navigation contract
+ok 3 - all site pages consume one language runtime and one navigation contract
+  ---
+  duration_ms: 1.903542
+  type: 'test'
+  ...
+# Subtest: site page identity paths localize with the selected language
+ok 4 - site page identity paths localize with the selected language
+  ---
+  duration_ms: 0.531334
+  type: 'test'
+  ...
+# Subtest: proof gallery type filters localize with the selected language
+ok 5 - proof gallery type filters localize with the selected language
+  ---
+  duration_ms: 0.528083
+  type: 'test'
+  ...
+# Subtest: scenario guide type filters use consistent Chinese diagram names
+ok 6 - scenario guide type filters use consistent Chinese diagram names
+  ---
+  duration_ms: 0.471791
+  type: 'test'
+  ...
+# Subtest: real Chrome preserves language through entry, navigation, selection, refresh, and consistent navigation chrome
+ok 7 - real Chrome preserves language through entry, navigation, selection, refresh, and consistent navigation chrome
+  ---
+  duration_ms: 4937.3275
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 6331.846625

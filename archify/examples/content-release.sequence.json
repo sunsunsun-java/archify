@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Release acknowledgements",
+    "output": "content-release.html",
+    "canvas_fit": "content",
+    "quality_profile": "standard"
+  },
+  "participants": [
+    {
+      "id": "p0",
+      "type": "backend",
+      "label": "Service 0"
+    },
+    {
+      "id": "p1",
+      "type": "backend",
+      "label": "Service 1"
+    },
+    {
+      "id": "p2",
+      "type": "backend",
+      "label": "Service 2"
+    },
+    {
+      "id": "p3",
+      "type": "backend",
+      "label": "Service 3"
+    },
+    {
+      "id": "p4",
+      "type": "backend",
+      "label": "Service 4"
+    },
+    {
+      "id": "p5",
+      "type": "backend",
+      "label": "Service 5"
+    },
+    {
+      "id": "p6",
+      "type": "backend",
+      "label": "Service 6"
+    },
+    {
+      "id": "p7",
+      "type": "backend",
+      "label": "Service 7"
+    },
+    {
+      "id": "p8",
+      "type": "backend",
+      "label": "Service 8"
+    },
+    {
+      "id": "p9",
+      "type": "backend",
+      "label": "Service 9"
+    },
+    {
+      "id": "p10",
+      "type": "backend",
+      "label": "Service 10"
+    },
+    {
+      "id": "p11",
+      "type": "backend",
+      "label": "Service 11"
+    }
+  ],
+  "messages": [
+    {
+      "id": "m0",
+      "from": "p0",
+      "to": "p1",
+      "label": "ack",
+      "y": 200
+    },
+    {
+      "id": "m1",
+      "from": "p1",
+      "to": "p2",
+      "label": "ack",
+      "y": 300
+    },
+    {
+      "id": "m2",
+      "from": "p2",
+      "to": "p3",
+      "label": "ack",
+      "y": 400
+    },
+    {
+      "id": "m3",
+      "from": "p3",
+      "to": "p4",
+      "label": "ack",
+      "y": 500
+    },
+    {
+      "id": "m4",
+      "from": "p4",
+      "to": "p5",
+      "label": "ack",
+      "y": 600
+    },
+    {
+      "id": "m5",
+      "from": "p5",
+      "to": "p6",
+      "label": "ack",
+      "y": 700
+    },
+    {
+      "id": "m6",
+      "from": "p6",
+      "to": "p7",
+      "label": "ack",
+      "y": 800
+    },
+    {
+      "id": "m7",
+      "from": "p7",
+      "to": "p8",
+      "label": "ack",
+      "y": 900
+    },
+    {
+      "id": "m8",
+      "from": "p8",
+      "to": "p9",
+      "label": "ack",
+      "y": 1000
+    },
+    {
+      "id": "m9",
+      "from": "p9",
+      "to": "p10",
+      "label": "ack",
+      "y": 1100
+    },
+    {
+      "id": "m10",
+      "from": "p10",
+      "to": "p11",
+      "label": "ack",
+      "y": 1200
+    }
+  ]
+}

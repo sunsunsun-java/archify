@@ -55,6 +55,13 @@ not create edge facts.
 
 ## Layout budget
 
+For new sources, use `meta.canvas_fit: "content"` and omit `meta.viewBox` unless
+the user requires fixed dimensions. The [content-canvas contract](../../references/content-canvas.md)
+defines full paint measurement and `validate --layout-json`; existing sources
+without the field keep the budget below. Fixed columns retain their coordinates;
+spread recomputes derived columns while preserving participant order and time.
+See [the long timeline example](../../examples/content-release.sequence.json).
+
 | Constant | Value |
 |----------|-------|
 | viewBox | default `[920, 760]`; schema minimum `[480, 480]` |

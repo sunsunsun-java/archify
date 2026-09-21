@@ -1,0 +1,128 @@
+[
+  {
+    "name": "web-app.architecture",
+    "type": "architecture",
+    "hashes": [
+      "eca93f87022432cb5fa87f4fd3a73b41fcab7f3b95377e8ec71b4e4311b6caf4",
+      "eca93f87022432cb5fa87f4fd3a73b41fcab7f3b95377e8ec71b4e4311b6caf4"
+    ],
+    "equal": true
+  },
+  {
+    "name": "brand-aware-delivery.architecture",
+    "type": "architecture",
+    "hashes": [
+      "319f941aeb8bccea41a71602d249f428253024cb5412db368fd2f3a95547534a",
+      "319f941aeb8bccea41a71602d249f428253024cb5412db368fd2f3a95547534a"
+    ],
+    "equal": true
+  },
+  {
+    "name": "production-deployment.architecture",
+    "type": "architecture",
+    "hashes": [
+      "bdec2635fa6f838e331e36d72c6e28fcacf16466ee429c05dd8cb66d4a69605d",
+      "bdec2635fa6f838e331e36d72c6e28fcacf16466ee429c05dd8cb66d4a69605d"
+    ],
+    "equal": true
+  },
+  {
+    "name": "product-analytics.dataflow",
+    "type": "dataflow",
+    "hashes": [
+      "c206d20b3107dd2414081d133c2a642d91d457be664e94acd34293ef0e577c7c",
+      "c206d20b3107dd2414081d133c2a642d91d457be664e94acd34293ef0e577c7c"
+    ],
+    "equal": true
+  },
+  {
+    "name": "event-stream.dataflow",
+    "type": "dataflow",
+    "hashes": [
+      "4781f833123b1ae813b89fd8220ddb275b205f31f7ea540e70acfdf275f8fd0e",
+      "4781f833123b1ae813b89fd8220ddb275b205f31f7ea540e70acfdf275f8fd0e"
+    ],
+    "equal": true
+  },
+  {
+    "name": "cache-miss-request.sequence",
+    "type": "sequence",
+    "hashes": [
+      "c9d70640d4dd327d84a3b6ecc2f8ed2fed68549895b53eb191733de47034a621",
+      "c9d70640d4dd327d84a3b6ecc2f8ed2fed68549895b53eb191733de47034a621"
+    ],
+    "equal": true
+  },
+  {
+    "name": "async-job-roundtrip.sequence",
+    "type": "sequence",
+    "hashes": [
+      "885233c21819ab1d2c02c59c0b9857b5da5a469a7a5a1a2baf1cb66e36f187f5",
+      "885233c21819ab1d2c02c59c0b9857b5da5a469a7a5a1a2baf1cb66e36f187f5"
+    ],
+    "equal": true
+  },
+  {
+    "name": "agent-run.lifecycle",
+    "type": "lifecycle",
+    "hashes": [
+      "3369f45baa786e97b26b97b7e870ec0246ad69beeabee584475458bb5c9e934e",
+      "3369f45baa786e97b26b97b7e870ec0246ad69beeabee584475458bb5c9e934e"
+    ],
+    "equal": true
+  },
+  {
+    "name": "deployment-release.lifecycle",
+    "type": "lifecycle",
+    "hashes": [
+      "bdc580420b4358d2d911f3acb451982664a61f247412586a529c8d49ae9e3cc8",
+      "bdc580420b4358d2d911f3acb451982664a61f247412586a529c8d49ae9e3cc8"
+    ],
+    "equal": true
+  },
+  {
+    "name": "minimal.dataflow",
+    "type": "dataflow",
+    "hashes": [
+      "84fb7ebdafc7a49c76bc4f4326ad3b92ed1341d35ca8dab3e7bb7af436207257",
+      "84fb7ebdafc7a49c76bc4f4326ad3b92ed1341d35ca8dab3e7bb7af436207257"
+    ],
+    "equal": true
+  },
+  {
+    "name": "minimal.sequence",
+    "type": "sequence",
+    "hashes": [
+      "31cbe9224f0ccfffce6760ffcbb619d510ffa6e390b4a69d32d15e2c64d1427a",
+      "31cbe9224f0ccfffce6760ffcbb619d510ffa6e390b4a69d32d15e2c64d1427a"
+    ],
+    "equal": true
+  },
+  {
+    "name": "minimal.lifecycle",
+    "type": "lifecycle",
+    "hashes": [
+      "101f05e6cba1c04148c45fd174a15163281bf685a32a09c0bc01041f1479e11d",
+      "101f05e6cba1c04148c45fd174a15163281bf685a32a09c0bc01041f1479e11d"
+    ],
+    "equal": true
+  },
+  {
+    "name": "examples/agent-tool-call.workflow.json",
+    "type": "workflow",
+    "hashes": [
+      "6bdeb79592dc0d6c9b4162ba02d0daf9a30fb015ef421561d4ba5ce967855f2b",
+      "6bdeb79592dc0d6c9b4162ba02d0daf9a30fb015ef421561d4ba5ce967855f2b"
+    ],
+    "equal": true
+  },
+  {
+    "name": "test/fixtures/v1-workflow-700x400.workflow.json",
+    "type": "workflow",
+    "hashes": [
+      "1e67a52a262dd8c7674b4f2baa02060d4bb0d6b4a519c2f17f6960a7fc664a91",
+      "1e67a52a262dd8c7674b4f2baa02060d4bb0d6b4a519c2f17f6960a7fc664a91"
+    ],
+    "equal": true
+  }
+]

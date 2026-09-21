@@ -10,6 +10,10 @@ const DEFAULT_SWATCH_GAP = 8;
 const TEXT_ADVANCE_EM = 0.62;
 const INTERACTIVE_BADGE_ALLOWANCE = 21;
 
+function renderedLegendFontSize(fontSize) {
+  return fontSize < 8 ? fontSize + 0.5 : fontSize + 2;
+}
+
 export function relationshipLegendObstacles(relations, { pointsFor, labelRectFor } = {}) {
   const obstacles = [];
   for (const [index, relation] of (Array.isArray(relations) ? relations : []).entries()) {
@@ -52,12 +56,12 @@ export function resolveLegend(config, catalog, presentKinds) {
   });
 }
 
-function measuredEntryWidth(entry, fontSize, swatchGap) {
+function measuredEntryWidth(entry, fontSize, swatchGap, paintAware) {
   const swatchWidth = entry.swatchWidth ?? 14;
   return Math.ceil(
     swatchWidth
     + swatchGap
-    + textUnits(entry.label) * fontSize * TEXT_ADVANCE_EM
+    + textUnits(entry.label) * (paintAware ? renderedLegendFontSize(fontSize) * 0.7 : fontSize * TEXT_ADVANCE_EM)
     + (entry.interactive ? INTERACTIVE_BADGE_ALLOWANCE : 0),
   );
 }
@@ -71,13 +75,14 @@ export function legendFootprint(entries, {
   itemGap = DEFAULT_ITEM_GAP,
   lineGap = DEFAULT_LINE_GAP,
   swatchGap = DEFAULT_SWATCH_GAP,
+  paintAware = false,
 } = {}) {
   if (!entries.length) {
     return { measured: [], rows: [], rowCount: 0, minWidth: 0, extraHeight: 0 };
   }
   const measured = entries.map((entry) => ({
     ...entry,
-    width: measuredEntryWidth(entry, fontSize, entry.swatchGap ?? swatchGap),
+    width: measuredEntryWidth(entry, fontSize, entry.swatchGap ?? swatchGap, paintAware),
   }));
   const rows = [[]];
   let cursor = 0;
@@ -113,9 +118,10 @@ export function measureLegend(entries, {
   obstacles = [],
   unfit = 'error',
   diagramType = 'diagram',
+  paintAware = false,
 } = {}) {
   if (!entries.length) return { entries: [], rowCount: 0, titleY: null };
-  const footprint = legendFootprint(entries, { width, fontSize, itemGap, lineGap, swatchGap });
+  const footprint = legendFootprint(entries, { width, fontSize, itemGap, lineGap, swatchGap, paintAware });
   const tooWide = footprint.measured.find((entry) => entry.width > width);
   if (tooWide) {
     if (unfit === 'hide') return null;
@@ -196,7 +202,7 @@ export function renderLegend({ entries, layout, renderSwatch, locale }) {
   const measured = measureLegend(entries, layout);
   if (!measured) return '';
   const hasInteractiveEntries = measured.entries.some((entry) => entry.interactive);
-  const renderedFontSize = measured.fontSize < 8 ? measured.fontSize + 0.5 : measured.fontSize + 2;
+  const renderedFontSize = renderedLegendFontSize(measured.fontSize);
   const rootAttributes = hasInteractiveEntries ? ' data-legend="" data-legend-bridge=""' : ' data-legend=""';
   const parts = [
     `        <g${rootAttributes}>`,

@@ -10,6 +10,7 @@ const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const testFiles = [
   'chrome-pipe-transport.test.mjs',
   'adaptive-workflow-browser.test.mjs',
+  'content-canvas-browser.test.mjs',
   'desktop-reader-browser.test.mjs',
   'reader-layout-browser.test.mjs',
   'sequence-header-clearance.test.mjs',

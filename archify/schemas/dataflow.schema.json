@@ -49,6 +49,7 @@
         "quality_profile": {
           "$ref": "common.schema.json#/$defs/qualityProfile"
         },
+        "canvas_fit": { "$ref": "common.schema.json#/$defs/canvasFit" },
         "repository": {
           "$ref": "common.schema.json#/$defs/repository"
         },

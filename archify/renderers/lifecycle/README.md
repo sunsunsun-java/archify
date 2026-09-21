@@ -56,6 +56,12 @@ backed by rendered states receive Semantic Legend controls.
 
 ## Layout budget
 
+For new sources, use `meta.canvas_fit: "content"` and omit `meta.viewBox` unless
+the user requires fixed dimensions. The [content-canvas contract](../../references/content-canvas.md)
+defines full paint measurement and `validate --layout-json`; existing sources
+without the field keep the budget below. Main/event/terminal column limits and
+the shared event band do not change. See [the recovery example](../../examples/content-recovery.lifecycle.json).
+
 | Band | Lane id | Top y | Column centers | Default state |
 |------|---------|-------|----------------|---------------|
 | Phase | `main` (required) | 126 | `col` 0–4 → x = 94, 248, 402, 556, 710 | 118×62 |

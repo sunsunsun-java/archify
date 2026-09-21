@@ -5687,7 +5687,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
   <script>
     var Archify = {};
-    var archifyReadabilityContract = Object.freeze({"version":1,"minimumProjectedTextPx":6,"targetPaddingCssPx":24,"maximumFitMultiplier":32,"maximumWorldToCssScale":4,"minimumDesktopViewportWidthExclusive":720,"minimumAvailableStageHeight":360,"maximumStageHeight":900,"stageBottomGapCssPx":24,"labelSelectors":["text[data-node-label]","text[data-boundary-label]","[data-node-id] text[data-detail=\"context\"]"]});
+    var archifyReadabilityContract = Object.freeze({"version":1,"minimumProjectedTextPx":6,"targetPaddingCssPx":24,"maximumFitMultiplier":32,"maximumWorldToCssScale":4,"minimumDesktopViewportWidthExclusive":720,"minimumAvailableStageHeight":360,"maximumStageHeight":900,"stageBottomGapCssPx":24,"labelSelectors":["text[data-node-label]","text[data-boundary-label]","[data-node-id] text[data-detail=\"context\"]","svg[data-reader-fit=\"intrinsic-height\"] [data-edge-id] g[data-detail=\"context\"] > text"]});
 var archifyDeriveLargeWorldReadability = (function deriveLargeWorldReadabilityWithContract(contract, {
   safeStageWidth,
   safeStageHeight,
@@ -11495,6 +11495,10 @@ var archifyDeriveLargeWorldReadability = (function deriveLargeWorldReadabilityWi
         return element.getBoundingClientRect().height + number(style.marginTop) + number(style.marginBottom);
       }
       function minimumReadableScale() {
+        if (measuredHeightFit) {
+          var contentMinimum = minimumSourceFont();
+          return contentMinimum > 0 ? Math.min(1, MIN_PROJECTED_NODE_TEXT_PX / contentMinimum) : 1;
+        }
         var sourceMinimum = null;
         Array.from(svg.querySelectorAll(
           'text[data-node-label], text[data-boundary-label], text[data-detail="context"]'
@@ -11585,6 +11589,23 @@ var archifyDeriveLargeWorldReadability = (function deriveLargeWorldReadabilityWi
         var shellStyle = window.getComputedStyle(shell);
         var diagramStyle = window.getComputedStyle(diagram);
         var stageTop = diagram.getBoundingClientRect().top;
+        // Intrinsic-height readers may need a narrow shell at the readable
+        // floor. Reserve its real wrapped header height before classifying:
+        // measuring only the prospective wide shell can incorrectly call a
+        // tall diagram small, then overflow when that header wraps again.
+        // The probe depends on canonical width, not the current profile, so
+        // switching large/small cannot oscillate its height budget.
+        if (measuredHeightFit) {
+          var originalShellWidth = shell.style.width;
+          var readableShellWidth = Math.min(
+            window.innerWidth - number(bodyStyle.paddingLeft) - number(bodyStyle.paddingRight),
+            viewBox.width * minimumReadableScale() + chromeMetrics().diagramX
+          );
+          try {
+            shell.style.width = Math.ceil(readableShellWidth) + 'px';
+            stageTop = Math.max(stageTop, diagram.getBoundingClientRect().top);
+          } finally { shell.style.width = originalShellWidth; }
+        }
         var belowStageRequiredHeight = outerHeight(cards) + number(shellStyle.paddingBottom) + number(bodyStyle.paddingBottom);
         var availableStageHeight = Math.floor(
           window.innerHeight - stageTop - belowStageRequiredHeight -
@@ -12717,7 +12738,15 @@ var archifyDeriveLargeWorldReadability = (function deriveLargeWorldReadabilityWi
         var stable = Archify.readerLayout && Archify.readerLayout.whenStable
           ? Archify.readerLayout.whenStable().catch(function () {})
           : Promise.resolve();
-        return stable.then(function () { requestAnimationFrame(automaticEntry); });
+        // Dock reservation can change the small/large classification after
+        // the first reader pass. Entry must observe the settled usable stage.
+        return stable.then(function () {
+          return Archify.viewerChromeLayout && Archify.viewerChromeLayout.whenStable
+            ? Archify.viewerChromeLayout.whenStable().catch(function () {}) : null;
+        }).then(function () {
+          return Archify.readerLayout && Archify.readerLayout.whenStable
+            ? Archify.readerLayout.whenStable().catch(function () {}) : null;
+        }).then(function () { requestAnimationFrame(automaticEntry); });
       });
 
       return {

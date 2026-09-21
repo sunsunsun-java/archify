@@ -3992,7 +3992,6 @@ test('cli: validate rejects unknown flags, layout-json assignment typos, and ext
 
 test('cli: validate and deliver keep argument failures machine-readable with --json', () => {
   const workflow = path.join(skillRoot, 'examples/agent-tool-call.workflow.json');
-  const sequence = path.join(skillRoot, 'examples/cache-miss-request.sequence.json');
   const cases = [
     {
       args: ['validate', '--json'],
@@ -4045,12 +4044,6 @@ test('cli: validate and deliver keep argument failures machine-readable with --j
       command: 'validate',
       code: 'cli/missing-option-value',
       subject: { option: '--repo-root' },
-    },
-    {
-      args: ['validate', 'sequence', sequence, '--layout-json', '--json'],
-      command: 'validate',
-      code: 'cli/unsupported-option',
-      subject: { option: '--layout-json', type: 'sequence' },
     },
     {
       args: ['deliver', '--json', 'workflow', workflow, '--bogus'],

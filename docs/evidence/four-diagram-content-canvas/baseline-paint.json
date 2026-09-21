@@ -1,0 +1,593 @@
+[
+  {
+    "name": "architecture-outer-route",
+    "type": "architecture",
+    "baseline": "clipped",
+    "paint": {
+      "count": 11,
+      "failures": [
+        {
+          "tag": "path",
+          "text": "",
+          "id": "recover",
+          "points": [
+            [
+              139.25,
+              139.25
+            ],
+            [
+              380.75,
+              139.25
+            ],
+            [
+              380.75,
+              1000.75
+            ],
+            [
+              139.25,
+              1000.75
+            ]
+          ],
+          "frame": [
+            480,
+            208
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "architecture-thick-marker",
+    "type": "architecture",
+    "baseline": "clipped",
+    "paint": {
+      "count": 12,
+      "failures": [
+        {
+          "tag": "path",
+          "text": "",
+          "id": "archive",
+          "points": [
+            [
+              190,
+              100
+            ],
+            [
+              1110,
+              100
+            ],
+            [
+              1110,
+              360
+            ],
+            [
+              190,
+              360
+            ]
+          ],
+          "frame": [
+            480,
+            448
+          ]
+        },
+        {
+          "tag": "path",
+          "text": "",
+          "id": "archive",
+          "points": [
+            [
+              620,
+              420
+            ],
+            [
+              620,
+              420
+            ],
+            [
+              620,
+              420
+            ],
+            [
+              620,
+              420
+            ]
+          ],
+          "frame": [
+            480,
+            448
+          ]
+        },
+        {
+          "tag": "path",
+          "text": "",
+          "id": "archive",
+          "points": [
+            [
+              620,
+              280
+            ],
+            [
+              620,
+              280
+            ],
+            [
+              620,
+              280
+            ],
+            [
+              620,
+              280
+            ]
+          ],
+          "frame": [
+            480,
+            448
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "architecture-marker-only-capacity",
+    "type": "architecture",
+    "baseline": "clipped",
+    "paint": {
+      "count": 12,
+      "failures": [
+        {
+          "tag": "path",
+          "text": "",
+          "id": "deliver",
+          "points": [
+            [
+              50,
+              335
+            ],
+            [
+              50,
+              335
+            ],
+            [
+              50,
+              335
+            ],
+            [
+              50,
+              335
+            ]
+          ],
+          "frame": [
+            480,
+            328
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "architecture-boundary-legend",
+    "type": "architecture",
+    "baseline": "already-contained",
+    "paint": {
+      "count": 25,
+      "failures": []
+    }
+  },
+  {
+    "name": "architecture-long-legend-paint",
+    "type": "architecture",
+    "baseline": "already-contained",
+    "paint": {
+      "count": 11,
+      "failures": []
+    }
+  },
+  {
+    "name": "architecture-ascii-legend-paint",
+    "type": "architecture",
+    "baseline": "already-contained",
+    "paint": {
+      "count": 11,
+      "failures": []
+    }
+  },
+  {
+    "name": "dataflow-high-row",
+    "type": "dataflow",
+    "baseline": "rejected",
+    "stderr": "Data-flow layout validation failed:\n- Node \"archive\" exceeds the readable diagram area — keep y between 104 and 646 (adjust row/yOffset or increase meta.viewBox[1]).\n[layout/constraint] Node \"archive\" exceeds the readable diagram area — keep y between 104 and 646 (adjust row/yOffset or increase meta.viewBox[1]).\n"
+  },
+  {
+    "name": "dataflow-wide-stage",
+    "type": "dataflow",
+    "baseline": "rejected",
+    "stderr": "Data-flow layout validation failed:\n- Node \"distribute\" exceeds the horizontal bounds of the viewBox — reduce node.width or increase meta.viewBox[0].\n- Stages exceed viewBox width — set meta.viewBox[0] to at least 1068.\n[layout/constraint] Node \"distribute\" exceeds the horizontal bounds of the viewBox — reduce node.width or increase meta.viewBox[0].\n[layout/constraint] Stages exceed viewBox width — set meta.viewBox[0] to at least 1068.\n"
+  },
+  {
+    "name": "dataflow-channel-legend",
+    "type": "dataflow",
+    "baseline": "clipped",
+    "paint": {
+      "count": 21,
+      "failures": [
+        {
+          "tag": "path",
+          "text": "",
+          "id": "encrypt",
+          "points": [
+            [
+              99.29999999999998,
+              185.29999999999998
+            ],
+            [
+              315.69999999999993,
+              185.29999999999998
+            ],
+            [
+              315.69999999999993,
+              1050.6999999999998
+            ],
+            [
+              99.29999999999998,
+              1050.6999999999998
+            ]
+          ],
+          "frame": [
+            940,
+            720
+          ]
+        },
+        {
+          "tag": "rect",
+          "text": "",
+          "id": null,
+          "points": [
+            [
+              174.6000061035156,
+              998.9999999999999
+            ],
+            [
+              245.4000091552734,
+              998.9999999999999
+            ],
+            [
+              245.4000091552734,
+              1025.9999999999998
+            ],
+            [
+              174.6000061035156,
+              1025.9999999999998
+            ]
+          ],
+          "frame": [
+            940,
+            720
+          ]
+        },
+        {
+          "tag": "text",
+          "text": "records",
+          "id": null,
+          "points": [
+            [
+              193.20611572265622,
+              1002.1665649414061
+            ],
+            [
+              226.7938766479492,
+              1002.1665649414061
+            ],
+            [
+              226.7938766479492,
+              1012.6111040115355
+            ],
+            [
+              193.20611572265622,
+              1012.6111040115355
+            ]
+          ],
+          "frame": [
+            940,
+            720
+          ]
+        },
+        {
+          "tag": "text",
+          "text": "confidential",
+          "id": null,
+          "points": [
+            [
+              184.80664062499997,
+              1013.8193969726561
+            ],
+            [
+              235.19338226318357,
+              1013.8193969726561
+            ],
+            [
+              235.19338226318357,
+              1022.9583683013915
+            ],
+            [
+              184.80664062499997,
+              1022.9583683013915
+            ]
+          ],
+          "frame": [
+            940,
+            720
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "sequence-fixed-timeline",
+    "type": "sequence",
+    "baseline": "rejected",
+    "stderr": "Sequence layout validation failed:\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n- Participants exceed viewBox width — set meta.viewBox[0] to at least 1333 or remove a participant.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"ack\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Participants exceed viewBox width — set meta.viewBox[0] to at least 1333 or remove a participant.\n"
+  },
+  {
+    "name": "sequence-spread-fleet",
+    "type": "sequence",
+    "baseline": "rejected",
+    "stderr": "Sequence layout validation failed:\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n- Participants exceed viewBox width — set meta.viewBox[0] to at least 3320 or remove a participant.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Message \"deploy\" sits outside the readable timeline — keep y between 160 and 677.\n[layout/constraint] Participants exceed viewBox width — set meta.viewBox[0] to at least 3320 or remove a participant.\n"
+  },
+  {
+    "name": "sequence-segment-activation",
+    "type": "sequence",
+    "baseline": "rejected",
+    "stderr": "Sequence layout validation failed:\n- Segment \"Background execution and completion retention\" extends outside the canvas — keep its y range between 72 and 715.\n[layout/constraint] Segment \"Background execution and completion retention\" extends outside the canvas — keep its y range between 72 and 715.\n"
+  },
+  {
+    "name": "lifecycle-high-state",
+    "type": "lifecycle",
+    "baseline": "rejected",
+    "stderr": "Lifecycle layout validation failed:\n- State \"done\" exceeds the vertical lifecycle area — keep y between 64 and 538 (adjust yOffset or increase meta.viewBox[1]).\n[layout/constraint] State \"done\" exceeds the vertical lifecycle area — keep y between 64 and 538 (adjust yOffset or increase meta.viewBox[1]).\n"
+  },
+  {
+    "name": "lifecycle-rounded-channel",
+    "type": "lifecycle",
+    "baseline": "clipped",
+    "paint": {
+      "count": 21,
+      "failures": [
+        {
+          "tag": "path",
+          "text": "",
+          "id": "recover",
+          "points": [
+            [
+              768.4499999999999,
+              156.44999999999996
+            ],
+            [
+              1300.55,
+              156.44999999999996
+            ],
+            [
+              1300.55,
+              307.5499999999999
+            ],
+            [
+              768.4499999999999,
+              307.5499999999999
+            ]
+          ],
+          "frame": [
+            980,
+            660
+          ]
+        },
+        {
+          "tag": "rect",
+          "text": "",
+          "id": null,
+          "points": [
+            [
+              1114.8000488281248,
+              208.99999999999997
+            ],
+            [
+              1205.2000503540037,
+              208.99999999999997
+            ],
+            [
+              1205.2000503540037,
+              235.99999999999997
+            ],
+            [
+              1114.8000488281248,
+              235.99999999999997
+            ]
+          ],
+          "frame": [
+            980,
+            660
+          ]
+        },
+        {
+          "tag": "text",
+          "text": "recover",
+          "id": null,
+          "points": [
+            [
+              1143.2038574218748,
+              211.83322143554685
+            ],
+            [
+              1176.7961654663084,
+              211.83322143554685
+            ],
+            [
+              1176.7961654663084,
+              222.72227573394773
+            ],
+            [
+              1143.2038574218748,
+              222.72227573394773
+            ]
+          ],
+          "frame": [
+            980,
+            660
+          ]
+        },
+        {
+          "tag": "text",
+          "text": "preserve context",
+          "id": null,
+          "points": [
+            [
+              1126.4130859374998,
+              224.19435119628903
+            ],
+            [
+              1193.5870666503904,
+              224.19435119628903
+            ],
+            [
+              1193.5870666503904,
+              233.04170799255368
+            ],
+            [
+              1126.4130859374998,
+              233.04170799255368
+            ]
+          ],
+          "frame": [
+            980,
+            660
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "lifecycle-band-legend",
+    "type": "lifecycle",
+    "baseline": "already-contained",
+    "paint": {
+      "count": 32,
+      "failures": []
+    }
+  },
+  {
+    "name": "lifecycle-bottom-channel",
+    "type": "lifecycle",
+    "baseline": "clipped",
+    "paint": {
+      "count": 22,
+      "failures": [
+        {
+          "tag": "path",
+          "text": "",
+          "id": "complete",
+          "points": [
+            [
+              401.44999999999993,
+              187.44999999999996
+            ],
+            [
+              710.5499999999998,
+              187.44999999999996
+            ],
+            [
+              710.5499999999998,
+              1200.5499999999997
+            ],
+            [
+              401.44999999999993,
+              1200.5499999999997
+            ]
+          ],
+          "frame": [
+            980,
+            660
+          ]
+        },
+        {
+          "tag": "rect",
+          "text": "",
+          "id": null,
+          "points": [
+            [
+              498.5499877929687,
+              1148.9999999999998
+            ],
+            [
+              613.4499893188475,
+              1148.9999999999998
+            ],
+            [
+              613.4499893188475,
+              1175.9999999999998
+            ],
+            [
+              498.5499877929687,
+              1175.9999999999998
+            ]
+          ],
+          "frame": [
+            980,
+            660
+          ]
+        },
+        {
+          "tag": "text",
+          "text": "complete",
+          "id": null,
+          "points": [
+            [
+              536.8059692382811,
+              1151.8332519531248
+            ],
+            [
+              575.1941375732421,
+              1151.8332519531248
+            ],
+            [
+              575.1941375732421,
+              1162.7223062515257
+            ],
+            [
+              536.8059692382811,
+              1162.7223062515257
+            ]
+          ],
+          "frame": [
+            980,
+            660
+          ]
+        },
+        {
+          "tag": "text",
+          "text": "after deferred checks",
+          "id": null,
+          "points": [
+            [
+              511.92276000976557,
+              1164.1943359374998
+            ],
+            [
+              600.077308654785,
+              1164.1943359374998
+            ],
+            [
+              600.077308654785,
+              1173.0416927337644
+            ],
+            [
+              511.92276000976557,
+              1173.0416927337644
+            ]
+          ],
+          "frame": [
+            980,
+            660
+          ]
+        }
+      ]
+    }
+  }
+]

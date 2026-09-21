@@ -4,6 +4,7 @@ import { esc, renderDefinitions, renderSemanticSigil, textUnits } from '../share
 import { animateAttr, focusEdgeAttrs, focusNodeAttrs, focusNodeTitle, loadDiagramWithBrandMarks, writeDiagram, svgAccessibleText, svgRootAttrs } from '../shared/cli.mjs';
 import { throwDiagnosticProblems } from '../shared/diagnostics.mjs';
 import { resolveLegend, renderLegend as renderResolvedLegend } from '../shared/legend.mjs';
+import { paintRect, paintPath, paintBounds, assertCanvasContains, fitContentCanvas, legendPaint, validateContentCanvas } from '../shared/canvas-paint.mjs';
 import { availableNodeTextWidth, fittedNodeFontSize, minimumNodeTextWidth } from '../shared/text-fit.mjs';
 import { brandLabelFitWidth, brandMetadataFor, brandTopRailProblem, renderBrandMark } from '../shared/brand-marks.mjs';
 import { translateMessage as i18nText } from '../shared/i18n.mjs';
@@ -44,13 +45,17 @@ const nodeTextFit = {
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const layoutJsonMode = process.argv.includes('--layout-json');
 const { diagram: dataflow, template, outPath, sourceEvidence } = await loadDiagramWithBrandMarks({
   rendererDir: __dirname,
   diagramType: 'dataflow',
-  defaultExample: 'product-analytics.dataflow.json'
+  defaultExample: 'product-analytics.dataflow.json',
+  argv: process.argv.filter((arg) => arg !== '--layout-json'),
 });
 
-const viewBox = dataflow.meta?.viewBox || [940, 720];
+const contentCanvas = dataflow.meta?.canvas_fit === 'content';
+let viewBox = dataflow.meta?.viewBox || [940, 720];
+let contentFit;
 const layout = {
   stageY: 46,
   stageH: 36,
@@ -89,7 +94,7 @@ function stageFrame(stage, index) {
   };
 }
 
-const compositionFrames = asArray(dataflow.stages).map(stageFrame);
+let compositionFrames = asArray(dataflow.stages).map(stageFrame);
 
 function measureNode(node) {
   const width = node.width || layout.nodeW;
@@ -435,14 +440,55 @@ const LEGEND_CATALOG = [
   label: i18nText(dataflow.meta.locale, `legend.dataflow.${entry.kind}`),
 }));
 
-function renderLegend() {
+function resolvedLegendEntries() {
   const presentKinds = new Set(asArray(dataflow.flows).map((flow) => flow.variant || 'default'));
   if ([...nodes.values()].some((node) => node.type === 'database')) presentKinds.add('database');
-  const entries = resolveLegend(dataflow.meta?.legend, LEGEND_CATALOG, presentKinds);
+  return resolveLegend(dataflow.meta?.legend, LEGEND_CATALOG, presentKinds);
+}
+
+function dataflowContentPaint() {
+  return [
+    ...[...nodes.values()].map((node, index) => paintRect(node, `/nodes/${index}`, 1.5)),
+    ...dataflow.stages.flatMap((stage, index) => {
+      const text = `${String(index + 1).padStart(2, '0')} / ${stage.label}`;
+      const width = textUnits(text) * 9 * 0.62;
+      return [paintRect({ x: stageX(index) - layout.stageW / 2, y: layout.stageY,
+        width: layout.stageW, height: layout.stageH }, `/stages/${index}`, 1),
+      paintRect({ x: stageX(index) - width / 2, y: layout.stageY + 12, width, height: 14 }, `/stages/${index}/label`)];
+    }),
+    ...dataflow.flows.flatMap((flow, index) => {
+      if (!nodes.has(flow.from) || !nodes.has(flow.to)) return [];
+      const points = pathFor(flow).points;
+      const [x, y] = labelPoint(flow, points);
+      const size = flowLabelSize(flow);
+      return [paintPath(points, `/flows/${index}`, flow.width || (flow.variant === 'emphasis' ? 1.8 : 1.4)),
+        paintRect({ x: x - size.width / 2, y: y - 11, ...size }, `/flows/${index}/label`)];
+    }),
+  ];
+}
+
+function finalizeCanvas() {
+  contentFit = fitContentCanvas({ rects: dataflowContentPaint(), diagramType: 'dataflow',
+    locale: dataflow.meta.locale,
+    authoredViewBox: dataflow.meta?.viewBox, minimumViewBox: [940, 720], entries: resolvedLegendEntries() });
+  viewBox = contentFit.viewBox;
+  layout.stageBottomPad = contentFit.reserve;
+  compositionFrames = asArray(dataflow.stages).map(stageFrame);
+  const bounds = paintBounds([...dataflowContentPaint(),
+    ...compositionFrames.map((frame, index) => paintRect(frame, `/stages/${index}`, 1)),
+    ...legendPaint(resolvedLegendEntries(), contentFit.legendLayout),
+  ], 'dataflow');
+  assertCanvasContains({ diagramType: 'dataflow', viewBox, bounds });
+  contentFit.receipt.paintBounds = bounds;
+  return contentFit.receipt;
+}
+
+function renderLegend() {
+  const entries = resolvedLegendEntries();
   return renderResolvedLegend({
     entries,
     locale: dataflow.meta.locale,
-    layout: {
+    layout: contentFit?.legendLayout || {
       x: 40,
       baselineY: viewBox[1] - 36,
       width: viewBox[0] - 80,
@@ -481,7 +527,17 @@ ${renderLegend()}
       </svg>`;
 }
 
-validateDataflow();
+if (contentCanvas) validateContentCanvas({ diagram: dataflow, resolve: finalizeCanvas, validate: validateDataflow });
+else validateDataflow();
+if (layoutJsonMode) {
+  renderLegend();
+  console.log(JSON.stringify({ ok: true, diagram_type: 'dataflow', viewBox,
+    ...(contentFit ? { canvas: contentFit.receipt } : {}),
+    nodes: [...nodes.values()], stages: compositionFrames,
+    flows: dataflow.flows.map((flow) => ({ ...flow, points: pathFor(flow).points })),
+  }, null, 2));
+  process.exit(0);
+}
 writeDiagram({
   outPath,
   template,
