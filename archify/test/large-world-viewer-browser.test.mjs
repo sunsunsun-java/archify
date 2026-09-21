@@ -11,7 +11,7 @@ import { ChromeVisualBrowser, findChrome } from '../bin/visual-check.mjs';
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const chrome = process.env.ARCHIFY_CHROME ? findChrome() : null;
 
-test('shared large-world Viewer provides a fixed readable stage for Workflow and Architecture', {
+test('shared large-world Viewer provides a fixed readable stage for all five diagram types', {
   skip: chrome ? false : 'Set ARCHIFY_CHROME to run the required large-world browser contract.',
 }, async (t) => {
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-large-world-'));
@@ -44,6 +44,21 @@ test('shared large-world Viewer provides a fixed readable stage for Workflow and
       small: artifact('workflow', 'agent-tool-call.workflow.json', 'small'),
       large100: artifact('workflow', 'agent-tool-call.workflow.json', '100', 6000, 3000),
       large300: artifact('workflow', 'agent-tool-call.workflow.json', '300', 12000, 6000),
+    },
+    dataflow: {
+      small: artifact('dataflow', 'event-stream.dataflow.json', 'small'),
+      large100: artifact('dataflow', 'event-stream.dataflow.json', '100', 6000, 3000),
+      large300: artifact('dataflow', 'event-stream.dataflow.json', '300', 12000, 6000),
+    },
+    sequence: {
+      small: artifact('sequence', 'cache-miss-request.sequence.json', 'small'),
+      large100: artifact('sequence', 'cache-miss-request.sequence.json', '100', 6000, 3000),
+      large300: artifact('sequence', 'cache-miss-request.sequence.json', '300', 12000, 6000),
+    },
+    lifecycle: {
+      small: artifact('lifecycle', 'agent-run.lifecycle.json', 'small'),
+      large100: artifact('lifecycle', 'agent-run.lifecycle.json', '100', 6000, 3000),
+      large300: artifact('lifecycle', 'agent-run.lifecycle.json', '300', 12000, 6000),
     },
   };
 
@@ -87,7 +102,11 @@ test('shared large-world Viewer provides a fixed readable stage for Workflow and
       const sourceFont=labels.length?Math.min(...labels.map(label=>parseFloat(getComputedStyle(label).fontSize))):0;
       const fit=Math.min(svg.clientWidth/vb.width,svg.clientHeight/vb.height);
       const rect=diagram.getBoundingClientRect(),cards=document.querySelector('.cards')?.getBoundingClientRect();
+      const sr=svg.getBoundingClientRect(),matrix=svg.getScreenCTM();
+      const origin=new DOMPoint(vb.x,vb.y).matrixTransform(matrix),end=new DOMPoint(vb.x+vb.width,vb.y+vb.height).matrixTransform(matrix);
+      const safe={left:sr.left-state.x,top:sr.top-state.y,width:svg.clientWidth,height:svg.clientHeight};
       return {receipt,state,viewBox:[vb.x,vb.y,vb.width,vb.height],entry,projectedEntryPx:sourceFont*fit*state.scale,
+        world:{left:origin.x,right:end.x,top:origin.y,bottom:end.y},safe,
         client:[diagram.clientWidth,diagram.clientHeight],rect:{top:rect.top,bottom:rect.bottom},cards:cards&&{top:cards.top,bottom:cards.bottom},
         scroll:[html.scrollWidth,html.scrollHeight,innerWidth,innerHeight],diagnostic:diagram.getAttribute('data-camera-diagnostic')};
     })()`);
@@ -95,7 +114,9 @@ test('shared large-world Viewer provides a fixed readable stage for Workflow and
 
   for (const [type, set] of Object.entries(fixtures)) {
     await load(set.small);
-    assert.equal((await snapshot()).receipt.worldProfile, 'small', `${type} control`);
+    if (type === 'architecture' || type === 'workflow') {
+      assert.equal((await snapshot()).receipt.worldProfile, 'small', `${type} control`);
+    }
 
     const stages = [];
     for (const key of ['large100', 'large300']) {
@@ -105,6 +126,8 @@ test('shared large-world Viewer provides a fixed readable stage for Workflow and
       assert.ok(current.state.scale > 3, `${type} ${key} dynamic scale: ${JSON.stringify(current)}`);
       assert.ok(current.projectedEntryPx >= 6, `${type} ${key} readable entry: ${JSON.stringify(current)}`);
       assert.ok(current.entry.length > 0, `${type} ${key} deterministic entry`);
+      assert.ok(current.world.left <= current.safe.left + 2 && current.world.right >= current.safe.left + current.safe.width - 2,
+        `${type} ${key} wide world must cover the horizontal viewport: ${JSON.stringify(current)}`);
       assert.equal(current.diagnostic, null);
       assert.ok(current.scroll[0] <= current.scroll[2] && current.scroll[1] <= current.scroll[3], `${type} ${key} containment`);
       assert.ok(current.rect.bottom <= current.scroll[3] + 1);
@@ -154,4 +177,68 @@ test('shared large-world Viewer provides a fixed readable stage for Workflow and
   const endpointAudit = await browser.auditCanonicalWorld();
   assert.equal(endpointAudit.worldReachability.status, 'fail');
   assert.ok(endpointAudit.diagnostics.some((entry) => entry.code === 'viewer/semantic-endpoint-invalid'));
+});
+
+test('automatic entry frames the painted world rather than centering its first participant in letterbox space', {
+  skip: chrome ? false : 'Set ARCHIFY_CHROME to run automatic entry framing regression.',
+}, async (t) => {
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-entry-framing-'));
+  t.after(() => fs.rmSync(scratch, { recursive: true, force: true }));
+  const input = path.join(scratch, 'sequence.json');
+  const output = path.join(scratch, 'sequence.html');
+  const spec = {
+    schema_version: 1, diagram_type: 'sequence',
+    meta: { title: 'Long request trace', output: 'trace.html', canvas_fit: 'content', column_fit: 'spread' },
+    participants: Array.from({ length: 7 }, (_, i) => ({ id: `actor-${i}`, type: 'backend', label: `Actor ${i}`, sublabel: 'request context' })),
+    messages: Array.from({ length: 26 }, (_, i) => ({ id: `step-${i}`, from: `actor-${i % 6}`, to: `actor-${i % 6 + 1}`, label: 'request', y: 180 + i * 50 })),
+  };
+  fs.writeFileSync(input, JSON.stringify(spec));
+  execFileSync(process.execPath, [path.join(skillRoot, 'bin/archify.mjs'), 'render', 'sequence', input, output]);
+  const browser = new ChromeVisualBrowser(chrome);
+  t.after(() => browser.close());
+  const session = await browser.sessionPromise;
+  async function evaluate(expression) {
+    const result = await browser.cdp.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }, session);
+    assert.equal(result.exceptionDetails, undefined, result.exceptionDetails?.exception?.description);
+    return result.result.value;
+  }
+  for (const [width, height] of [[1440, 900], [1600, 1000], [1920, 1080], [2048, 1320]]) {
+    for (const theme of ['light', 'dark']) {
+      await browser.inspect({ artifactPath: output, width, height, theme });
+      const result = await evaluate(`(() => {
+        const svg = document.querySelector('.diagram-container > svg'), vb = svg.viewBox.baseVal;
+        const matrix = svg.getScreenCTM(), camera = Archify.view.state();
+        const a = new DOMPoint(vb.x, vb.y).matrixTransform(matrix);
+        const b = new DOMPoint(vb.x + vb.width, vb.y + vb.height).matrixTransform(matrix);
+        // Recover the untransformed SVG content viewport; the camera scales
+        // the letterboxed SVG element, not just its canonical painted world.
+        const rect = svg.getBoundingClientRect();
+        const safe = { left: rect.left - camera.x, top: rect.top - camera.y,
+          width: svg.clientWidth, height: svg.clientHeight };
+        const nodes = [...svg.querySelectorAll('[data-node-id]')].map(node => {
+          const r = node.getBoundingClientRect();
+          return { id: node.dataset.nodeId, left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+        });
+        return { camera, safe, world: { left: a.x, right: b.x, top: a.y, bottom: b.y }, nodes,
+          entry: document.querySelector('.diagram-container').getAttribute('data-automatic-entry') };
+      })()`);
+      const label = `${width} ${theme}: ${JSON.stringify(result)}`;
+      assert.equal(result.entry, 'actor-0', label);
+      assert.ok(result.camera.scale > 1, label);
+      assert.ok(result.world.right - result.world.left <= result.safe.width, 'all seven columns can fit at the readable entry scale');
+      assert.ok(result.world.left >= result.safe.left - 2, label);
+      assert.ok(result.world.right <= result.safe.left + result.safe.width + 2, label);
+      for (const node of result.nodes) {
+        assert.ok(node.left >= result.safe.left - 2 && node.right <= result.safe.left + result.safe.width + 2, label);
+        assert.ok(node.top >= result.safe.top - 2 && node.bottom <= result.safe.top + result.safe.height + 2, label);
+      }
+      assert.ok(result.world.top <= result.safe.top + 2 && result.world.bottom >= result.safe.top + result.safe.height - 2,
+        'the long axis covers the viewport without losing the opening participants');
+      const audit = await browser.auditCanonicalWorld();
+      assert.equal(audit.worldReachability.status, 'pass', JSON.stringify(audit));
+      assert.equal(audit.exportCompleteness.status, 'pass', JSON.stringify(audit));
+      await evaluate('Archify.view.reset()');
+      assert.equal(await evaluate('Archify.view.state().scale'), 1, 'reset still shows the complete world');
+    }
+  }
 });

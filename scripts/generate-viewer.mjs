@@ -3,6 +3,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { compactViewer } from './compact-viewer.mjs';
+import { sameEntry } from '../archify/renderers/shared/path-semantics.mjs';
 import {
   LARGE_WORLD_READABILITY_CONTRACT,
   deriveLargeWorldReadabilityWithContract,
@@ -44,12 +46,8 @@ function reindent(source, spaces) {
     .join('\n');
 }
 
-try {
-  const args = process.argv.slice(2);
-  if (args.length > 1 || (args.length === 1 && args[0] !== '--check')) {
-    throw new Error('Usage: node scripts/generate-viewer.mjs [--check]');
-  }
-  let generated = fs.readFileSync(path.join(root, 'viewer/template.source.html'), 'utf8');
+export function assembleViewer(sourceRoot = root) {
+  let generated = fs.readFileSync(path.join(sourceRoot, 'viewer/template.source.html'), 'utf8');
   const readabilityParts = generated.split(readabilityMarker);
   if (readabilityParts.length !== 2) throw new Error('Viewer source must contain exactly one readability contract marker.');
   generated = readabilityParts[0] +
@@ -57,7 +55,7 @@ try {
     `var archifyDeriveLargeWorldReadability = (${deriveLargeWorldReadabilityWithContract.toString()}).bind(null, archifyReadabilityContract);` +
     readabilityParts[1];
   for (const [marker, file, indent = 0] of fragments) {
-    const source = fs.readFileSync(path.join(root, 'viewer', file), 'utf8');
+    const source = fs.readFileSync(path.join(sourceRoot, 'viewer', file), 'utf8');
     const parts = generated.split(marker);
     if (parts.length !== 2) throw new Error(`Viewer source must contain exactly one ${file} marker.`);
     // Export owns the sole nested fragment; expand it before Cleanup.
@@ -77,21 +75,32 @@ try {
     // including characters with String.replace semantics.
     generated = parts[0] + reindent(source, indent) + tail;
   }
-  if (args[0] === '--check') {
-    if (!fs.existsSync(output) || fs.readFileSync(output, 'utf8') !== generated) {
-      throw new Error('Viewer template is stale — run npm run generate:viewer from archify/.');
+  return generated;
+}
+
+if (process.argv[1] && sameEntry(process.argv[1], fileURLToPath(import.meta.url)).status === 'match') {
+  try {
+    const args = process.argv.slice(2);
+    if (args.length > 1 || (args.length === 1 && args[0] !== '--check')) {
+      throw new Error('Usage: node scripts/generate-viewer.mjs [--check]');
     }
-  } else {
-    const temporary = `${output}.${process.pid}.tmp`;
-    try {
-      fs.writeFileSync(temporary, generated);
-      fs.renameSync(temporary, output);
-    } finally {
-      fs.rmSync(temporary, { force: true });
+    const generated = await compactViewer(assembleViewer());
+    if (args[0] === '--check') {
+      if (!fs.existsSync(output) || fs.readFileSync(output, 'utf8') !== generated) {
+        throw new Error('Viewer template is stale — run npm run generate:viewer from archify/.');
+      }
+    } else {
+      const temporary = `${output}.${process.pid}.tmp`;
+      try {
+        fs.writeFileSync(temporary, generated);
+        fs.renameSync(temporary, output);
+      } finally {
+        fs.rmSync(temporary, { force: true });
+      }
+      console.log('generated archify/assets/template.html');
     }
-    console.log('generated archify/assets/template.html');
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
   }
-} catch (error) {
-  console.error(error.message);
-  process.exitCode = 1;
 }

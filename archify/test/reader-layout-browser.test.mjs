@@ -1,4 +1,6 @@
 import { test } from 'node:test';
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
+import { compactViewer } from '../../scripts/compact-viewer.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -107,14 +109,14 @@ test('Reader Layout preserves final-artifact behavior across its ownership bound
       assert.deepEqual(await evaluate('window.readerTestErrors'), [], 'Viewer initialization');
       if (waitForLayout) await stable();
     }
-    function variant(name, { ratio, beforeViewer = '' } = {}) {
-      let html = fs.readFileSync(artifacts.architecture, 'utf8');
+    async function variant(name, { ratio, beforeViewer = '' } = {}) {
+      let html = readableViewerArtifact(fs.readFileSync(artifacts.architecture, 'utf8'));
       if (ratio !== undefined) assert.match(html, /<svg\b[^>]*\bviewBox="[^"]+"/, 'Reader viewBox fixture anchor');
       if (beforeViewer) assert.ok(html.includes('  <script>\n    var Archify = {};'), 'Reader setup fixture anchor');
       if (ratio !== undefined) html = html.replace(/(<svg\b[^>]*\bviewBox=")[^"]+(")/, (_, start, end) => `${start}0 0 ${ratio * 1000} 1000${end}`);
       if (beforeViewer) html = html.replace('  <script>\n    var Archify = {};', () => `  <script>${beforeViewer}</script>\n  <script>\n    var Archify = {};`);
       const file = path.join(scratch, `${name}.html`);
-      fs.writeFileSync(file, html);
+      fs.writeFileSync(file, await compactViewer(html));
       return file;
     }
     function inactive(state, wide = true) {
@@ -171,7 +173,7 @@ test('Reader Layout preserves final-artifact behavior across its ownership bound
 
     await t.test('ratio and desktop thresholds preserve shape while clearing temporary state', async () => {
       for (const ratio of [1.549, 1.55, 1.551]) {
-        await load(variant(`ratio-${ratio}`, { ratio }));
+        await load(await variant(`ratio-${ratio}`, { ratio }));
         const before = await snapshot(`ratio-${ratio}`);
         assert.equal(before.active, ratio >= 1.55);
         if (ratio < 1.55) inactive(before, false);
@@ -186,7 +188,7 @@ test('Reader Layout preserves final-artifact behavior across its ownership bound
       }
     });
 
-    const wide = variant('wide', { ratio: 3 });
+    const wide = await variant('wide', { ratio: 3 });
     await t.test('desktop budgets, extreme content and limited horizontal space preserve geometry', async () => {
       for (const [width, height] of [[1440, 900], [1600, 1000], [1920, 1080], [2048, 1320]]) {
         await load(wide, { width, height });
@@ -255,7 +257,7 @@ test('Reader Layout preserves final-artifact behavior across its ownership bound
     });
 
     await t.test('optional content and browser interfaces retain their fallback behavior', async () => {
-      const file = variant('optional', { ratio: 3, beforeViewer: `
+      const file = await variant('optional', { ratio: 3, beforeViewer: `
         document.querySelector('.cards').remove();
         // Other Viewer modules require the chapter control IDs. Only remove
         // Reader's optional layout selector, keeping those controls available.
@@ -275,7 +277,7 @@ test('Reader Layout preserves final-artifact behavior across its ownership bound
     });
 
     await t.test('font readiness gates sampling and pending-frame timeout remains explicit', async () => {
-      const delayedFonts = variant('delayed-fonts', { ratio: 3, beforeViewer: `
+      const delayedFonts = await variant('delayed-fonts', { ratio: 3, beforeViewer: `
         window.readerTestOriginalFonts = document.fonts;
         Object.defineProperty(document, 'fonts', { configurable: true, value: {
           ready: new Promise(function (resolve) { window.readerTestReleaseFonts = resolve; })

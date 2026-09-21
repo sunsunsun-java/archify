@@ -1,3 +1,4 @@
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -8,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(__dirname, '..');
-const template = fs.readFileSync(path.join(skillRoot, 'assets', 'template.html'), 'utf8');
+const template = readableViewerArtifact(fs.readFileSync(path.join(skillRoot, 'assets', 'template.html'), 'utf8'));
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-story-carrier-'));
 
 const CASES = {
@@ -26,7 +27,7 @@ function render(mode, example) {
     path.join(skillRoot, 'examples', example),
     output,
   ]);
-  return fs.readFileSync(output, 'utf8');
+  return readableViewerArtifact(fs.readFileSync(output, 'utf8'));
 }
 
 function canonicalSvg(html) {

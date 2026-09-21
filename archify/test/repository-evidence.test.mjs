@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -441,7 +442,7 @@ test('repository evidence is revision-verified, receipt-backed, searchable, and 
     references: 2,
   });
 
-  const html = fs.readFileSync(output, 'utf8');
+  const html = readableViewerArtifact(fs.readFileSync(output, 'utf8'));
   const evidence = evidencePayload(html);
   assert.equal(evidence.verified, true);
   assert.equal(evidence.repository.shortRevision, data.revision.slice(0, 7));

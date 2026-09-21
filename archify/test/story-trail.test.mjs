@@ -1,3 +1,4 @@
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -25,7 +26,7 @@ function render(mode, example) {
     path.join(skillRoot, 'examples', example),
     output,
   ], { encoding: 'utf8' });
-  return { result, html: fs.existsSync(output) ? fs.readFileSync(output, 'utf8') : '' };
+  return { result, html: fs.existsSync(output) ? readableViewerArtifact(fs.readFileSync(output, 'utf8') ): '' };
 }
 
 for (const [mode, example] of Object.entries(CASES)) {
@@ -66,7 +67,7 @@ for (const [mode, example] of Object.entries(CASES)) {
 }
 
 test('Story Trail state is removed from every export clone', () => {
-  const template = fs.readFileSync(path.join(skillRoot, 'assets', 'template.html'), 'utf8');
+  const template = readableViewerArtifact(fs.readFileSync(path.join(skillRoot, 'assets', 'template.html'), 'utf8'));
   assert.match(template, /clone\.removeAttribute\('data-story-active'\)/);
   assert.match(template, /clone\.removeAttribute\('data-story-playing'\)/);
   assert.match(template, /clone\.removeAttribute\('data-story-beat'\)/);

@@ -1,4 +1,6 @@
 import { test } from 'node:test';
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
+import { compactViewer } from '../../scripts/compact-viewer.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -176,7 +178,8 @@ test('Export cleanup preserves canonical artifacts and live interaction state', 
 
   // Private checks supplement the real public exports. The hook exists only in
   // this disposable test artifact; production receives no testing interface.
-  const html = fs.readFileSync(files.architecture, 'utf8');
+  const deliveredHtml = fs.readFileSync(files.architecture, 'utf8');
+  const html = process.env.ARCHIFY_EXPORT_BASELINE_DIR ? deliveredHtml : readableViewerArtifact(deliveredHtml);
   let cleanup = html.match(/function cleanExportClone\(clone\) \{[\s\S]*?\n      \}/)?.[0];
   if (!cleanup && process.env.ARCHIFY_EXPORT_BASELINE_DIR) {
     const start = html.indexOf('        // View transforms and neighborhood focus');
@@ -190,7 +193,7 @@ test('Export cleanup preserves canonical artifacts and live interaction state', 
     `      window.exportCleanupTest = { serialize: serializeSvg, clean: ${cleanupReference} };\n      function download(blob, filename) {`);
   assert.notEqual(hooked, html);
   const privateFile = path.join(scratch, 'private.html');
-  fs.writeFileSync(privateFile, hooked);
+  fs.writeFileSync(privateFile, await compactViewer(hooked));
 
   await t.test('clone restoration, preservation and repeated cleanup are independent of live DOM', async () => {
     await load(privateFile);

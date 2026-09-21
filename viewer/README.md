@@ -19,17 +19,31 @@ sources live outside the packaged `archify/` directory.
 
 From `archify/`, run `npm run generate:viewer` after editing any source.
 `npm run check:viewer` verifies freshness without writing; `npm test` includes
-that check. Assembly inserts JavaScript fragments verbatim at fixed markers.
-The CSS fragment is authored at column zero and reindented four spaces when it
-is inserted into the shell's `<style>` block; this preserves the delivered
-template bytes while keeping the standalone source easy to edit.
-Reader, Chrome Layout, Camera, Radar, Motion Governor, Finder, Intent Trace, Semantic Lens, Route Probe, Guided Views, Focus and Export
-extractions preserve delivered HTML bytes. Export cleanup adds a
-private function and a call, changing script bytes but preserving cleanup order
-and SVG output. All JavaScript fragments retain classic-script scope and
-initialization order.
+that check. Assembly inserts readable fragments at fixed markers, then a
+build-only pass compacts executable inline JavaScript. The pinned Terser
+development dependency is not installed or run by the distributed Skill.
+JavaScript uses `compress: false` and local-binding
+mangling only: public properties, top-level names, classic-script scope,
+script boundaries and initialization order stay intact. All CSS (including
+fonts), HTML/SVG, JSON payloads and placeholders remain byte-identical.
+CSS compaction was removed in the visual-equivalence ablation: a smaller gain
+is preferable to introducing another transform and dependency.
+There is no runtime decompression, network dependency or second output mode.
+Compaction finishes before renderer/delivery hashes are calculated. A parse
+failure leaves the previous template untouched. `--check` compares final bytes.
+Source-contract tests use a readable assertion projection only after verifying
+the artifact contains the exact current compact blocks; browsers and exports
+always exercise the compact artifact. Diagnostic browser fixtures are compacted
+again after instrumentation. The shared-template size budget is a regression
+guard with maintenance headroom, not a limit on authored diagram size.
 Generated output is not a second editing
 surface; release identity changes also belong in `template.source.html`.
+
+Legend count badges are viewer-only decorations. Their measurements follow the
+actual SVG viewport through `ResizeObserver`: window resize and font readiness
+can precede the adaptive reader's final dimensions. The observer only refreshes
+badge/hit geometry using the existing bounds calculation; it never changes
+authored SVG geometry, the camera, or canonical exports.
 
 ## Export contract
 

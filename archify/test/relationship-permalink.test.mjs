@@ -1,3 +1,4 @@
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -29,7 +30,7 @@ function run(mode, doc, suffix) {
   const result = spawnSync(process.execPath, [
     path.join(skillRoot, `renderers/${mode}/render-${mode}.mjs`), input, output,
   ], { encoding: 'utf8' });
-  return { result, html: fs.existsSync(output) ? fs.readFileSync(output, 'utf8') : '' };
+  return { result, html: fs.existsSync(output) ? readableViewerArtifact(fs.readFileSync(output, 'utf8') ): '' };
 }
 
 function canonicalSvg(html) {

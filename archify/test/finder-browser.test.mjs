@@ -1,4 +1,6 @@
 import { test } from 'node:test';
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
+import { compactViewer } from '../../scripts/compact-viewer.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -40,16 +42,16 @@ test('Finder preserves search, keyboard, contextual Route selection and cleanup'
   // A controlled metadata fixture exercises the Finder's input boundary;
   // repository verification and brand rendering have their own tests.
   files.metadata = path.join(scratch, 'metadata.html');
-  const metadataSource = fs.readFileSync(files.architecture, 'utf8');
+  const metadataSource = readableViewerArtifact(fs.readFileSync(files.architecture, 'utf8'));
   assert.ok(metadataSource.includes('    Archify.finder = (function () {'), 'Finder fixture anchor');
-  fs.writeFileSync(files.metadata, metadataSource.replace(
+  fs.writeFileSync(files.metadata, await compactViewer(metadataSource.replace(
     '    Archify.finder = (function () {', `
     document.querySelector('[data-node-id="api"]').setAttribute('data-node-brand', 'finder-brand-token');
     var finderOriginalSources = Archify.sourceEvidence.node;
     Archify.sourceEvidence.node = function (id) {
       return id === 'api' ? [{path:'src/finder-proof.js',label:'Finder proof',line:12,endLine:18}] : finderOriginalSources(id);
     };
-    Archify.finder = (function () {`));
+    Archify.finder = (function () {`)));
   const browser = new ChromeVisualBrowser(chrome);
   t.after(() => browser.close());
   const session = await browser.sessionPromise;

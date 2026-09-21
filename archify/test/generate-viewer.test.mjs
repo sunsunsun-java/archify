@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { compactViewer } from '../../scripts/compact-viewer.mjs';
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
 import {
   LARGE_WORLD_READABILITY_CONTRACT,
   deriveLargeWorldReadabilityWithContract,
@@ -36,7 +38,10 @@ function fixture(t) {
   fs.mkdirSync(path.join(root, 'archify/renderers/shared'), { recursive: true });
   fs.cpSync(path.join(repoRoot, 'viewer'), path.join(root, 'viewer'), { recursive: true });
   fs.copyFileSync(path.join(repoRoot, 'scripts/generate-viewer.mjs'), path.join(root, 'scripts/generate-viewer.mjs'));
+  fs.copyFileSync(path.join(repoRoot, 'scripts/compact-viewer.mjs'), path.join(root, 'scripts/compact-viewer.mjs'));
+  fs.symlinkSync(path.join(repoRoot, 'archify/node_modules'), path.join(root, 'archify/node_modules'), 'junction');
   fs.copyFileSync(path.join(repoRoot, 'archify/renderers/shared/desktop-readability.mjs'), path.join(root, 'archify/renderers/shared/desktop-readability.mjs'));
+  fs.copyFileSync(path.join(repoRoot, 'archify/renderers/shared/path-semantics.mjs'), path.join(root, 'archify/renderers/shared/path-semantics.mjs'));
   const output = path.join(root, 'archify/assets/template.html');
   fs.copyFileSync(path.join(repoRoot, 'archify/assets/template.html'), output);
   return {
@@ -81,7 +86,7 @@ test('editing any authoritative source requires explicit regeneration', (t) => {
   const f = fixture(t);
   for (const input of [f.shell, f.viewerCss, f.export, f.reader, f.cleanup, f.chrome, f.camera, f.radar, f.motion, f.finder, f.intent, f.lens, f.route, f.guided, f.focus]) {
     const previous = fs.readFileSync(f.output);
-    fs.appendFileSync(input, '\n/* source change */\n');
+    fs.appendFileSync(input, input === f.shell ? '\n<!-- source change -->\n' : input === f.viewerCss ? '\n:root { --build-test: 1; }\n' : '\n;void 123456;\n');
     const stale = f.run('--check');
     assert.equal(stale.status, 1);
     assert.match(stale.stderr, /stale.*generate:viewer/);
@@ -148,7 +153,7 @@ for (const [fragment, slot] of Object.entries(fragments)) {
   }
 }
 
-test('assembly preserves literal replacement tokens, Unicode and source line endings', (t) => {
+test('assembly preserves literal replacement tokens and Unicode before conservative compaction', async (t) => {
   const f = fixture(t);
   const reader = '// $& $\' $` $$ 中文 \u{1f5fa}\r\n(function () {})();\r\n';
   const css = '/* === TOKENS === */\r\n:root { --x: 1; }\r\n';
@@ -178,16 +183,29 @@ test('assembly preserves literal replacement tokens, Unicode and source line end
   const injected = `var archifyReadabilityContract = Object.freeze(${JSON.stringify(LARGE_WORLD_READABILITY_CONTRACT)});\nvar archifyDeriveLargeWorldReadability = (${deriveLargeWorldReadabilityWithContract.toString()}).bind(null, archifyReadabilityContract);`;
   assert.equal(
     fs.readFileSync(f.output, 'utf8'),
-    `<style>${indentedCss}</style><script>\r\n${injected}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}</script>\n`,
+    await compactViewer(`<style>${indentedCss}</style><script>\r\n${injected}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}${reader}</script>\n`),
   );
   assert.equal(f.run('--check').status, 0);
 });
 
 test('browser readability contract is generated field-for-field from the authoritative module', () => {
-  const template = fs.readFileSync(path.join(repoRoot, 'archify/assets/template.html'), 'utf8');
+  const template = readableViewerArtifact(fs.readFileSync(path.join(repoRoot, 'archify/assets/template.html'), 'utf8'));
   assert.match(template, new RegExp(`var archifyReadabilityContract = Object\\.freeze\\(${JSON.stringify(LARGE_WORLD_READABILITY_CONTRACT).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\);`));
   assert.ok(template.includes(`var archifyDeriveLargeWorldReadability = (${deriveLargeWorldReadabilityWithContract.toString()}).bind(null, archifyReadabilityContract);`));
 });
+
+for (const [input, invalid] of [['reader', '\nfunction (']]) {
+  test(`invalid ${input} compaction never overwrites the valid template`, t => {
+    const f = fixture(t);
+    const previous = fs.readFileSync(f.output);
+    fs.appendFileSync(f[input], invalid);
+    for (const args of [[], ['--check']]) {
+      assert.equal(f.run(...args).status, 1);
+      assert.deepEqual(fs.readFileSync(f.output), previous);
+      assert.deepEqual(fs.readdirSync(path.dirname(f.output)), ['template.html']);
+    }
+  });
+}
 
 test('an invalid invocation cannot silently regenerate the template', (t) => {
   const f = fixture(t);

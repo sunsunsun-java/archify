@@ -1,4 +1,6 @@
 import { test } from 'node:test';
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
+import { compactViewer } from '../../scripts/compact-viewer.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -39,7 +41,7 @@ test('Semantic Lens preserves selection, legend preview and panel contracts', {
   fs.writeFileSync(traceInput, JSON.stringify(trace)); files.trace = path.join(scratch, 'trace.html');
   execFileSync(process.execPath, [path.join(skillRoot, 'renderers/architecture/render-architecture.mjs'), traceInput, files.trace]);
   // Initialization fixtures alter only inputs immediately before Lens captures DOM/media.
-  const original = fs.readFileSync(files.architecture, 'utf8');
+  const original = readableViewerArtifact(fs.readFileSync(files.architecture, 'utf8'));
   assert.ok(original.includes('    Archify.semanticLens = (function () {'), 'Lens fixture anchor');
   for (const [name, source] of Object.entries({
     absent: `document.querySelector('[data-legend-bridge]').remove();`,
@@ -48,7 +50,7 @@ test('Semantic Lens preserves selection, legend preview and panel contracts', {
     coarse: `window.lensMatchMedia=window.matchMedia;window.matchMedia=q=>q==='(hover: hover) and (pointer: fine)'?{matches:false}:lensMatchMedia(q);`,
   })) {
     files[name] = path.join(scratch, name + '.html');
-    fs.writeFileSync(files[name], original.replace('    Archify.semanticLens = (function () {', source + '\n    Archify.semanticLens = (function () {'));
+    fs.writeFileSync(files[name], await compactViewer(original.replace('    Archify.semanticLens = (function () {', source + '\n    Archify.semanticLens = (function () {')));
   }
   const browser = desktopBrowser(chrome);
   t.after(() => browser.close());

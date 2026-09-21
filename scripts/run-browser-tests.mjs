@@ -26,6 +26,7 @@ const testFiles = [
   'finder-browser.test.mjs',
   'intent-trace-browser.test.mjs',
   'semantic-lens-browser.test.mjs',
+  'legend-layout-browser.test.mjs',
   'route-probe-browser.test.mjs',
   'guided-views-browser.test.mjs',
   'focus-browser.test.mjs',

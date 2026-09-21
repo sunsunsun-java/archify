@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -263,7 +264,7 @@ test('generated artifacts omit the promotional footer and shortcut manual', () =
 });
 
 test('viewer gives wide screens a larger canvas without forcing a subtitle row', () => {
-  const template = fs.readFileSync(path.join(skillRoot, 'assets', 'template.html'), 'utf8');
+  const template = readableViewerArtifact(fs.readFileSync(path.join(skillRoot, 'assets', 'template.html'), 'utf8'));
   assert.match(template, /max-width: var\(--archify-reader-width, 1440px\)/);
   assert.match(template, /Archify\.readerLayout = \(function \(\)/);
 

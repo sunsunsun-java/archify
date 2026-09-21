@@ -1,3 +1,4 @@
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -39,7 +40,7 @@ function render(mode) {
     path.join(skillRoot, 'examples', CASES[mode]),
     output,
   ]);
-  return fs.readFileSync(output, 'utf8');
+  return readableViewerArtifact(fs.readFileSync(output, 'utf8'));
 }
 
 function canonicalSvg(html) {

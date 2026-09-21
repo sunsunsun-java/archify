@@ -1,4 +1,6 @@
 import { test } from 'node:test';
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
+import { compactViewer } from '../../scripts/compact-viewer.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -39,14 +41,14 @@ test('Focus preserves semantic selection, relationships, reachability and shared
     <line data-edge-key="i" data-edge-id="edge-i" data-edge-from="worker" data-edge-to="cdn" x1="920" y1="230" x2="245" y2="230"/>
     ${['users','cdn','lb','api','db','cache','worker','isolated'].map((id,i)=>`<g data-node-id="${id}" data-node-label="${id}" data-node-kind="${id==='db'?'database':id==='worker'?'messagebus':'backend'}" tabindex="0" role="button"><rect x="${60+i*135}" y="150" width="100" height="60" fill="var(--backend-fill)"/><text x="${70+i*135}" y="185">${id}</text></g>`).join('')}`;
   const graphSetup = `var fixtureSvg=document.querySelector('.diagram-container > svg');fixtureSvg.setAttribute('viewBox','0 0 1200 500');fixtureSvg.setAttribute('data-animation','trace');fixtureSvg.innerHTML=${JSON.stringify(graph)};`;
-  function variant(name, setup) {
+  async function variant(name, setup) {
     files[name] = path.join(scratch, name + '.html');
-    const original = fs.readFileSync(files.architecture, 'utf8');
+    const original = readableViewerArtifact(fs.readFileSync(files.architecture, 'utf8'));
     assert.ok(original.includes('    var Archify = {};'), 'Focus fixture anchor');
-    fs.writeFileSync(files[name], original.replace('    var Archify = {};', setup + '\n    var Archify = {};'));
+    fs.writeFileSync(files[name], await compactViewer(original.replace('    var Archify = {};', setup + '\n    var Archify = {};')));
   }
-  variant('graph', graphSetup);
-  variant('no-geometry', graphSetup + `document.querySelector('[data-edge-key="f"] path').remove();`);
+  await variant('graph', graphSetup);
+  await variant('no-geometry', graphSetup + `document.querySelector('[data-edge-key="f"] path').remove();`);
   const browser = desktopBrowser(chrome);
   t.after(() => browser.close());
   const session = await browser.sessionPromise;

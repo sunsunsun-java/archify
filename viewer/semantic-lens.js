@@ -159,6 +159,12 @@
         try {
           if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutLegendBridge);
         } catch (_) {}
+        // Reader fitting settles after the resize/font callbacks. SVG text
+        // bounds can change with that final scale, so refresh the viewer-only
+        // badges when the actual SVG viewport changes, not only window resize.
+        if (typeof ResizeObserver === 'function') {
+          new ResizeObserver(layoutLegendBridge).observe(svg);
+        }
         return true;
       }
       function syncLegendBridge() {

@@ -1,4 +1,6 @@
 import { test } from 'node:test';
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
+import { compactViewer } from '../../scripts/compact-viewer.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -39,24 +41,24 @@ test('Guided Views preserves chapters, Story playback and handoff contracts', {
   fs.writeFileSync(traceInput, JSON.stringify(trace)); files.trace = path.join(scratch, 'trace.html');
   execFileSync(process.execPath, [path.join(skillRoot, 'renderers/architecture/render-architecture.mjs'), traceInput, files.trace]);
   // HTML fixtures isolate invalid payloads and graph shapes outside renderer validation.
-  function variant(name, views, setup = '') {
-    const original = fs.readFileSync(files.trace, 'utf8');
+  async function variant(name, views, setup = '') {
+    const original = readableViewerArtifact(fs.readFileSync(files.trace, 'utf8'));
     assert.match(original, /<script id="archify-guided-views-data"[^>]*>[\s\S]*?<\/script>/, 'Guided Views data fixture anchor');
     assert.ok(original.includes('    var Archify = {};'), 'Guided Views setup fixture anchor');
     const html = original.replace(
       /(<script id="archify-guided-views-data"[^>]*>)[\s\S]*?(<\/script>)/,
       (_, start, end) => start + (typeof views === 'string' ? views : JSON.stringify(views)) + end,
     ).replace('    var Archify = {};', setup + '\n    var Archify = {};');
-    files[name] = path.join(scratch, name + '.html'); fs.writeFileSync(files[name], html);
+    files[name] = path.join(scratch, name + '.html'); fs.writeFileSync(files[name], await compactViewer(html));
   }
   const chapter = (id, focus) => ({ id, label: id, focus, note: 'Chapter ' + id });
   const scrollNodes = ['users','cdn','lb','api','db','cache','worker'];
-  variant('scroll', Array.from({length: 9}, (_, i) => chapter('chapter-' + i, scrollNodes)));
-  variant('empty', []); variant('invalid', '{');
-  variant('filtered', [chapter('filtered', ['users', 'unknown', 'users', 'cdn']), chapter('empty', ['unknown']), chapter('solo', ['db'])]);
-  variant('short', [chapter('one', ['users', 'cdn']), chapter('two', ['cdn', 'lb'])]);
-  variant('disjoint', [chapter('one', ['users','cdn']), chapter('two', ['api','db'])]);
-  variant('relations', [chapter('relations', ['users','cdn','lb','api','db']), chapter('other', ['api','cache'])], `
+  await variant('scroll', Array.from({length: 9}, (_, i) => chapter('chapter-' + i, scrollNodes)));
+  await variant('empty', []); await variant('invalid', '{');
+  await variant('filtered', [chapter('filtered', ['users', 'unknown', 'users', 'cdn']), chapter('empty', ['unknown']), chapter('solo', ['db'])]);
+  await variant('short', [chapter('one', ['users', 'cdn']), chapter('two', ['cdn', 'lb'])]);
+  await variant('disjoint', [chapter('one', ['users','cdn']), chapter('two', ['api','db'])]);
+  await variant('relations', [chapter('relations', ['users','cdn','lb','api','db']), chapter('other', ['api','cache'])], `
     document.querySelector('.diagram-container > svg').innerHTML =
       '<g data-edge-from="users" data-edge-to="cdn" data-edge-key="a" data-edge-label="forward"></g>' +
       '<g data-edge-from="users" data-edge-to="cdn" data-edge-key="a" data-edge-label="forward" transform="translate(3 4)"><path d="M 90 100 L 230 100"/></g>' +

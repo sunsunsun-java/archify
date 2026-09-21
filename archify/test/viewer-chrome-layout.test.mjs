@@ -1,4 +1,6 @@
 import { test } from 'node:test';
+import { readableViewerArtifact } from './helpers/readable-viewer.mjs';
+import { compactViewer } from '../../scripts/compact-viewer.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -925,13 +927,13 @@ test('Chrome Layout preserves scheduling, mode restoration and Reader handoffs',
     assert.equal(value.geometry.dockStageIntersectionArea, 0, JSON.stringify(value));
     assert.ok(value.geometry.stageGap >= 9, JSON.stringify(value));
   }
-  function variant(name, source) {
-    const original = fs.readFileSync(file, 'utf8');
+  async function variant(name, source) {
+    const original = readableViewerArtifact(fs.readFileSync(file, 'utf8'));
     const html = original.replace('  <script>\n    var Archify = {};',
       () => `  <script>${source}</script>\n  <script>\n    var Archify = {};`);
     assert.notEqual(html, original);
     const output = path.join(tmp, `chrome-${name}.html`);
-    fs.writeFileSync(output, html);
+    fs.writeFileSync(output, await compactViewer(html));
     return output;
   }
   try {
@@ -1067,7 +1069,7 @@ test('Chrome Layout preserves scheduling, mode restoration and Reader handoffs',
     });
 
     await t.test('font readiness and optional observers preserve their existing fallbacks', async () => {
-      const noObservers = variant('no-observers', 'window.ResizeObserver = undefined; window.MutationObserver = undefined;');
+      const noObservers = await variant('no-observers', 'window.ResizeObserver = undefined; window.MutationObserver = undefined;');
       await load(browser, noObservers);
       const initial = await state('fallback-initial');
       await resize(720);
@@ -1075,7 +1077,7 @@ test('Chrome Layout preserves scheduling, mode restoration and Reader handoffs',
       await resize(1440);
       assert.equal((await state('fallback-return')).reserve, initial.reserve);
 
-      const delayedFonts = variant('fonts', `window.originalChromeFonts = document.fonts;
+      const delayedFonts = await variant('fonts', `window.originalChromeFonts = document.fonts;
         Object.defineProperty(document, 'fonts', { configurable: true, value: { ready: new Promise(resolve => { window.releaseChromeFonts = resolve; }) } });`);
       // Bypass load's font/stability wait to observe the deliberately pending gate.
       const loaded = browser.cdp.waitFor('Page.loadEventFired', session);

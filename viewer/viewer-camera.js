@@ -436,6 +436,27 @@
         };
         target.x = (left + right) / 2 - (bounds.x + bounds.width / 2) * target.scale;
         target.y = (top + bottom) / 2 - (bounds.y + bounds.height / 2) * target.scale;
+        if (options.automaticEntry === true) {
+          // Centering the first node can push an otherwise fitting world out
+          // of view: SVG meet leaves letterbox space inside the camera element.
+          // Correct only initial framing, retaining the readable target scale
+          // and its padding. Explicit focus, hashes and manual pans keep their
+          // existing camera policy.
+          var entryAxis = function (position, start, end, offset, worldSize, targetStart, targetSize) {
+            var worldStart = offset * target.scale;
+            var worldEnd = (offset + worldSize * contentScale) * target.scale;
+            var framed = worldEnd - worldStart <= end - start
+              ? (start + end - worldStart - worldEnd) / 2
+              : Math.max(end - worldEnd, Math.min(start - worldStart, position));
+            var padding = readabilityContract.targetPaddingCssPx;
+            var minimum = start + padding - targetStart * target.scale;
+            var maximum = end - padding - (targetStart + targetSize) * target.scale;
+            // Target completeness wins if world framing and padding conflict.
+            return minimum <= maximum ? Math.max(minimum, Math.min(maximum, framed)) : position;
+          };
+          target.x = entryAxis(target.x, left, right, contentOffsetX, viewBox.width, bounds.x, bounds.width);
+          target.y = entryAxis(target.y, top, bottom, contentOffsetY, viewBox.height, bounds.y, bounds.height);
+        }
         var start = sampleRenderedState();
         stopCameraMotion('replaced', false);
         var transaction = cameraReceipt(target, options);
