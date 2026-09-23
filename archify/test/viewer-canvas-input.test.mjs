@@ -461,3 +461,23 @@ test('document semantic framing keeps the legacy 100 percent minimum', () => {
   assert.equal(f.state().mode, 'semantic');
   assert.equal(f.state().scale, 1);
 });
+
+test('fixed canvas grid stays sparse across zoom levels and pan writes only its origin', () => {
+  const f = cameraFixture({ fixed: true, width: 1440, height: 900, svgWidth: 200000, svgHeight: 900, viewWidth: 200000, viewHeight: 900 });
+  for (const scale of [.001, .01, .05, .1, .24999, .25, .25001, .5, 1, 2, 4]) {
+    f.view.zoomAt(scale, 300, 200); f.frame(3);
+    const spacing = parseFloat(f.container.style['--archify-grid-minor']);
+    assert.ok(spacing >= 24 - .001 && spacing <= 48 + .001, `spacing ${spacing} at ${scale}`);
+    const before = { ...f.container.style };
+    const writes = [];
+    const setProperty = f.container.style.setProperty;
+    f.container.style.setProperty = function(name, value) { writes.push(name); setProperty.call(this, name, value); };
+    f.view.panBy(-53, 71); f.frame(3);
+    f.container.style.setProperty = setProperty;
+    assert.ok(writes.filter(name => name.startsWith('--archify-grid-')).every(name => name === '--archify-grid-x' || name === '--archify-grid-y'));
+    assert.equal(f.container.style['--archify-grid-minor'], before['--archify-grid-minor']);
+    assert.equal(f.container.style['--archify-grid-weight'], before['--archify-grid-weight']);
+    assert.ok(Math.abs(parseFloat(f.container.style['--archify-grid-x']) - parseFloat(before['--archify-grid-x']) + 53) < .01);
+    assert.ok(Math.abs(parseFloat(f.container.style['--archify-grid-y']) - parseFloat(before['--archify-grid-y']) - 71) < .01);
+  }
+});

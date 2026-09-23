@@ -546,9 +546,10 @@ try {
     const embed = await evaluate(cdp, sessionId, `(() => ({
       roles: document.querySelectorAll('[data-legend-kind][role]').length,
       runtime: document.querySelectorAll('[data-legend-bridge-runtime]').length,
-      kinds: Array.from(document.querySelectorAll('[data-legend-semantic-kind]')).map(function (entry) { return entry.getAttribute('data-legend-semantic-kind'); })
+      kinds: Array.from(document.querySelectorAll('.diagram-container > svg [data-legend-semantic-kind]')).map(function (entry) { return entry.getAttribute('data-legend-semantic-kind'); }),
+      dockHidden: Array.from(document.querySelectorAll('.fixed-legend-dock')).every(function (dock) { return dock.hidden && getComputedStyle(dock).display === 'none' && !dock.querySelector('[tabindex="0"]'); })
     }))()`);
-    assert.deepEqual(embed, { roles: 0, runtime: 0, kinds: ['frontend', 'database', 'external'] });
+    assert.deepEqual(embed, { roles: 0, runtime: 0, kinds: ['frontend', 'database', 'external'], dockHidden: true });
 
     await navigateReady(outputs.hidden, '!!(window.Archify && Archify.semanticLens)', 'hidden legend');
     const hidden = await evaluate(cdp, sessionId, `(() => ({
