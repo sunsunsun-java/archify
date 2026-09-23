@@ -798,6 +798,12 @@ translation and scale but remains outside the authored SVG, semantic geometry, a
 exports. Wide diagrams at widths up to 720px keep their established horizontal-scroll
 behavior.
 
+An accepted right-button pan owns the native context menu from pointerdown,
+including before the first movement and throughout a long hold. This handles
+browsers that dispatch contextmenu on press; the existing post-movement grace
+period still handles release-time menus. Unclaimed controls, editors, embed and
+mobile wide-diagram scrolling retain their native input behavior.
+
 Arrow-key movement uses elapsed-time animation frames rather than operating-system
 key-repeat steps. Holding multiple arrows combines their directions, Shift raises
 the movement speed, key release ends the interaction, and window blur clears held

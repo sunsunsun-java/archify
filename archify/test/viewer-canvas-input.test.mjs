@@ -119,6 +119,41 @@ function cameraFixture({ svgWidth = 1000, svgHeight = 600, width = 1000, height 
       win.innerWidth = w; win.innerHeight = h; win.emit('resize'); frame(5); } };
 }
 
+test('right pan owns context menus before movement, during a long drag, and after release', () => {
+  const f = cameraFixture();
+  const menu = () => f.container.emit('contextmenu', { button: 2 }).defaultPrevented;
+  assert.equal(menu(), false, 'an unowned context menu remains native');
+  f.container.emit('pointerdown', { button: 2 });
+  assert.equal(menu(), true, 'press-time context menus must not interrupt right pan');
+  f.frame(60);
+  assert.equal(menu(), true, 'holding the button must not expire ownership');
+  f.container.emit('pointermove', { clientX: 160 }); f.frame();
+  f.container.emit('pointerup', { button: 2 });
+  assert.equal(menu(), true, 'release-time context menus must also be suppressed');
+  f.frame(30);
+  assert.equal(menu(), false, 'suppression must not survive the completed gesture');
+  assert.equal(f.state().x, 60);
+});
+
+test('unclaimed right input and cancelled holds retain native menus', () => {
+  for (const options of [{ embed: true }, { width: 640, wide: true }]) {
+    const f = cameraFixture(options);
+    f.container.emit('pointerdown', { button: 2 });
+    assert.equal(f.container.emit('contextmenu', { button: 2 }).defaultPrevented, false);
+  }
+  for (const match of ['.diagram-nav', '.fixed-legend', 'input', 'button']) {
+    const f = cameraFixture(), target = f.element(); target.match = match;
+    f.container.emit('pointerdown', { button: 2, target });
+    assert.equal(f.container.emit('contextmenu', { button: 2, target }).defaultPrevented, false);
+  }
+  for (const end of ['pointerup', 'pointercancel', 'lostpointercapture', 'blur']) {
+    const f = cameraFixture();
+    f.container.emit('pointerdown', { button: 2 });
+    f.container.emit(end, { button: 2 });
+    assert.equal(f.container.emit('contextmenu', { button: 2 }).defaultPrevented, false);
+  }
+});
+
 test('middle and Space-left pan in all directions and release input ownership', () => {
   for (const button of [1, 2, 0]) {
     for (const [dx, dy] of [[80, 0], [-80, 0], [0, 60], [0, -60]]) {

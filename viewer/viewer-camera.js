@@ -954,7 +954,8 @@
         }
       }, true);
       container.addEventListener('contextmenu', function (event) {
-        if (Date.now() < suppressContextMenuUntil && !cameraControlTarget(event.target)) event.preventDefault();
+        // Some browsers open the menu on press, before the first pan movement.
+        if (((drag && drag.button === 2) || Date.now() < suppressContextMenuUntil) && !cameraControlTarget(event.target)) event.preventDefault();
       });
       container.addEventListener('wheel', function (event) {
         if (!directNavigationEnabled() || cameraControlTarget(event.target)) return;
